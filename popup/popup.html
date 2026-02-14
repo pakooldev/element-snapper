@@ -59,7 +59,7 @@
 
         <div class="action-buttons">
           <button class="action-btn" id="captureViewportBtn">
-            <span>Visible Area</span>
+            <span>Screen Shot</span>
           </button>
           <button class="action-btn" id="captureFullPageBtn">
             <span>Full Page</span>
@@ -118,19 +118,6 @@
           <div class="switch-group">
             <label class="switch-row">
               <div class="switch-content">
-                <span class="switch-label">Scroll Element</span>
-                <span class="switch-desc">Capture scrollable content</span>
-              </div>
-              <input
-                type="checkbox"
-                id="fullCaptureCheckbox"
-                class="switch-input"
-              />
-              <div class="toggle-switch"></div>
-            </label>
-
-            <label class="switch-row">
-              <div class="switch-content">
                 <span class="switch-label">Clipboard</span>
                 <span class="switch-desc">Copy instead of download</span>
               </div>
@@ -144,16 +131,24 @@
 
             <label class="switch-row">
               <div class="switch-content">
-                <span class="switch-label">Debug Mode</span>
-                <span class="switch-desc">Show selection borders</span>
+                <span class="switch-label">Scroll Element</span>
+                <span class="switch-desc">Capture scrollable content</span>
               </div>
               <input
                 type="checkbox"
-                id="debugModeCheckbox"
+                id="fullCaptureCheckbox"
                 class="switch-input"
               />
               <div class="toggle-switch"></div>
             </label>
+
+            <!-- Debug Mode hidden - available via dev mode environment variable -->
+            <input
+              type="checkbox"
+              id="debugModeCheckbox"
+              class="switch-input"
+              style="display: none;"
+            />
           </div>
         </div>
       </main>
