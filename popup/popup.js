@@ -284,3 +284,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   return true;
 });
+
+// View Navigation
+const viewsWrapper = document.querySelector('.views-wrapper');
+const settingsBtn = document.getElementById('settingsBtn');
+const backBtn = document.getElementById('backBtn');
+
+if (settingsBtn) {
+  settingsBtn.addEventListener('click', () => {
+    viewsWrapper.classList.add('settings-open');
+  });
+}
+
+if (backBtn) {
+  backBtn.addEventListener('click', () => {
+    viewsWrapper.classList.remove('settings-open');
+  });
+}
