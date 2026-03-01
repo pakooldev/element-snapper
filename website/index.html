@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Element Snapper | Pixel-Perfect Chrome Extension</title>
+    <meta
+      name="description"
+      content="A professional Chrome extension that captures pixel-perfect screenshots of any webpage element using advanced capture+crop techniques."
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Background Effects -->
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+      <div class="container nav-container">
+        <div class="logo">
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect
+              x="3"
+              y="3"
+              width="18"
+              height="18"
+              rx="2"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            <path
+              d="M8 3V21M16 3V21M3 8H21M3 16H21"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-opacity="0.3"
+            />
+            <rect x="8" y="8" width="8" height="8" fill="currentColor" />
+          </svg>
+          <span>Element Snapper</span>
+        </div>
+        <div class="nav-links">
+          <a href="#features">Features</a>
+          <a href="#how-it-works">How it Works</a>
+          <a
+            href="https://github.com/panat-siriwong/element-snapper"
+            target="_blank"
+            class="btn btn-outline"
+            >View on GitHub</a
+          >
+        </div>
+      </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero">
+      <div class="container hero-container">
+        <div class="hero-content">
+          <div class="badge">Version 1.2.0 is out! ✨</div>
+          <h1 class="hero-title">
+            Pixel-Perfect <br /><span class="text-gradient"
+              >Element Capture</span
+            >
+          </h1>
+          <p class="hero-subtitle">
+            A professional Chrome extension that captures flawless, high-DPR
+            screenshots of any webpage element. No blur. Perfect crops. Even
+            handles scrollable elements and cross-origin iframes.
+          </p>
+          <div class="hero-actions">
+            <button
+              class="btn btn-primary"
+              onclick="alert('Coming soon to Chrome Web Store!')"
+            >
+              Add to Chrome — It's Free
+            </button>
+            <a
+              href="https://buymeacoffee.com/panat.siriwong"
+              target="_blank"
+              class="btn btn-bmc"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M8 17H16C17.6569 17 19 15.6569 19 14V12H21V7H19V4H5V7H3V12H5V14C5 15.6569 6.34315 17 8 17ZM7 4H17V12H7V4ZM3 9H5V10H3V9ZM19 10V9H21V10H19ZM16 19H8V21H16V19Z"
+                  fill="currentColor"
+                />
+              </svg>
+              Support Project
+            </a>
+          </div>
+          <div class="hero-stats">
+            <div class="stat">
+              <span class="check">✓</span> Lossless PNG / JPG
+            </div>
+            <div class="stat">
+              <span class="check">✓</span> Multi-tile Stitching
+            </div>
+            <div class="stat">
+              <span class="check">✓</span> Zero Data Collection
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Live Mockup of the Extension -->
+        <div class="hero-visual">
+          <div class="mockup-browser">
+            <div class="browser-header">
+              <div class="browser-dots">
+                <span></span><span></span><span></span>
+              </div>
+              <div class="browser-url">github.com/element-snapper</div>
+              <div class="browser-extension-icon active">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <rect
+                    x="3"
+                    y="3"
+                    width="18"
+                    height="18"
+                    rx="2"
+                    stroke="white"
+                    stroke-width="2"
+                  />
+                  <rect x="8" y="8" width="8" height="8" fill="white" />
+                </svg>
+              </div>
+            </div>
+            <div class="browser-body">
+              <!-- Embedded extension popup UI -->
+              <div class="extension-popup glass-panel">
+                <header class="ext-header">
+                  <h2>Element Snapper</h2>
+                  <div class="ext-status idle">
+                    <span class="dot"></span>Ready
+                  </div>
+                </header>
+                <main class="ext-main">
+                  <button class="ext-btn-primary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M4 4H10V6H6V10H4V4ZM20 4V10H18V6H14V4H20ZM4 20V14H6V18H10V20H4ZM20 20H14V18H18V14H20V20ZM12 8C14.2 8 16 9.8 16 12C16 14.2 14.2 16 12 16C9.8 16 8 14.2 8 12C8 9.8 9.8 8 12 8Z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                    Select Element
+                  </button>
+                  <div class="ext-actions">
+                    <button class="ext-btn-secondary">Visible Area</button>
+                    <button class="ext-btn-secondary">Full Page</button>
+                  </div>
+                  <label class="ext-switch-row">
+                    <div class="ext-switch-info">
+                      <span class="ext-switch-title">Clipboard</span>
+                      <span class="ext-switch-desc"
+                        >Copy instead of download</span
+                      >
+                    </div>
+                    <input type="checkbox" class="ext-checkbox" />
+                    <div class="ext-toggle"></div>
+                  </label>
+                </main>
+              </div>
+
+              <!-- Page content mock background -->
+              <div class="mock-page-content">
+                <div class="mock-skeleton title"></div>
+                <div class="mock-skeleton text"></div>
+                <div class="mock-skeleton text"></div>
+                <div class="mock-skeleton text short"></div>
+
+                <div class="mock-highlight-box">
+                  <span class="mock-dimensions">720 × 480</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Features Section -->
+    <section id="features" class="features-section">
+      <div class="container">
+        <h2 class="section-title">Why Element Snapper?</h2>
+        <p class="section-subtitle">
+          Engineered for developers, designers, and QA engineers who need
+          precision.
+        </p>
+
+        <div class="features-grid">
+          <div class="feature-card glass-panel">
+            <div class="feature-icon mb-blue">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M3 3h18v18H3z" />
+                <path d="M8 12l3 3 5-5" />
+              </svg>
+            </div>
+            <h3>DPR-Aware Cropping</h3>
+            <p>
+              Handles Retina and 4K displays flawlessly. Coordinates are
+              converted to physical pixels so your captures are never blurry.
+            </p>
+          </div>
+
+          <div class="feature-card glass-panel">
+            <div class="feature-icon mb-green">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"
+                />
+              </svg>
+            </div>
+            <h3>Multi-Tile Stitching</h3>
+            <p>
+              Capturing an element larger than the viewport? No problem. The
+              advanced stitching algorithm smoothly auto-scrolls and combines
+              tiles perfectly.
+            </p>
+          </div>
+
+          <div class="feature-card glass-panel">
+            <div class="feature-icon mb-yellow">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </div>
+            <h3>Capture Delay</h3>
+            <p>
+              Set a countdown timer (0-10s) to easily capture hover states,
+              dropdown menus, and dynamic UI elements before clipping.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-bottom">
+          <p>&copy; 2026 Element Snapper. Open source under MIT License.</p>
+          <div class="footer-links">
+            <a href="#">Privacy Policy</a>
+            <a href="https://github.com/panat-siriwong/element-snapper"
+              >GitHub</a
+            >
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
