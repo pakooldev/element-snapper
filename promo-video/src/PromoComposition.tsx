@@ -16,7 +16,7 @@ export const PromoComposition: React.FC = () => {
   // -----------------------------------------
   // SCENE 1: Intro & Click (Frames 0 - 140)
   // -----------------------------------------
-  const bgGradient = interpolate(frame, [0, 150, 300], [0, 100, 200], {
+  const bgGradient = interpolate(frame, [0, 200, 450], [0, 100, 200], {
     extrapolateRight: "clamp",
   });
   const titleOpacity = interpolate(frame, [15, 30, 120, 130], [0, 1, 1, 0]);
@@ -77,7 +77,7 @@ export const PromoComposition: React.FC = () => {
     to: 1,
     config: { damping: 15 },
   });
-  const pageOpacity = interpolate(frame, [130, 145], [0, 1], {
+  const pageOpacity = interpolate(frame, [130, 145, 290, 305], [0, 1, 1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -106,8 +106,50 @@ export const PromoComposition: React.FC = () => {
 
   // Popup Download Notification
   const notifY = spring({ frame: frame - 260, fps, from: -100, to: 20 });
-  const notifOpacity = interpolate(frame, [260, 265], [0, 1], {
+  const notifOpacity = interpolate(frame, [260, 265, 290, 305], [0, 1, 1, 0], {
     extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // -----------------------------------------
+  // SCENE 3: Chat Message (Frames 300 - 470)
+  // -----------------------------------------
+  const chatY = spring({
+    frame: frame - 305,
+    fps,
+    from: 200,
+    to: 0,
+    config: { damping: 14 },
+  });
+
+  const chatOpacity = interpolate(frame, [305, 320, 455, 470], [0, 1, 1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const pasteScale = spring({
+    frame: frame - 350,
+    fps,
+    from: 0,
+    to: 1,
+    config: { damping: 15 },
+  });
+
+  // Sending the image to the chat history
+  const sendProgress = spring({
+    frame: frame - 390,
+    fps,
+    from: 0,
+    to: 1,
+    config: { damping: 12 },
+  });
+
+  const sentMessageY = interpolate(sendProgress, [0, 1], [150, 0]);
+  const sentMessageOpacity = spring({
+    frame: frame - 390,
+    fps,
+    from: 0,
+    to: 1,
   });
 
   return (
@@ -581,6 +623,238 @@ export const PromoComposition: React.FC = () => {
             >
               element_capture.png
             </p>
+          </div>
+        </div>
+      </Sequence>
+
+      {/* ------- SCENE 3: CHAT MESSAGE (SLACK / DISCORD CLONE) ------- */}
+      <Sequence from={305} durationInFrames={165}>
+        <div
+          style={{
+            position: "absolute",
+            left: "calc(50% - 400px)",
+            top: "15%",
+            width: "800px",
+            height: "600px",
+            background: "#1e293b",
+            borderRadius: "16px",
+            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
+            display: "flex",
+            flexDirection: "column",
+            opacity: chatOpacity,
+            transform: `translateY(${chatY}px)`,
+            fontFamily: "Inter, sans-serif",
+            overflow: "hidden",
+            zIndex: 4,
+          }}
+        >
+          {/* Chat Header */}
+          <div
+            style={{
+              height: "64px",
+              borderBottom: "1px solid rgba(255,255,255,0.1)",
+              display: "flex",
+              alignItems: "center",
+              padding: "0 24px",
+              background: "#0f172a",
+            }}
+          >
+            <div style={{ fontSize: "20px", fontWeight: 700, color: "white" }}>
+              # design-feedback
+            </div>
+          </div>
+
+          {/* Chat History */}
+          <div
+            style={{
+              flex: 1,
+              padding: "24px",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "flex-end",
+              gap: "24px",
+            }}
+          >
+            {/* Existing Dummy Message */}
+            <div style={{ display: "flex", gap: "16px" }}>
+              <div
+                style={{
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "8px",
+                  background: "#475569",
+                }}
+              ></div>
+              <div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    marginBottom: "4px",
+                  }}
+                >
+                  <span style={{ fontWeight: 600, color: "white" }}>Alice</span>
+                  <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                    Today at 10:42 AM
+                  </span>
+                </div>
+                <div style={{ color: "#cbd5e1" }}>
+                  Can someone share the latest snapshot of the new hero section?
+                </div>
+              </div>
+            </div>
+
+            {/* Sent Snapshot Message (Appears when sendProgress hits) */}
+            <div
+              style={{
+                display: "flex",
+                gap: "16px",
+                opacity: sentMessageOpacity,
+                transform: `translateY(${sentMessageY}px)`,
+              }}
+            >
+              <div
+                style={{
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "8px",
+                  background: "#3b82f6",
+                }}
+              ></div>
+              <div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    marginBottom: "4px",
+                  }}
+                >
+                  <span style={{ fontWeight: 600, color: "white" }}>You</span>
+                  <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                    Just now
+                  </span>
+                </div>
+                {/* The pasted element screenshot rendered nicely */}
+                <div
+                  style={{
+                    width: "360px",
+                    height: "180px",
+                    background: "#cbd5e1",
+                    borderRadius: "8px",
+                    marginTop: "8px",
+                    padding: "12px",
+                    boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.1)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                    overflow: "hidden",
+                    position: "relative",
+                  }}
+                >
+                  {/* Miniature version of the captured blue element */}
+                  <div
+                    style={{
+                      width: "100%",
+                      flex: 1,
+                      background: "#3b82f6",
+                      borderRadius: "6px",
+                      position: "relative",
+                      padding: "8px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "30%",
+                        height: "8px",
+                        background: "rgba(255,255,255,0.5)",
+                        borderRadius: "2px",
+                        marginBottom: "6px",
+                      }}
+                    />
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "24px",
+                        background: "rgba(255,255,255,0.2)",
+                        borderRadius: "2px",
+                        marginBottom: "4px",
+                      }}
+                    />
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "24px",
+                        background: "rgba(255,255,255,0.2)",
+                        borderRadius: "2px",
+                        marginBottom: "4px",
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Chat Input Box */}
+          <div style={{ padding: "0 24px 24px 24px" }}>
+            <div
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: "8px",
+                minHeight: "56px",
+                padding: "12px 16px",
+                position: "relative",
+              }}
+            >
+              {frame < 390 ? (
+                <div
+                  style={{
+                    color: "#94a3b8",
+                  }}
+                >
+                  Message #design-feedback
+                </div>
+              ) : null}
+
+              {/* The image being pasted into the input */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: "16px",
+                  top: "12px",
+                  transform: `scale(${pasteScale})`,
+                  opacity: 1 - sendProgress, // Fades out as it 'sends'
+                  transformOrigin: "left top",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    background: "rgba(255,255,255,0.1)",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid rgba(255,255,255,0.2)",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "60px",
+                      height: "40px",
+                      background: "#3b82f6",
+                      borderRadius: "4px",
+                    }}
+                  />
+                  <div style={{ color: "white", fontWeight: 500 }}>
+                    image.png
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </Sequence>
