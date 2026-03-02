@@ -617,6 +617,30 @@ body {
   font-size: 0.95rem;
 }
 
+/* Video Section */
+.video-section {
+  padding: 60px 0;
+  position: relative;
+  z-index: 10;
+}
+
+.video-container {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  border-radius: 16px;
+  overflow: hidden;
+  padding: 8px; /* Frame border effect */
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid var(--border-strong);
+}
+
+.demo-video {
+  width: 100%;
+  border-radius: 8px;
+  display: block;
+}
+
 /* Footer */
 .site-footer {
   border-top: 1px solid var(--border-light);
