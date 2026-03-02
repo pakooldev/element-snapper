@@ -208,7 +208,7 @@ export const PromoComposition: React.FC = () => {
   const s3CursorY = interpolate(
     frame - scene3Base,
     [10, 50],
-    [height * 0.15 + 300, height * 0.15 + 500],
+    [height * 0.15 + 300, height * 0.15 + 520],
     { easing: Easing.inOut(Easing.cubic), extrapolateRight: "clamp" },
   );
 
