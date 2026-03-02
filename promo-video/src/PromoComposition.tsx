@@ -97,30 +97,30 @@ export const PromoComposition: React.FC = () => {
   });
   const pageY = spring({ frame: frame - 195, fps, from: 100, to: 0 });
 
-  // Scroll the webpage faster
-  const pageScrollY = interpolate(frame, [255, 290], [0, -240], {
+  // Scroll the webpage faster (shifted earlier)
+  const pageScrollY = interpolate(frame, [220, 255], [0, -240], {
     easing: Easing.inOut(Easing.cubic),
     extrapolateRight: "clamp",
     extrapolateLeft: "clamp",
   });
 
-  // The snapping bounding box (appears at frame 215)
-  const highlightOpacity = interpolate(frame, [322, 337], [0, 1], {
+  // The snapping bounding box
+  const highlightOpacity = interpolate(frame, [287, 302], [0, 1], {
     extrapolateRight: "clamp",
   });
-  const highlightDash = interpolate(frame, [322, 390], [0, 100], {
+  const highlightDash = interpolate(frame, [287, 355], [0, 100], {
     extrapolateRight: "clamp",
   });
 
   // Flash effect for the snapshot
-  const flashOpacity = interpolate(frame, [375, 378, 397], [0, 1, 0], {
+  const flashOpacity = interpolate(frame, [340, 343, 362], [0, 1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
   // Popup Download Notification
-  const notifY = spring({ frame: frame - 390, fps, from: -100, to: 20 });
-  const notifOpacity = interpolate(frame, [390, 397, 435, 457], [0, 1, 1, 0], {
+  const notifY = spring({ frame: frame - 355, fps, from: -100, to: 20 });
+  const notifOpacity = interpolate(frame, [355, 362, 435, 457], [0, 1, 1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -1052,85 +1052,6 @@ export const PromoComposition: React.FC = () => {
                   </div>
                 </div>
               )}
-
-              {/* Cmd+V Floating Keystroke Hint */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: "50%",
-                  top: "50%",
-                  transform: `translate(-50%, -50%) scale(${cmdVScale})`,
-                  opacity: cmdVOpacity,
-                  background: "rgba(15, 23, 42, 0.9)",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
-                  borderRadius: "8px",
-                  padding: "8px 16px",
-                  color: "white",
-                  fontWeight: 700,
-                  fontSize: "18px",
-                  letterSpacing: "0.05em",
-                  zIndex: 10,
-                  display: "flex",
-                  gap: "8px",
-                  alignItems: "center",
-                }}
-              >
-                <div
-                  style={{
-                    background: "rgba(255,255,255,0.1)",
-                    padding: "4px 8px",
-                    borderRadius: "4px",
-                  }}
-                >
-                  ⌘
-                </div>
-                <span>+</span>
-                <div
-                  style={{
-                    background: "rgba(255,255,255,0.1)",
-                    padding: "4px 8px",
-                    borderRadius: "4px",
-                  }}
-                >
-                  V
-                </div>
-              </div>
-
-              {/* Enter Floating Keystroke Hint */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: "50%",
-                  top: "50%",
-                  transform: `translate(-50%, -50%) scale(${enterScale})`,
-                  opacity: enterOpacity,
-                  background: "rgba(15, 23, 42, 0.9)",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
-                  borderRadius: "8px",
-                  padding: "8px 16px",
-                  color: "white",
-                  fontWeight: 700,
-                  fontSize: "18px",
-                  letterSpacing: "0.05em",
-                  zIndex: 10,
-                  display: "flex",
-                  gap: "8px",
-                  alignItems: "center",
-                }}
-              >
-                <div
-                  style={{
-                    background: "rgba(255,255,255,0.1)",
-                    padding: "4px 8px",
-                    borderRadius: "4px",
-                  }}
-                >
-                  ↵
-                </div>
-                <span>Enter</span>
-              </div>
             </div>
           </div>
         </div>
@@ -1165,6 +1086,88 @@ export const PromoComposition: React.FC = () => {
               strokeWidth="1"
             />
           </svg>
+        </div>
+
+        {/* Cmd+V Floating Keystroke Hint (Moved outside and styled larger) */}
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "82%",
+            transform: `translate(-50%, -50%) scale(${cmdVScale})`,
+            opacity: cmdVOpacity,
+            background: "white",
+            border: "2px solid rgba(0,0,0,0.1)",
+            boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
+            borderRadius: "16px",
+            padding: "16px 32px",
+            color: "#0f172a",
+            fontWeight: 800,
+            fontSize: "36px",
+            letterSpacing: "0.05em",
+            zIndex: 10,
+            display: "flex",
+            gap: "12px",
+            alignItems: "center",
+          }}
+        >
+          <div
+            style={{
+              background: "rgba(0,0,0,0.05)",
+              padding: "8px 16px",
+              borderRadius: "8px",
+              boxShadow: "inset 0 2px 4px rgba(0,0,0,0.1)",
+            }}
+          >
+            ⌘
+          </div>
+          <span>+</span>
+          <div
+            style={{
+              background: "rgba(0,0,0,0.05)",
+              padding: "8px 16px",
+              borderRadius: "8px",
+              boxShadow: "inset 0 2px 4px rgba(0,0,0,0.1)",
+            }}
+          >
+            V
+          </div>
+        </div>
+
+        {/* Enter Floating Keystroke Hint (Moved outside and styled larger) */}
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "82%",
+            transform: `translate(-50%, -50%) scale(${enterScale})`,
+            opacity: enterOpacity,
+            background: "white",
+            border: "2px solid rgba(0,0,0,0.1)",
+            boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
+            borderRadius: "16px",
+            padding: "16px 32px",
+            color: "#0f172a",
+            fontWeight: 800,
+            fontSize: "36px",
+            letterSpacing: "0.05em",
+            zIndex: 10,
+            display: "flex",
+            gap: "12px",
+            alignItems: "center",
+          }}
+        >
+          <div
+            style={{
+              background: "rgba(0,0,0,0.05)",
+              padding: "8px 16px",
+              borderRadius: "8px",
+              boxShadow: "inset 0 2px 4px rgba(0,0,0,0.1)",
+            }}
+          >
+            ↵
+          </div>
+          <span>Enter</span>
         </div>
       </Sequence>
     </AbsoluteFill>
