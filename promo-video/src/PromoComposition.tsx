@@ -17,30 +17,30 @@ export const PromoComposition: React.FC = () => {
   // SCENE 1: Intro & Click (Frames 0 - 140)
   // -----------------------------------------
   // Smoothly oscillate the background for a seamless 470-frame loop
-  const bgGradient = interpolate(frame, [0, 235, 470], [0, 200, 0], {
+  const bgGradient = interpolate(frame, [0, 352, 705], [0, 200, 0], {
     extrapolateRight: "clamp",
   });
 
   // Logo animation "gimmick"
-  const logoScale = spring({ frame: frame - 10, fps, config: { damping: 12 } });
-  const logoRotate = interpolate(frame, [10, 45], [-90, 0], {
+  const logoScale = spring({ frame: frame - 15, fps, config: { damping: 12 } });
+  const logoRotate = interpolate(frame, [15, 67], [-90, 0], {
     easing: Easing.out(Easing.exp),
     extrapolateRight: "clamp",
   });
-  const logoDash = interpolate(frame, [10, 50], [100, 0], {
+  const logoDash = interpolate(frame, [15, 75], [100, 0], {
     extrapolateRight: "clamp",
   });
 
-  const titleOpacity = interpolate(frame, [15, 30, 50, 60], [0, 1, 1, 0], {
+  const titleOpacity = interpolate(frame, [22, 45, 75, 90], [0, 1, 1, 0], {
     extrapolateRight: "clamp",
   });
-  const titleY = interpolate(frame, [15, 30, 50, 60], [30, 0, 0, -30], {
+  const titleY = interpolate(frame, [22, 45, 75, 90], [30, 0, 0, -30], {
     extrapolateRight: "clamp",
   });
 
   // Box UI
-  const scaleUI = spring({ frame: frame - 60, fps, config: { damping: 12 } });
-  const uiOpacity = interpolate(frame, [120, 135], [1, 0], {
+  const scaleUI = spring({ frame: frame - 90, fps, config: { damping: 12 } });
+  const uiOpacity = interpolate(frame, [180, 202], [1, 0], {
     extrapolateRight: "clamp",
   });
 
@@ -62,65 +62,65 @@ export const PromoComposition: React.FC = () => {
   );
 
   const cursorScale = spring({
-    frame: frame - 110,
+    frame: frame - 165,
     fps,
     from: 1,
     to: 0.8,
     config: { damping: 20 },
   });
   const clickReleaseScale = spring({
-    frame: frame - 118,
+    frame: frame - 177,
     fps,
     from: 0,
     to: 0.2,
     config: { damping: 20 },
   });
   const finalCursorScale =
-    frame < 118 ? cursorScale : cursorScale + clickReleaseScale;
+    frame < 177 ? cursorScale : cursorScale + clickReleaseScale;
 
   // Button click feedback
-  const isClicked = frame >= 110 && frame <= 118;
+  const isClicked = frame >= 165 && frame <= 177;
 
   // -----------------------------------------
   // SCENE 2: The Webpage & Selection (Frames 130 - 300)
   // -----------------------------------------
   const pageScale = spring({
-    frame: frame - 130,
+    frame: frame - 195,
     fps,
     from: 0.8,
     to: 1,
     config: { damping: 15 },
   });
-  const pageOpacity = interpolate(frame, [130, 145, 290, 305], [0, 1, 1, 0], {
+  const pageOpacity = interpolate(frame, [195, 217, 435, 457], [0, 1, 1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const pageY = spring({ frame: frame - 130, fps, from: 100, to: 0 });
+  const pageY = spring({ frame: frame - 195, fps, from: 100, to: 0 });
 
   // Scroll the webpage
-  const pageScrollY = interpolate(frame, [170, 210], [0, -240], {
+  const pageScrollY = interpolate(frame, [255, 315], [0, -240], {
     easing: Easing.inOut(Easing.cubic),
     extrapolateRight: "clamp",
     extrapolateLeft: "clamp",
   });
 
   // The snapping bounding box (appears at frame 215)
-  const highlightOpacity = interpolate(frame, [215, 225], [0, 1], {
+  const highlightOpacity = interpolate(frame, [322, 337], [0, 1], {
     extrapolateRight: "clamp",
   });
-  const highlightDash = interpolate(frame, [215, 260], [0, 100], {
+  const highlightDash = interpolate(frame, [322, 390], [0, 100], {
     extrapolateRight: "clamp",
   });
 
   // Flash effect for the snapshot
-  const flashOpacity = interpolate(frame, [250, 252, 265], [0, 1, 0], {
+  const flashOpacity = interpolate(frame, [375, 378, 397], [0, 1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
   // Popup Download Notification
-  const notifY = spring({ frame: frame - 260, fps, from: -100, to: 20 });
-  const notifOpacity = interpolate(frame, [260, 265, 290, 305], [0, 1, 1, 0], {
+  const notifY = spring({ frame: frame - 390, fps, from: -100, to: 20 });
+  const notifOpacity = interpolate(frame, [390, 397, 435, 457], [0, 1, 1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -129,20 +129,20 @@ export const PromoComposition: React.FC = () => {
   // SCENE 3: Chat Message (Frames 300 - 470)
   // -----------------------------------------
   const chatY = spring({
-    frame: frame - 305,
+    frame: frame - 457,
     fps,
     from: 200,
     to: 0,
     config: { damping: 14 },
   });
 
-  const chatOpacity = interpolate(frame, [305, 320, 455, 470], [0, 1, 1, 0], {
+  const chatOpacity = interpolate(frame, [457, 480, 682, 705], [0, 1, 1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
   const pasteScale = spring({
-    frame: frame - 350,
+    frame: frame - 525,
     fps,
     from: 0,
     to: 1,
@@ -151,7 +151,7 @@ export const PromoComposition: React.FC = () => {
 
   // Sending the image to the chat history
   const sendProgress = spring({
-    frame: frame - 390,
+    frame: frame - 585,
     fps,
     from: 0,
     to: 1,
@@ -160,7 +160,7 @@ export const PromoComposition: React.FC = () => {
 
   const sentMessageY = interpolate(sendProgress, [0, 1], [150, 0]);
   const sentMessageOpacity = spring({
-    frame: frame - 390,
+    frame: frame - 585,
     fps,
     from: 0,
     to: 1,
@@ -193,7 +193,7 @@ export const PromoComposition: React.FC = () => {
       />
 
       {/* ------- SCENE 1: INTRO ------- */}
-      <Sequence from={0} durationInFrames={140}>
+      <Sequence from={0} durationInFrames={210}>
         <div
           style={{
             zIndex: 1,
@@ -279,10 +279,10 @@ export const PromoComposition: React.FC = () => {
                 r="5"
                 fill="#3b82f6"
                 style={{
-                  opacity: interpolate(frame, [30, 40], [0, 1], {
+                  opacity: interpolate(frame, [45, 60], [0, 1], {
                     extrapolateLeft: "clamp",
                   }),
-                  transform: `scale(${interpolate(frame, [30, 45], [0, 1], {
+                  transform: `scale(${interpolate(frame, [45, 67], [0, 1], {
                     extrapolateLeft: "clamp",
                     extrapolateRight: "clamp",
                     easing: Easing.elastic(1),
@@ -296,7 +296,7 @@ export const PromoComposition: React.FC = () => {
                 r="2"
                 fill="#0f172a"
                 style={{
-                  opacity: interpolate(frame, [35, 45], [0, 1], {
+                  opacity: interpolate(frame, [52, 67], [0, 1], {
                     extrapolateLeft: "clamp",
                   }),
                 }}
@@ -442,7 +442,7 @@ export const PromoComposition: React.FC = () => {
       </Sequence>
 
       {/* ------- SCENE 2: THE WEBPAGE ------- */}
-      <Sequence from={130} durationInFrames={170}>
+      <Sequence from={195} durationInFrames={255}>
         <div
           style={{
             position: "absolute",
@@ -739,7 +739,7 @@ export const PromoComposition: React.FC = () => {
       </Sequence>
 
       {/* ------- SCENE 3: CHAT MESSAGE (SLACK / DISCORD CLONE) ------- */}
-      <Sequence from={305} durationInFrames={165}>
+      <Sequence from={457} durationInFrames={247}>
         <div
           style={{
             position: "absolute",
@@ -920,7 +920,7 @@ export const PromoComposition: React.FC = () => {
                 position: "relative",
               }}
             >
-              {frame < 390 ? (
+              {frame < 585 ? (
                 <div
                   style={{
                     color: "#94a3b8",
