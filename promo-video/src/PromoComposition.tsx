@@ -125,6 +125,55 @@ export const PromoComposition: React.FC = () => {
     extrapolateRight: "clamp",
   });
 
+  // Scene 2 Cursor (Crosshair snapping element)
+  const s2CursorX = interpolate(
+    frame,
+    [255, 285],
+    [width / 2 + 200, width / 2],
+    {
+      easing: Easing.inOut(Easing.cubic),
+      extrapolateRight: "clamp",
+      extrapolateLeft: "clamp",
+    },
+  );
+  const s2CursorY = interpolate(
+    frame,
+    [255, 285],
+    [height / 2 + 300, height / 2 - 50],
+    {
+      easing: Easing.inOut(Easing.cubic),
+      extrapolateRight: "clamp",
+      extrapolateLeft: "clamp",
+    },
+  );
+
+  const s2CursorScale = spring({
+    frame: frame - 287,
+    fps,
+    from: 1,
+    to: 0.85,
+    config: { damping: 14 },
+  });
+  const s2ClickReleaseScale = spring({
+    frame: frame - 295,
+    fps,
+    from: 0,
+    to: 0.15,
+    config: { damping: 14 },
+  });
+  const s2FinalCursorScale =
+    frame < 295 ? s2CursorScale : s2CursorScale + s2ClickReleaseScale;
+
+  const s2CursorOpacity = interpolate(
+    frame,
+    [255, 265, 312, 325],
+    [0, 1, 1, 0],
+    {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    },
+  );
+
   // -----------------------------------------
   // SCENE 3: Chat Message (Frames 457 - 727)
   // -----------------------------------------
@@ -817,6 +866,33 @@ export const PromoComposition: React.FC = () => {
             </p>
           </div>
         </div>
+
+        {/* Scene 2 Crosshair Cursor */}
+        <div
+          style={{
+            position: "absolute",
+            left: `${s2CursorX - 12}px`,
+            top: `${s2CursorY - 12}px`,
+            width: "24px",
+            height: "24px",
+            zIndex: 100,
+            transform: `scale(${s2FinalCursorScale})`,
+            transformOrigin: "12px 12px",
+            opacity: s2CursorOpacity,
+            pointerEvents: "none",
+          }}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            stroke="black"
+            strokeWidth="3"
+            style={{ filter: "drop-shadow(0px 4px 6px rgba(0,0,0,0.5))" }}
+          >
+            <path d="M12 2V22M2 12H22" strokeLinecap="round" />
+          </svg>
+        </div>
       </Sequence>
 
       {/* ------- SCENE 3: CHAT MESSAGE (SLACK / DISCORD CLONE) ------- */}
@@ -1111,6 +1187,19 @@ export const PromoComposition: React.FC = () => {
             alignItems: "center",
           }}
         >
+          <div
+            style={{
+              background: "rgba(0,0,0,0.05)",
+              padding: "8px 16px",
+              borderRadius: "8px",
+              boxShadow: "inset 0 2px 4px rgba(0,0,0,0.1)",
+              display: "flex",
+              gap: "8px",
+            }}
+          >
+            <span style={{ fontSize: "28px", marginTop: "4px" }}>Ctrl</span>
+          </div>
+          <span>/</span>
           <div
             style={{
               background: "rgba(0,0,0,0.05)",
