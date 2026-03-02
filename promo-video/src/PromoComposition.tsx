@@ -16,8 +16,8 @@ export const PromoComposition: React.FC = () => {
   // -----------------------------------------
   // SCENE 1: Intro & Click (Frames 0 - 140)
   // -----------------------------------------
-  // Smoothly oscillate the background for a seamless 470-frame loop
-  const bgGradient = interpolate(frame, [0, 352, 705], [0, 200, 0], {
+  // Smoothly oscillate the background for a seamless 727-frame loop
+  const bgGradient = interpolate(frame, [0, 363, 727], [0, 200, 0], {
     extrapolateRight: "clamp",
   });
 
@@ -126,70 +126,125 @@ export const PromoComposition: React.FC = () => {
   });
 
   // -----------------------------------------
-  // SCENE 3: Chat Message (Frames 300 - 470)
+  // SCENE 3: Chat Message (Frames 457 - 727)
   // -----------------------------------------
+  const scene3Base = 457;
+
   const chatY = spring({
-    frame: frame - 457,
+    frame: frame - scene3Base,
     fps,
     from: 200,
     to: 0,
     config: { damping: 14 },
   });
 
-  const chatOpacity = interpolate(frame, [457, 480, 682, 705], [0, 1, 1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
+  const chatOpacity = interpolate(
+    frame,
+    [scene3Base, scene3Base + 23, scene3Base + 240, scene3Base + 270],
+    [0, 1, 1, 0],
+    {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    },
+  );
+
+  // Scene 3 Cursor
+  const s3CursorX = interpolate(
+    frame - scene3Base,
+    [10, 50],
+    [width / 2 + 400, width / 2],
+    { easing: Easing.inOut(Easing.cubic), extrapolateRight: "clamp" },
+  );
+  // Approximate top of chat input box relative to the Composition root
+  const s3CursorY = interpolate(
+    frame - scene3Base,
+    [10, 50],
+    [height * 0.15 + 300, height * 0.15 + 500],
+    { easing: Easing.inOut(Easing.cubic), extrapolateRight: "clamp" },
+  );
+
+  const s3CursorScale = spring({
+    frame: frame - scene3Base - 65,
+    fps,
+    from: 1,
+    to: 0.85,
+    config: { damping: 14 },
   });
+  const s3ClickReleaseScale = spring({
+    frame: frame - scene3Base - 75,
+    fps,
+    from: 0,
+    to: 0.15,
+    config: { damping: 14 },
+  });
+  const s3FinalCursorScale =
+    frame - scene3Base < 75
+      ? s3CursorScale
+      : s3CursorScale + s3ClickReleaseScale;
+  const isInputFocused = frame - scene3Base >= 65;
 
   // Cmd+V Keystroke animation
   const cmdVScale = spring({
-    frame: frame - 470,
+    frame: frame - scene3Base - 100,
     fps,
     from: 0.5,
     to: 1,
     config: { damping: 12 },
   });
-  const cmdVOpacity = interpolate(frame, [470, 475, 490, 495], [0, 1, 1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const cmdVOpacity = interpolate(
+    frame - scene3Base,
+    [100, 105, 135, 140],
+    [0, 1, 1, 0],
+    {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    },
+  );
 
-  const isPasted = frame >= 495;
-  const pasteY = spring({
-    frame: frame - 495,
+  // Enter Keystroke animation
+  const enterScale = spring({
+    frame: frame - scene3Base - 160,
     fps,
-    from: 20,
-    to: 0,
-    config: { damping: 15 },
+    from: 0.5,
+    to: 1,
+    config: { damping: 12 },
   });
-  const pasteOpacity = spring({
-    frame: frame - 495,
+  const enterOpacity = interpolate(
+    frame - scene3Base,
+    [160, 165, 185, 190],
+    [0, 1, 1, 0],
+    {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    },
+  );
+
+  const isPasted = frame - scene3Base >= 100;
+  const pasteScale = spring({
+    frame: frame - scene3Base - 100,
     fps,
     from: 0,
     to: 1,
     config: { damping: 14 },
   });
 
-  const uploadProgress = interpolate(frame, [500, 530], [0, 100], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const isSent = frame - scene3Base >= 160;
 
   // Sending the image to the chat history
-  const sendProgress = spring({
-    frame: frame - 540,
+  const sendSlideY = spring({
+    frame: frame - scene3Base - 160,
     fps,
-    from: 0,
-    to: 1,
-    config: { damping: 12 },
+    from: 20,
+    to: 0,
+    config: { damping: 14 },
   });
 
-  const sentMessageY = interpolate(sendProgress, [0, 1], [150, 0]);
   const sentMessageOpacity = spring({
-    frame: frame - 540,
+    frame: frame - scene3Base - 160,
     fps,
     from: 0,
     to: 1,
+    config: { damping: 14 },
   });
 
   return (
@@ -765,7 +820,7 @@ export const PromoComposition: React.FC = () => {
       </Sequence>
 
       {/* ------- SCENE 3: CHAT MESSAGE (SLACK / DISCORD CLONE) ------- */}
-      <Sequence from={457} durationInFrames={247}>
+      <Sequence from={scene3Base} durationInFrames={270}>
         <div
           style={{
             position: "absolute",
@@ -843,95 +898,97 @@ export const PromoComposition: React.FC = () => {
             </div>
 
             {/* Sent Snapshot Message (Appears when sendProgress hits) */}
-            <div
-              style={{
-                display: "flex",
-                gap: "16px",
-                opacity: sentMessageOpacity,
-                transform: `translateY(${sentMessageY}px)`,
-              }}
-            >
+            {isSent && (
               <div
                 style={{
-                  width: "48px",
-                  height: "48px",
-                  borderRadius: "8px",
-                  background: "#3b82f6",
+                  display: "flex",
+                  gap: "16px",
+                  opacity: sentMessageOpacity,
+                  transform: `translateY(${sendSlideY}px)`,
                 }}
-              ></div>
-              <div>
+              >
                 <div
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    marginBottom: "4px",
-                  }}
-                >
-                  <span style={{ fontWeight: 600, color: "white" }}>You</span>
-                  <span style={{ fontSize: "12px", color: "#94a3b8" }}>
-                    Just now
-                  </span>
-                </div>
-                {/* The pasted element screenshot rendered nicely */}
-                <div
-                  style={{
-                    width: "360px",
-                    height: "180px",
-                    background: "#cbd5e1",
+                    width: "48px",
+                    height: "48px",
                     borderRadius: "8px",
-                    marginTop: "8px",
-                    padding: "12px",
-                    boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.1)",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "8px",
-                    overflow: "hidden",
-                    position: "relative",
+                    background: "#3b82f6",
                   }}
-                >
-                  {/* Miniature version of the captured blue element */}
+                ></div>
+                <div>
                   <div
                     style={{
-                      width: "100%",
-                      flex: 1,
-                      background: "#3b82f6",
-                      borderRadius: "6px",
-                      position: "relative",
-                      padding: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      marginBottom: "4px",
                     }}
                   >
-                    <div
-                      style={{
-                        width: "30%",
-                        height: "8px",
-                        background: "rgba(255,255,255,0.5)",
-                        borderRadius: "2px",
-                        marginBottom: "6px",
-                      }}
-                    />
+                    <span style={{ fontWeight: 600, color: "white" }}>You</span>
+                    <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                      Just now
+                    </span>
+                  </div>
+                  {/* The pasted element screenshot rendered nicely */}
+                  <div
+                    style={{
+                      width: "360px",
+                      height: "180px",
+                      background: "#cbd5e1",
+                      borderRadius: "8px",
+                      marginTop: "8px",
+                      padding: "12px",
+                      boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.1)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "8px",
+                      overflow: "hidden",
+                      position: "relative",
+                    }}
+                  >
+                    {/* Miniature version of the captured blue element */}
                     <div
                       style={{
                         width: "100%",
-                        height: "24px",
-                        background: "rgba(255,255,255,0.2)",
-                        borderRadius: "2px",
-                        marginBottom: "4px",
+                        flex: 1,
+                        background: "#3b82f6",
+                        borderRadius: "6px",
+                        position: "relative",
+                        padding: "8px",
                       }}
-                    />
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "24px",
-                        background: "rgba(255,255,255,0.2)",
-                        borderRadius: "2px",
-                        marginBottom: "4px",
-                      }}
-                    />
+                    >
+                      <div
+                        style={{
+                          width: "30%",
+                          height: "8px",
+                          background: "rgba(255,255,255,0.5)",
+                          borderRadius: "2px",
+                          marginBottom: "6px",
+                        }}
+                      />
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "24px",
+                          background: "rgba(255,255,255,0.2)",
+                          borderRadius: "2px",
+                          marginBottom: "4px",
+                        }}
+                      />
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "24px",
+                          background: "rgba(255,255,255,0.2)",
+                          borderRadius: "2px",
+                          marginBottom: "4px",
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Chat Input Box */}
@@ -939,14 +996,20 @@ export const PromoComposition: React.FC = () => {
             <div
               style={{
                 background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.1)",
+                border: isInputFocused
+                  ? "1px solid rgba(59, 130, 246, 0.8)"
+                  : "1px solid rgba(255,255,255,0.1)",
+                boxShadow: isInputFocused
+                  ? "0 0 0 2px rgba(59, 130, 246, 0.2)"
+                  : "none",
                 borderRadius: "8px",
                 minHeight: "56px",
                 padding: "12px 16px",
                 position: "relative",
+                transition: "all 0.2s ease",
               }}
             >
-              {frame < 585 ? (
+              {frame - scene3Base < 100 ? (
                 <div
                   style={{
                     color: "#94a3b8",
@@ -957,53 +1020,41 @@ export const PromoComposition: React.FC = () => {
               ) : null}
 
               {/* The image being pasted into the input */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: "16px",
-                  top: "12px",
-                  opacity: isPasted ? pasteOpacity * (1 - sendProgress) : 0,
-                  transform: `translateY(${pasteY}px)`,
-                  transformOrigin: "left top",
-                }}
-              >
+              {isPasted && !isSent && (
                 <div
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    background: "rgba(255,255,255,0.1)",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    position: "relative",
-                    overflow: "hidden",
+                    position: "absolute",
+                    left: "16px",
+                    top: "12px",
+                    transform: `scale(${pasteScale})`,
+                    transformOrigin: "left top",
                   }}
                 >
-                  {/* Upload Progress Bar Background */}
                   <div
                     style={{
-                      position: "absolute",
-                      bottom: 0,
-                      left: 0,
-                      height: "3px",
-                      background: "#10b981",
-                      width: `${uploadProgress}%`,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      background: "rgba(255,255,255,0.1)",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      border: "1px solid rgba(255,255,255,0.2)",
                     }}
-                  />
-                  <div
-                    style={{
-                      width: "60px",
-                      height: "40px",
-                      background: "#3b82f6",
-                      borderRadius: "4px",
-                    }}
-                  />
-                  <div style={{ color: "white", fontWeight: 500 }}>
-                    element_capture.png
+                  >
+                    <div
+                      style={{
+                        width: "60px",
+                        height: "40px",
+                        background: "#3b82f6",
+                        borderRadius: "4px",
+                      }}
+                    />
+                    <div style={{ color: "white", fontWeight: 500 }}>
+                      element_capture.png
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Cmd+V Floating Keystroke Hint */}
               <div
@@ -1048,8 +1099,75 @@ export const PromoComposition: React.FC = () => {
                   V
                 </div>
               </div>
+
+              {/* Enter Floating Keystroke Hint */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: "50%",
+                  transform: `translate(-50%, -50%) scale(${enterScale})`,
+                  opacity: enterOpacity,
+                  background: "rgba(15, 23, 42, 0.9)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
+                  borderRadius: "8px",
+                  padding: "8px 16px",
+                  color: "white",
+                  fontWeight: 700,
+                  fontSize: "18px",
+                  letterSpacing: "0.05em",
+                  zIndex: 10,
+                  display: "flex",
+                  gap: "8px",
+                  alignItems: "center",
+                }}
+              >
+                <div
+                  style={{
+                    background: "rgba(255,255,255,0.1)",
+                    padding: "4px 8px",
+                    borderRadius: "4px",
+                  }}
+                >
+                  ↵
+                </div>
+                <span>Enter</span>
+              </div>
             </div>
           </div>
+        </div>
+
+        {/* Scene 3 Fake Vector Cursor */}
+        <div
+          style={{
+            position: "absolute",
+            left: `${s3CursorX - 8}px`,
+            top: `${s3CursorY - 8}px`,
+            width: "50px",
+            height: "50px",
+            zIndex: 10,
+            transform: `scale(${s3FinalCursorScale})`,
+            transformOrigin: "8.3px 8.3px",
+            opacity: interpolate(frame - scene3Base, [100, 115], [1, 0], {
+              extrapolateRight: "clamp",
+            }),
+          }}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            stroke="white"
+            strokeWidth="2"
+            style={{ filter: "drop-shadow(0px 8px 12px rgba(0,0,0,0.6))" }}
+          >
+            <path
+              d="M4 4L11 22L14 15L21 12L4 4Z"
+              fill="black"
+              strokeWidth="1"
+            />
+          </svg>
         </div>
       </Sequence>
     </AbsoluteFill>
