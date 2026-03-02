@@ -50,36 +50,36 @@ export const PromoComposition: React.FC = () => {
 
   const cursorX = interpolate(
     frame,
-    [70, 105],
+    [120, 155],
     [targetCursorX + 400, targetCursorX],
     { easing: Easing.inOut(Easing.cubic), extrapolateRight: "clamp" },
   );
   const cursorY = interpolate(
     frame,
-    [70, 105],
+    [120, 155],
     [targetCursorY + 300, targetCursorY],
     { easing: Easing.inOut(Easing.cubic), extrapolateRight: "clamp" },
   );
 
   const cursorScale = spring({
-    frame: frame - 165,
+    frame: frame - 160,
     fps,
     from: 1,
     to: 0.8,
-    config: { damping: 20 },
+    config: { damping: 14 },
   });
   const clickReleaseScale = spring({
-    frame: frame - 177,
+    frame: frame - 166,
     fps,
     from: 0,
     to: 0.2,
-    config: { damping: 20 },
+    config: { damping: 14 },
   });
   const finalCursorScale =
-    frame < 177 ? cursorScale : cursorScale + clickReleaseScale;
+    frame < 166 ? cursorScale : cursorScale + clickReleaseScale;
 
   // Button click feedback
-  const isClicked = frame >= 165 && frame <= 177;
+  const isClicked = frame >= 160 && frame <= 166;
 
   // -----------------------------------------
   // SCENE 2: The Webpage & Selection (Frames 130 - 300)
@@ -142,16 +142,16 @@ export const PromoComposition: React.FC = () => {
   });
 
   const pasteScale = spring({
-    frame: frame - 525,
+    frame: frame - 495,
     fps,
     from: 0,
     to: 1,
-    config: { damping: 15 },
+    config: { damping: 12 },
   });
 
   // Sending the image to the chat history
   const sendProgress = spring({
-    frame: frame - 585,
+    frame: frame - 540,
     fps,
     from: 0,
     to: 1,
@@ -160,7 +160,7 @@ export const PromoComposition: React.FC = () => {
 
   const sentMessageY = interpolate(sendProgress, [0, 1], [150, 0]);
   const sentMessageOpacity = spring({
-    frame: frame - 585,
+    frame: frame - 540,
     fps,
     from: 0,
     to: 1,
