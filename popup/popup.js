@@ -128,9 +128,7 @@ async function loadSettings() {
     debugModeCheckbox.checked = settings.debugMode;
   }
 
-  if (settings.copyToClipboard !== undefined) {
-    clipboardCheckbox.checked = settings.copyToClipboard;
-  }
+  clipboardCheckbox.checked = settings.copyToClipboard !== undefined ? settings.copyToClipboard : true;
 }
 
 /**
