@@ -1023,9 +1023,6 @@ export const PromoComposition: React.FC = () => {
               {isPasted && !isSent && (
                 <div
                   style={{
-                    position: "absolute",
-                    left: "16px",
-                    top: "12px",
                     transform: `scale(${pasteScale})`,
                     transformOrigin: "left top",
                   }}
