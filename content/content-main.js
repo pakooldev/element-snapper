@@ -84,10 +84,25 @@ async function handleClipboardCopy(dataUrl) {
     const response = await fetch(dataUrl);
     const blob = await response.blob();
 
+    // Use native format if supported, otherwise fall back to PNG
+    const mimeType = ClipboardItem.supports(blob.type) ? blob.type : 'image/png';
+    const clipboardBlob = mimeType === blob.type ? blob : await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('Canvas toBlob failed')), 'image/png');
+      };
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+
     // Use Clipboard API to write image
     await navigator.clipboard.write([
       new ClipboardItem({
-        [blob.type]: blob
+        [mimeType]: clipboardBlob
       })
     ]);
 
