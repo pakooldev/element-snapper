@@ -31,13 +31,15 @@ export const PromoComposition: React.FC = () => {
     extrapolateRight: "clamp",
   });
 
-  const titleOpacity = interpolate(frame, [15, 30, 120, 130], [0, 1, 1, 0]);
-  const titleY = interpolate(frame, [15, 30], [30, 0], {
-    easing: Easing.out(Easing.exp),
+  const titleOpacity = interpolate(frame, [15, 30, 50, 60], [0, 1, 1, 0], {
+    extrapolateRight: "clamp",
+  });
+  const titleY = interpolate(frame, [15, 30, 50, 60], [30, 0, 0, -30], {
+    extrapolateRight: "clamp",
   });
 
   // Box UI
-  const scaleUI = spring({ frame: frame - 45, fps, config: { damping: 12 } });
+  const scaleUI = spring({ frame: frame - 60, fps, config: { damping: 12 } });
   const uiOpacity = interpolate(frame, [120, 135], [1, 0], {
     extrapolateRight: "clamp",
   });
