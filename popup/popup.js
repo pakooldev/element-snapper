@@ -171,6 +171,11 @@ async function saveSettings() {
   // Update UI state immediately
   updateQualityState();
 
+  // If settings view is open, re-measure it (quality row visibility may have changed)
+  if (viewsWrapper && viewsWrapper.classList.contains('settings-open')) {
+    resizeToView(settingsView);
+  }
+
   await chrome.storage.local.set({
     format: selectedFormat,
     quality: parseInt(qualityInput.value),
@@ -187,6 +192,8 @@ async function saveSettings() {
   await loadSettings();
   updateQualityState(); // Ensure correct initial state
 
+  // Re-measure home view after settings are loaded (quality row may have been hidden)
+  resizeToView(homeView);
 
   // Get initial state from content script
   try {
@@ -287,15 +294,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 const viewsWrapper = document.querySelector('.views-wrapper');
 const settingsBtn = document.getElementById('settingsBtn');
 const backBtn = document.getElementById('backBtn');
+const homeView = document.getElementById('homeView');
+const settingsView = document.getElementById('settingsView');
+
+/**
+ * Resize the body (and wrapper) to match the height of the visible view.
+ * This drives the animated popup resize via `transition: height` on body.
+ */
+function resizeToView(view) {
+  // Temporarily make the target view visible (but off-screen) so we can
+  // measure its natural height before the CSS transition kicks in.
+  const isHidden = view === settingsView && !viewsWrapper.classList.contains('settings-open');
+  if (isHidden) {
+    view.style.visibility = 'hidden';
+    view.style.transform = 'translateX(0)';
+  }
+
+  const targetHeight = view.scrollHeight;
+
+  if (isHidden) {
+    view.style.visibility = '';
+    view.style.transform = '';
+  }
+
+  document.body.style.height = targetHeight + 'px';
+  viewsWrapper.style.height = targetHeight + 'px';
+}
+
+// Set initial height to home view
+resizeToView(homeView);
 
 if (settingsBtn) {
   settingsBtn.addEventListener('click', () => {
     viewsWrapper.classList.add('settings-open');
+    resizeToView(settingsView);
   });
 }
 
 if (backBtn) {
   backBtn.addEventListener('click', () => {
     viewsWrapper.classList.remove('settings-open');
+    resizeToView(homeView);
   });
 }
