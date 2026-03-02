@@ -92,14 +92,29 @@ function injectHighlightStyles() {
   const style = document.createElement('style');
   style.id = 'element-screenshot-styles';
   style.textContent = `
-    /* Hover highlight - professional blue outline */
+    /* Hover highlight - professional dashed blue outline */
     .element-screenshot-highlight {
-      outline: 2px solid #3b82f6 !important;
+      outline: 2px dashed #3b82f6 !important;
       outline-offset: -2px !important;
       cursor: crosshair !important;
       box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3), inset 0 0 20px rgba(59, 130, 246, 0.1) !important;
       border-radius: 2px !important;
       transition: all 0.1s ease !important;
+    }
+
+    /* Dimension label positioned at bottom right */
+    #element-screenshot-dimensions {
+      position: absolute;
+      background: #3b82f6;
+      color: white;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 2px 6px;
+      border-radius: 4px;
+      pointer-events: none;
+      z-index: 2147483647;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
 
     /* Minimal capture overlay - dark glass effect */

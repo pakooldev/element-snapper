@@ -25,6 +25,12 @@ class ElementSelector {
     document.addEventListener('mousemove', this.boundMouseMove, true);
     document.addEventListener('click', this.boundClick, true);
 
+    // Create dimension label
+    this.dimensionLabel = document.createElement('div');
+    this.dimensionLabel.id = 'element-screenshot-dimensions';
+    this.dimensionLabel.style.display = 'none';
+    document.body.appendChild(this.dimensionLabel);
+
     // Change cursor
     document.body.style.cursor = 'crosshair';
   }
@@ -46,6 +52,12 @@ class ElementSelector {
     if (this.currentElement) {
       this.currentElement.classList.remove('element-screenshot-highlight');
       this.currentElement = null;
+    }
+
+    // Remove dimension label
+    if (this.dimensionLabel) {
+      this.dimensionLabel.remove();
+      this.dimensionLabel = null;
     }
 
     // Restore cursor
@@ -73,6 +85,23 @@ class ElementSelector {
     // Add new highlight
     this.currentElement = element;
     element.classList.add('element-screenshot-highlight');
+
+    // Update dimensions label
+    if (this.dimensionLabel) {
+      const rect = element.getBoundingClientRect();
+      const width = Math.round(rect.width);
+      const height = Math.round(rect.height);
+      this.dimensionLabel.textContent = `${width} × ${height}`;
+
+      // Position at bottom right of the element
+      // Using pageXOffset/pageYOffset to account for scrolling
+      const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+      const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+
+      this.dimensionLabel.style.left = `${rect.right + scrollX - this.dimensionLabel.offsetWidth}px`;
+      this.dimensionLabel.style.top = `${rect.bottom + scrollY + 4}px`;
+      this.dimensionLabel.style.display = 'block';
+    }
   }
 
   /**
