@@ -16,9 +16,21 @@ export const PromoComposition: React.FC = () => {
   // -----------------------------------------
   // SCENE 1: Intro & Click (Frames 0 - 140)
   // -----------------------------------------
-  const bgGradient = interpolate(frame, [0, 200, 450], [0, 100, 200], {
+  // Smoothly oscillate the background for a seamless 470-frame loop
+  const bgGradient = interpolate(frame, [0, 235, 470], [0, 200, 0], {
     extrapolateRight: "clamp",
   });
+
+  // Logo animation "gimmick"
+  const logoScale = spring({ frame: frame - 10, fps, config: { damping: 12 } });
+  const logoRotate = interpolate(frame, [10, 45], [-90, 0], {
+    easing: Easing.out(Easing.exp),
+    extrapolateRight: "clamp",
+  });
+  const logoDash = interpolate(frame, [10, 50], [100, 0], {
+    extrapolateRight: "clamp",
+  });
+
   const titleOpacity = interpolate(frame, [15, 30, 120, 130], [0, 1, 1, 0]);
   const titleY = interpolate(frame, [15, 30], [30, 0], {
     easing: Easing.out(Easing.exp),
@@ -193,6 +205,103 @@ export const PromoComposition: React.FC = () => {
             width: "100%",
           }}
         >
+          {/* Animated Logo Gimmick */}
+          <div
+            style={{
+              transform: `scale(${logoScale}) rotate(${logoRotate}deg)`,
+              marginBottom: "24px",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              width: "120px",
+              height: "120px",
+              background: "rgba(30, 41, 59, 0.5)",
+              borderRadius: "24px",
+              border: "1px solid rgba(255,255,255,0.1)",
+              boxShadow: "0 20px 40px -10px rgba(59, 130, 246, 0.3)",
+            }}
+          >
+            <svg
+              width="64"
+              height="64"
+              viewBox="0 0 28 28"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <rect
+                x="3"
+                y="3"
+                width="22"
+                height="22"
+                rx="4"
+                stroke="#64748b"
+                strokeWidth="2"
+                strokeDasharray="4 2"
+                strokeDashoffset={logoDash}
+              />
+              <path
+                d="M3 9V7C3 4.79086 4.79086 3 7 3H9"
+                stroke="#3b82f6"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeDasharray={20}
+                strokeDashoffset={logoDash}
+              />
+              <path
+                d="M25 9V7C25 4.79086 23.2091 3 21 3H19"
+                stroke="#3b82f6"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeDasharray={20}
+                strokeDashoffset={logoDash}
+              />
+              <path
+                d="M3 19V21C3 23.2091 4.79086 25 7 25H9"
+                stroke="#3b82f6"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeDasharray={20}
+                strokeDashoffset={logoDash}
+              />
+              <path
+                d="M25 19V21C25 23.2091 23.2091 25 21 25H19"
+                stroke="#3b82f6"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeDasharray={20}
+                strokeDashoffset={logoDash}
+              />
+              <circle
+                cx="14"
+                cy="14"
+                r="5"
+                fill="#3b82f6"
+                style={{
+                  opacity: interpolate(frame, [30, 40], [0, 1], {
+                    extrapolateLeft: "clamp",
+                  }),
+                  transform: `scale(${interpolate(frame, [30, 45], [0, 1], {
+                    extrapolateLeft: "clamp",
+                    extrapolateRight: "clamp",
+                    easing: Easing.elastic(1),
+                  })})`,
+                  transformOrigin: "center",
+                }}
+              />
+              <circle
+                cx="14"
+                cy="14"
+                r="2"
+                fill="#0f172a"
+                style={{
+                  opacity: interpolate(frame, [35, 45], [0, 1], {
+                    extrapolateLeft: "clamp",
+                  }),
+                }}
+              />
+            </svg>
+          </div>
+
           <h1
             style={{
               fontSize: "80px",
