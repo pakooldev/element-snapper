@@ -112,10 +112,33 @@ body {
   font-weight: 700;
   font-size: 1.2rem;
   color: white;
+  cursor: pointer;
 }
 
 .logo svg {
-  color: var(--accent-primary);
+  color: var(--text-primary);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.logo:hover .animated-logo {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.logo-dash {
+  animation: marchingAnts 3s linear infinite;
+  opacity: 0.4;
+  transition: opacity 0.3s;
+}
+
+.logo:hover .logo-dash {
+  opacity: 1;
+  animation-duration: 1.5s;
+}
+
+@keyframes marchingAnts {
+  to {
+    stroke-dashoffset: -12;
+  }
 }
 
 .nav-links {
