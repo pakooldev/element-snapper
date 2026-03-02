@@ -141,12 +141,26 @@ export const PromoComposition: React.FC = () => {
     extrapolateRight: "clamp",
   });
 
-  const pasteScale = spring({
-    frame: frame - 495,
+  // Cmd+V Keystroke animation
+  const cmdVScale = spring({
+    frame: frame - 470,
     fps,
-    from: 0,
+    from: 0.5,
     to: 1,
     config: { damping: 12 },
+  });
+  const cmdVOpacity = interpolate(frame, [470, 475, 490, 495], [0, 1, 1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const isPasted = frame >= 495;
+  const pastePop = spring({
+    frame: frame - 495,
+    fps,
+    from: 0.9,
+    to: 1,
+    config: { damping: 15 },
   });
 
   // Sending the image to the chat history
@@ -936,8 +950,8 @@ export const PromoComposition: React.FC = () => {
                   position: "absolute",
                   left: "16px",
                   top: "12px",
-                  transform: `scale(${pasteScale})`,
-                  opacity: 1 - sendProgress, // Fades out as it 'sends'
+                  opacity: isPasted ? 1 - sendProgress : 0, // Appears instantly, fades out when sent
+                  transform: `scale(${isPasted ? pastePop : 0})`, // Quick pop instead of growing
                   transformOrigin: "left top",
                 }}
               >
@@ -963,6 +977,50 @@ export const PromoComposition: React.FC = () => {
                   <div style={{ color: "white", fontWeight: 500 }}>
                     image.png
                   </div>
+                </div>
+              </div>
+
+              {/* Cmd+V Floating Keystroke Hint */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: "50%",
+                  transform: `translate(-50%, -50%) scale(${cmdVScale})`,
+                  opacity: cmdVOpacity,
+                  background: "rgba(15, 23, 42, 0.9)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
+                  borderRadius: "8px",
+                  padding: "8px 16px",
+                  color: "white",
+                  fontWeight: 700,
+                  fontSize: "18px",
+                  letterSpacing: "0.05em",
+                  zIndex: 10,
+                  display: "flex",
+                  gap: "8px",
+                  alignItems: "center",
+                }}
+              >
+                <div
+                  style={{
+                    background: "rgba(255,255,255,0.1)",
+                    padding: "4px 8px",
+                    borderRadius: "4px",
+                  }}
+                >
+                  ⌘
+                </div>
+                <span>+</span>
+                <div
+                  style={{
+                    background: "rgba(255,255,255,0.1)",
+                    padding: "4px 8px",
+                    borderRadius: "4px",
+                  }}
+                >
+                  V
                 </div>
               </div>
             </div>
