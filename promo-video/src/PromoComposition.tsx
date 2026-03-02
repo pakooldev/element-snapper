@@ -97,8 +97,8 @@ export const PromoComposition: React.FC = () => {
   });
   const pageY = spring({ frame: frame - 195, fps, from: 100, to: 0 });
 
-  // Scroll the webpage
-  const pageScrollY = interpolate(frame, [255, 315], [0, -240], {
+  // Scroll the webpage faster
+  const pageScrollY = interpolate(frame, [255, 290], [0, -240], {
     easing: Easing.inOut(Easing.cubic),
     extrapolateRight: "clamp",
     extrapolateLeft: "clamp",
@@ -155,12 +155,24 @@ export const PromoComposition: React.FC = () => {
   });
 
   const isPasted = frame >= 495;
-  const pastePop = spring({
+  const pasteY = spring({
     frame: frame - 495,
     fps,
-    from: 0.9,
-    to: 1,
+    from: 20,
+    to: 0,
     config: { damping: 15 },
+  });
+  const pasteOpacity = spring({
+    frame: frame - 495,
+    fps,
+    from: 0,
+    to: 1,
+    config: { damping: 14 },
+  });
+
+  const uploadProgress = interpolate(frame, [500, 530], [0, 100], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
   });
 
   // Sending the image to the chat history
@@ -950,8 +962,8 @@ export const PromoComposition: React.FC = () => {
                   position: "absolute",
                   left: "16px",
                   top: "12px",
-                  opacity: isPasted ? 1 - sendProgress : 0, // Appears instantly, fades out when sent
-                  transform: `scale(${isPasted ? pastePop : 0})`, // Quick pop instead of growing
+                  opacity: isPasted ? pasteOpacity * (1 - sendProgress) : 0,
+                  transform: `translateY(${pasteY}px)`,
                   transformOrigin: "left top",
                 }}
               >
@@ -964,8 +976,21 @@ export const PromoComposition: React.FC = () => {
                     padding: "8px 12px",
                     borderRadius: "6px",
                     border: "1px solid rgba(255,255,255,0.2)",
+                    position: "relative",
+                    overflow: "hidden",
                   }}
                 >
+                  {/* Upload Progress Bar Background */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: 0,
+                      left: 0,
+                      height: "3px",
+                      background: "#10b981",
+                      width: `${uploadProgress}%`,
+                    }}
+                  />
                   <div
                     style={{
                       width: "60px",
@@ -975,7 +1000,7 @@ export const PromoComposition: React.FC = () => {
                     }}
                   />
                   <div style={{ color: "white", fontWeight: 500 }}>
-                    image.png
+                    element_capture.png
                   </div>
                 </div>
               </div>
