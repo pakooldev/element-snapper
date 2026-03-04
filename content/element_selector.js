@@ -117,16 +117,30 @@ class ElementSelector {
       }
 
       this.dimensionLabel.textContent = `${labelW} × ${labelH}`;
+      this.dimensionLabel.style.display = 'block';
 
-      // Anchor label to bottom-right of the visible portion
+      // Measure label after making it visible
+      const lw = this.dimensionLabel.offsetWidth;
+      const lh = this.dimensionLabel.offsetHeight;
+
       const visRight = Math.min(rect.right, vw);
       const visBottom = Math.min(rect.bottom, vh);
       const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
       const scrollY = window.pageYOffset || document.documentElement.scrollTop;
 
-      this.dimensionLabel.style.left = `${visRight + scrollX - this.dimensionLabel.offsetWidth}px`;
-      this.dimensionLabel.style.top = `${visBottom + scrollY + 4}px`;
-      this.dimensionLabel.style.display = 'block';
+      // Horizontal: align to right edge of visible area, clamp so label stays on-screen
+      let labelX = visRight + scrollX - lw;
+      labelX = Math.max(scrollX + 4, labelX);                      // don't go left of viewport
+      labelX = Math.min(scrollX + vw - lw - 4, labelX);           // don't go right of viewport
+
+      // Vertical: show below the bottom edge; if that clips off-screen, flip above instead
+      let labelY = visBottom + scrollY + 4;
+      if (visBottom + lh + 8 > vh) {                               // would overflow bottom
+        labelY = visBottom + scrollY - lh - 4;                     // flip above
+      }
+
+      this.dimensionLabel.style.left = `${labelX}px`;
+      this.dimensionLabel.style.top = `${labelY}px`;
     }
   }
 

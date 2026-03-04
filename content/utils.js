@@ -168,16 +168,16 @@ function injectHighlightStyles() {
       overflow: visible;
     }
 
-    /* Normal capture: solid blue — captures only the visible portion */
+    /* Normal capture: dashed blue — captures only the visible portion */
     #element-screenshot-highlight-overlay.mode-normal {
-      border: 2px solid #3b82f6;
+      border: 2px dashed #3b82f6;
       background: rgba(59, 130, 246, 0.07);
       box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
     }
 
-    /* Full capture: element fits entirely in viewport */
+    /* Full capture: element fits entirely in viewport — dashed blue */
     #element-screenshot-highlight-overlay.mode-full-fits {
-      border: 2px solid #3b82f6;
+      border: 2px dashed #3b82f6;
       background: rgba(59, 130, 246, 0.07);
       box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
     }
