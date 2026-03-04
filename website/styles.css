@@ -707,6 +707,10 @@ body {
     gap: 16px;
   }
 
+  .nav-links .btn-outline {
+    display: none;
+  }
+
   .hero-container {
     grid-template-columns: 1fr;
     text-align: center;
