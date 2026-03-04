@@ -1,0 +1,52 @@
+[
+  {
+    "version": "v1.2.3",
+    "date": "2026-03-04",
+    "summary": "This update improves the element selection experience with smarter highlighting, a new Escape key to cancel, and better handling for oversized elements.",
+    "highlights": [
+      "Cancel selection with Escape key",
+      "Smart highlight overlay for precise selection",
+      "Better handling of oversized elements"
+    ]
+  },
+  {
+    "version": "v1.2.2",
+    "date": "2026-02-14",
+    "summary": "This update focuses on streamlining the user interface and improving the overall user experience with a cleaner, more modern design.",
+    "highlights": [
+      "Redesigned Popup UI with dark theme",
+      "Dedicated sliding settings panel",
+      "Visual enhancements to switches and sliders"
+    ]
+  },
+  {
+    "version": "v1.2.0",
+    "date": "2026-02-10",
+    "summary": "This update introduces new quick action buttons, clipboard support, dynamic capture delay, and improved scrolling capabilities for capturing large elements.",
+    "highlights": [
+      "Quick action buttons for viewport and full page capture",
+      "Copy directly to clipboard to skip downloads",
+      "Dynamic delayed capture (0-10 seconds) for hover states"
+    ]
+  },
+  {
+    "version": "v1.1.0",
+    "date": "2026-02-05",
+    "summary": "This quality-of-life update features a redesigned settings panel and resolves issues with clipboard output and multi-tile stitching.",
+    "highlights": [
+      "Redesigned settings panel with compact layout",
+      "Fixed issues with multi-tile image capture",
+      "Fixed clipboard output for viewport shortcuts"
+    ]
+  },
+  {
+    "version": "v1.0.0",
+    "date": "2026-02-01",
+    "summary": "The initial launch of Element Snapper! A powerful new extension to grab pixel-perfect screenshots of any webpage element.",
+    "highlights": [
+      "Element selection capture with DPR-aware cropping",
+      "Full element capture utilizing multi-tile stitching",
+      "Lossless PNG and configurable JPEG support"
+    ]
+  }
+]

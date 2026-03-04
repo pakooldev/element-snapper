@@ -360,50 +360,6 @@ Contributions are welcome! Please:
 
 MIT License - feel free to use this extension for any purpose.
 
-## Changelog
-
-### v1.2.3 (2026-03-04)
-
-- **New**: Press `Esc` to cancel element selection at any time; popup status resets to idle automatically
-- **Improvement**: Selection highlight replaced with a fixed-position overlay that always reflects exactly what will be captured
-  - Dashed **blue** border — normal capture (visible portion only)
-  - Dashed **indigo** border + _↕ Full Element_ badge — Scroll Element enabled and element extends beyond viewport
-- **Fix**: Clicking an element larger than the viewport no longer produces black/empty areas when _Scroll Element_ is disabled — capture is now clamped to the visible area
-- **Improvement**: Dimension label always stays on one line; repositions intelligently when near screen edges
-- **Improvement**: _Full Element_ badge flips inside the overlay when near the bottom of the screen
-
-### v1.2.2 (2026-02-14)
-
-- **UI**: Completely redesigned popup with modern dark theme and improved typography
-- **UI**: Advanced options moved to a dedicated sliding settings panel
-- **Improvement**: Cleaner home screen focused on primary actions
-- **Improvement**: Quality and Delay sliders refactored with value indicators on the right
-- **Fix**: Layout issues with double borders; spacing and alignment corrections
-
-### v1.2.0 (2026-02-10)
-
-- **New**: Quick action buttons for viewport and full page capture
-- **New**: Copy to clipboard — skip downloads and copy directly to system clipboard
-- **New**: Delayed capture with countdown timer (0–10 s) for hover states, menus, and dynamic content
-- **Enhancement**: All three capture modes support delay and clipboard features
-- **Enhancement**: Improved multi-tile capture with smooth scroll animation
-
-### v1.1.0 (2026-02-05)
-
-- **UI**: Redesigned settings panel with compact switch layout
-- **UI**: Conditional quality slider (hidden for PNG)
-- **Fix**: Clipboard copy failure for viewport and full-page capture
-- **Fix**: Black-line artifacts when capturing more than 2 tiles
-
-### v1.0.0 (2026-02-01)
-
-- Initial release: element selection capture with DPR-aware cropping
-- PNG/JPEG format support with quality control
-- Full element capture with multi-tile stitching
-- Debug mode with visual tile borders
-- Professional dark mode UI
-- Cross-origin iframe detection and handling
-
 ## Credits
 
 Built with Chrome Extension Manifest V3 APIs. No external libraries used.

@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Element Snapper | Release Notes</title>
+    <meta
+      name="description"
+      content="Release notes and updates for the Element Snapper Chrome Extension."
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+  </head>
+  <body>
+    <!-- Background Effects -->
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+      <div class="container nav-container">
+        <a href="index.html" class="logo" style="text-decoration: none">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 28 28"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            class="animated-logo"
+          >
+            <!-- Outer dashed bounding box -->
+            <rect
+              x="3"
+              y="3"
+              width="22"
+              height="22"
+              rx="4"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-dasharray="4 2"
+              class="logo-dash"
+            />
+            <!-- Top Left Crop -->
+            <path
+              d="M3 9V7C3 4.79086 4.79086 3 7 3H9"
+              stroke="var(--accent-primary)"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <!-- Top Right Crop -->
+            <path
+              d="M25 9V7C25 4.79086 23.2091 3 21 3H19"
+              stroke="var(--accent-primary)"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <!-- Bottom Left Crop -->
+            <path
+              d="M3 19V21C3 23.2091 4.79086 25 7 25H9"
+              stroke="var(--accent-primary)"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <!-- Bottom Right Crop -->
+            <path
+              d="M25 19V21C25 23.2091 23.2091 25 21 25H19"
+              stroke="var(--accent-primary)"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <!-- Inner Camera Lens -->
+            <circle cx="14" cy="14" r="5" fill="var(--accent-primary)" />
+            <circle cx="14" cy="14" r="2" fill="var(--bg-dark)" />
+          </svg>
+          <span>Element Snapper</span>
+        </a>
+        <div class="nav-links">
+          <a href="index.html#features">Features</a>
+          <a href="index.html#how-it-works">How it Works</a>
+          <a
+            href="releases.html"
+            class="active"
+            style="color: var(--text-primary)"
+            >Releases</a
+          >
+          <a
+            href="https://chromewebstore.google.com/detail/ldlamddpdfbfkkdnoeoocnlgdamfnjaf?utm_source=item-share-cb"
+            target="_blank"
+            class="btn btn-outline"
+            >Download</a
+          >
+        </div>
+      </div>
+    </nav>
+
+    <!-- Header Section -->
+    <header
+      class="releases-header"
+      style="padding: 60px 0 40px; text-align: center"
+    >
+      <div class="container">
+        <h1 class="hero-title" style="font-size: 3rem; margin-bottom: 16px">
+          Release <span class="text-gradient">Notes</span>
+        </h1>
+        <p class="hero-subtitle" style="margin: 0 auto; max-width: 600px">
+          Stay up to date with the latest features, improvements, and bug fixes
+          for Element Snapper.
+        </p>
+      </div>
+    </header>
+
+    <!-- Content Section -->
+    <section class="releases-section" style="padding: 40px 0 100px">
+      <div class="container">
+        <div id="releases-container" class="releases-container">
+          <!-- Releases will be dynamically populated here -->
+          <div
+            style="text-align: center; color: var(--text-muted); padding: 40px"
+          >
+            Loading releases...
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-bottom">
+          <p>&copy; 2026 Element Snapper.</p>
+          <div class="footer-links">
+            <a href="privacy.html">Privacy Policy</a>
+            <a
+              href="https://chromewebstore.google.com/detail/ldlamddpdfbfkkdnoeoocnlgdamfnjaf?utm_source=item-share-cb"
+              >Chrome Web Store</a
+            >
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <script src="releases.js"></script>
+  </body>
+</html>
