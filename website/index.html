@@ -82,8 +82,8 @@
           <span>Element Snapper</span>
         </div>
         <div class="nav-links">
-          <a href="#features">Features</a>
           <a href="#how-it-works">How it Works</a>
+          <a href="#features">Features</a>
           <a href="releases.html">Releases</a>
           <a
             href="https://chromewebstore.google.com/detail/ldlamddpdfbfkkdnoeoocnlgdamfnjaf?utm_source=item-share-cb"
@@ -324,7 +324,11 @@
     <footer class="site-footer">
       <div class="container">
         <div class="footer-bottom">
-          <p>&copy; 2026 Element Snapper.</p>
+          <p>&copy; <span id="current-year">2026</span> Element Snapper.</p>
+          <script>
+            document.getElementById("current-year").textContent =
+              new Date().getFullYear();
+          </script>
           <div class="footer-links">
             <a href="privacy.html">Privacy Policy</a>
             <a

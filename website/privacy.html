@@ -28,6 +28,7 @@
         font-weight: 800;
         margin-bottom: 24px;
         background: linear-gradient(135deg, #60a5fa, #3b82f6);
+        background-clip: text;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
       }
@@ -124,8 +125,8 @@
           <span>Element Snapper</span>
         </a>
         <div class="nav-links">
-          <a href="index.html#features">Features</a>
           <a href="index.html#how-it-works">How it Works</a>
+          <a href="index.html#features">Features</a>
           <a
             href="https://chromewebstore.google.com/detail/ldlamddpdfbfkkdnoeoocnlgdamfnjaf?utm_source=item-share-cb"
             target="_blank"
@@ -221,7 +222,11 @@
     <footer class="site-footer">
       <div class="container">
         <div class="footer-bottom">
-          <p>&copy; 2026 Element Snapper.</p>
+          <p>&copy; <span id="current-year">2026</span> Element Snapper.</p>
+          <script>
+            document.getElementById("current-year").textContent =
+              new Date().getFullYear();
+          </script>
           <div class="footer-links">
             <a href="privacy.html">Privacy Policy</a>
             <a
