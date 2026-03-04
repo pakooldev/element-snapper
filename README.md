@@ -1,21 +1,23 @@
 # Element Snapper
 
-A professional Chrome extension that captures pixel-perfect screenshots of any webpage element using advanced capture+crop technique with device pixel ratio support.
+**v1.2.3** — A professional Chrome extension that captures pixel-perfect screenshots of any webpage element, the visible viewport, or an entire scrollable page — with clipboard support, delayed capture, and smart element highlighting.
 
 ## Features
 
-- **Pixel-Perfect Capture**: Accurate element screenshots with DPR-aware cropping
-- **Full Element Capture**: Multi-tile stitching for elements larger than viewport with smooth scroll animations
-- **Quick Actions**: One-click viewport and full page screenshot buttons
+- **Pixel-Perfect Capture**: DPR-aware cropping for crisp screenshots on Retina and HiDPI displays
+- **Smart Element Highlight**: Fixed-position overlay shows exactly what will be captured — dashed blue for normal captures, dashed indigo when the element extends beyond the viewport
+- **Viewport-Clip**: When _Scroll Element_ is disabled, captures only the visible portion of any element — no black/empty areas
+- **Full Element Capture**: Multi-tile stitching for elements larger than the viewport
+- **Quick Actions**: One-click **Screen Shot** (viewport) and **Full Page** (entire scrollable page) buttons
+- **Cancel with Escape**: Press `Esc` during element selection to cancel and return to idle
 - **Clipboard Support**: Copy screenshots directly to clipboard instead of downloading
-- **Capture Notifications**: Visual feedback for successful captures and errors
-- **Delayed Capture**: Configurable countdown timer (0-10s) with minimal circular badge for capturing hover states and dynamic content
-- **Professional UI**: Clean, modern dark mode design with compact switch layout
-- **Format Options**: Save as PNG (lossless) or JPEG (with quality control 1-100%)
-- **Smart Scrolling**: Automatically scrolls elements into view before capture (full mode only)
-- **Debug Mode**: Visual borders showing capture process in real-time
+- **Capture Notifications**: Toast feedback for successful captures and errors
+- **Delayed Capture**: Configurable countdown timer (0–10 s) for capturing hover states, menus, and dynamic content
+- **Sliding Settings Panel**: Format, Quality, Delay, and Scroll Element options tucked in a dedicated settings view
+- **Format Options**: Save as PNG (lossless) or JPEG (with quality control 1–100 %)
+- **Debug Mode**: Visual tile borders during multi-tile capture
 - **Edge Case Handling**: Handles fixed elements, scrollable containers, and cross-origin iframes
-- **Flexible Output**: Save to downloads folder or copy to clipboard
+- **Flexible Output**: Download to the default downloads folder or copy to clipboard
 
 ## Installation
 
@@ -36,29 +38,33 @@ _Coming soon - Extension will be published to Chrome Web Store_
 
 ### Element Capture
 
-1. Click the extension icon to open popup
-2. Click "Select Element" button
-3. Hover over elements on the page (highlighted with blue outline)
-4. Click on desired element to capture
-5. Screenshot downloads to your default downloads folder (or copies to clipboard if enabled)
+1. Click the extension icon to open the popup
+2. Click **Select Element**
+3. Hover over elements — a dashed overlay shows what will be captured
+4. Click the desired element to capture it
+5. Press **Escape** at any time to cancel selection
+6. Screenshot is saved to downloads (or clipboard if enabled)
+
+> **Tip:** If the element extends beyond the screen, the overlay turns indigo with a _↕ Full Element_ badge. Enable **Scroll Element** in Settings to capture the complete element.
 
 ### Quick Actions
 
-- **Visible Area**: Click to instantly capture the current visible viewport
-- **Full Page**: Click to capture the entire scrollable page with auto-scroll and stitching
+- **Screen Shot** — instantly captures the current visible viewport
+- **Full Page** — scrolls through the entire page and stitches tiles into one image
 
-### Settings
+### Clipboard Toggle (main view)
 
-- **Format**: Choose PNG (lossless, larger file) or JPEG (lossy, smaller file)
-- **Quality**: Adjust JPEG compression quality (1-100, default 95)
-- **Delay**: Set countdown timer before capture (0-10 seconds, default 0)
-  - Useful for capturing hover states, dropdown menus, tooltips, and dynamic UI elements
-  - Shows minimal circular badge countdown in top-right corner with animated number
-- **Full Page**: Enable multi-tile stitching for elements larger than viewport
-- **Debug**: Show borders during multi-tile capture process
-- **Clipboard**: Copy screenshots to clipboard instead of downloading
+Toggle **Clipboard** on to copy screenshots directly to your system clipboard instead of downloading a file.
 
-Settings are automatically saved and persist between sessions.
+### Settings (tap the ⚙ gear icon)
+
+- **Format** — PNG (lossless) or JPG (smaller file size)
+- **Quality** — JPEG compression quality 1–100 (default 95, hidden for PNG)
+- **Delay** — countdown timer 0–10 s before capture; useful for hover states, dropdown menus, and tooltips
+- **Scroll Element** — enable multi-tile stitching to capture elements taller/wider than the viewport; when disabled only the visible portion is captured
+- **Debug** _(hidden by default)_ — shows red/green tile borders during multi-tile capture
+
+All settings are automatically saved and restored between sessions.
 
 ## Technical Details
 
@@ -356,39 +362,52 @@ MIT License - feel free to use this extension for any purpose.
 
 ## Changelog
 
-### v1.2.0 (2026-02-02)
+### v1.2.3 (2026-03-04)
+
+- **New**: Press `Esc` to cancel element selection at any time; popup status resets to idle automatically
+- **Improvement**: Selection highlight replaced with a fixed-position overlay that always reflects exactly what will be captured
+  - Dashed **blue** border — normal capture (visible portion only)
+  - Dashed **indigo** border + _↕ Full Element_ badge — Scroll Element enabled and element extends beyond viewport
+- **Fix**: Clicking an element larger than the viewport no longer produces black/empty areas when _Scroll Element_ is disabled — capture is now clamped to the visible area
+- **Improvement**: Dimension label always stays on one line; repositions intelligently when near screen edges
+- **Improvement**: _Full Element_ badge flips inside the overlay when near the bottom of the screen
+
+### v1.2.2 (2026-02-14)
+
+- **UI**: Completely redesigned popup with modern dark theme and improved typography
+- **UI**: Advanced options moved to a dedicated sliding settings panel
+- **Improvement**: Cleaner home screen focused on primary actions
+- **Improvement**: Quality and Delay sliders refactored with value indicators on the right
+- **Fix**: Layout issues with double borders; spacing and alignment corrections
+
+### v1.2.0 (2026-02-10)
 
 - **New**: Quick action buttons for viewport and full page capture
-- **New**: Copy to clipboard option - skip downloads and copy directly to system clipboard
-- **New**: Delayed capture with countdown timer (0-10 seconds)
-  - Minimal circular badge countdown in top-right corner
-  - Useful for capturing hover states, menus, and dynamic content
-- **New**: Capture notifications with success/error feedback
-- **Enhancement**: All three capture modes (element, viewport, full page) support delay and clipboard features
+- **New**: Copy to clipboard — skip downloads and copy directly to system clipboard
+- **New**: Delayed capture with countdown timer (0–10 s) for hover states, menus, and dynamic content
+- **Enhancement**: All three capture modes support delay and clipboard features
 - **Enhancement**: Improved multi-tile capture with smooth scroll animation
 
-### v1.1.0 (2026-02-15)
+### v1.1.0 (2026-02-05)
 
 - **UI**: Redesigned settings panel with compact switch layout
-- **UI**: Conditional quality slider (only shown for JPEG format)
-- **UI**: Swapped clipboard and debug mode settings order for better UX
-- **Fix**: Resolved clipboard copy failure for viewport and full page capture
-- **Fix**: Black line artifacts when capturing more than 2 tiles (scroll behavior optimization)
+- **UI**: Conditional quality slider (hidden for PNG)
+- **Fix**: Clipboard copy failure for viewport and full-page capture
+- **Fix**: Black-line artifacts when capturing more than 2 tiles
 
 ### v1.0.0 (2026-02-01)
 
-- Initial release with element selection capture
+- Initial release: element selection capture with DPR-aware cropping
 - PNG/JPEG format support with quality control
-- DPR-aware cropping for high-DPI displays
 - Full element capture with multi-tile stitching
-- Debug mode with visual tile borders (red/green)
-- Professional dark mode UI with animated controls
+- Debug mode with visual tile borders
+- Professional dark mode UI
 - Cross-origin iframe detection and handling
-- Comprehensive test pages and documentation
 
 ## Credits
 
 Built with Chrome Extension Manifest V3 APIs. No external libraries used.
 
 ## Support
+
 Buy me a coffee: [https://buymeacoffee.com/panat.siriwong](https://buymeacoffee.com/panat.siriwong)
