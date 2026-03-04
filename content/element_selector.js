@@ -7,6 +7,8 @@ class ElementSelector {
   constructor() {
     this.isActive = false;
     this.currentElement = null;
+    this.highlightOverlay = null;
+    this.fullCapture = false;        // cached setting, updated on start()
     this.boundMouseMove = this.handleMouseMove.bind(this);
     this.boundClick = this.handleClick.bind(this);
     this.boundKeyDown = this.handleKeyDown.bind(this);
@@ -20,12 +22,21 @@ class ElementSelector {
     if (this.isActive) return;
 
     this.isActive = true;
+
+    // Cache the fullCapture setting — ready well before first user hover
+    chrome.storage.local.get(['fullCapture']).then(settings => {
+      this.fullCapture = settings.fullCapture || false;
+    });
+
     injectHighlightStyles();
 
     // Add event listeners using capture phase
     document.addEventListener('mousemove', this.boundMouseMove, true);
     document.addEventListener('click', this.boundClick, true);
     document.addEventListener('keydown', this.boundKeyDown, true);
+
+    // Create fixed-position highlight overlay
+    this.highlightOverlay = createHighlightOverlay();
 
     // Create dimension label
     this.dimensionLabel = document.createElement('div');
@@ -51,11 +62,14 @@ class ElementSelector {
     document.removeEventListener('click', this.boundClick, true);
     document.removeEventListener('keydown', this.boundKeyDown, true);
 
-    // Clear current highlight
-    if (this.currentElement) {
-      this.currentElement.classList.remove('element-screenshot-highlight');
-      this.currentElement = null;
+    // Remove highlight overlay
+    if (this.highlightOverlay) {
+      this.highlightOverlay.remove();
+      this.highlightOverlay = null;
     }
+
+    // Clear current element reference
+    this.currentElement = null;
 
     // Remove dimension label
     if (this.dimensionLabel) {
@@ -69,7 +83,7 @@ class ElementSelector {
 
   /**
    * Handle mouse move event
-   * Updates highlight on hovered element
+   * Updates highlight overlay on hovered element
    * @param {MouseEvent} event - Mouse move event
    */
   handleMouseMove(event) {
@@ -77,32 +91,41 @@ class ElementSelector {
 
     // Get element under cursor
     const element = document.elementFromPoint(event.clientX, event.clientY);
-
     if (!element || element === this.currentElement) return;
 
-    // Remove previous highlight
-    if (this.currentElement) {
-      this.currentElement.classList.remove('element-screenshot-highlight');
-    }
-
-    // Add new highlight
     this.currentElement = element;
-    element.classList.add('element-screenshot-highlight');
+
+    // Update fixed-position highlight overlay
+    if (this.highlightOverlay) {
+      updateHighlightOverlay(this.highlightOverlay, element, this.fullCapture);
+    }
 
     // Update dimensions label
     if (this.dimensionLabel) {
       const rect = element.getBoundingClientRect();
-      const width = Math.round(rect.width);
-      const height = Math.round(rect.height);
-      this.dimensionLabel.textContent = `${width} × ${height}`;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
 
-      // Position at bottom right of the element
-      // Using pageXOffset/pageYOffset to account for scrolling
+      // Show full element size when full-capture; otherwise show clipped size
+      let labelW, labelH;
+      if (this.fullCapture) {
+        labelW = Math.round(rect.width);
+        labelH = Math.round(rect.height);
+      } else {
+        labelW = Math.round(Math.max(0, Math.min(rect.right, vw) - Math.max(rect.left, 0)));
+        labelH = Math.round(Math.max(0, Math.min(rect.bottom, vh) - Math.max(rect.top, 0)));
+      }
+
+      this.dimensionLabel.textContent = `${labelW} × ${labelH}`;
+
+      // Anchor label to bottom-right of the visible portion
+      const visRight = Math.min(rect.right, vw);
+      const visBottom = Math.min(rect.bottom, vh);
       const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
       const scrollY = window.pageYOffset || document.documentElement.scrollTop;
 
-      this.dimensionLabel.style.left = `${rect.right + scrollX - this.dimensionLabel.offsetWidth}px`;
-      this.dimensionLabel.style.top = `${rect.bottom + scrollY + 4}px`;
+      this.dimensionLabel.style.left = `${visRight + scrollX - this.dimensionLabel.offsetWidth}px`;
+      this.dimensionLabel.style.top = `${visBottom + scrollY + 4}px`;
       this.dimensionLabel.style.display = 'block';
     }
   }
@@ -164,13 +187,31 @@ class ElementSelector {
     }
 
     // Get element position data
-    const rect = getElementRect(element);
+    const rawRect = getElementRect(element);
     const scroll = getScrollOffsets();
     const docDims = getDocumentDimensions();
     const dpr = window.devicePixelRatio || 1;
 
     // Check for cross-origin iframe
     const isCrossOrigin = isCrossOriginIframe(element);
+
+    // When NOT in full-capture mode, clamp the rect to what's actually visible
+    // in the viewport so we capture only what the user can see.
+    let rect = rawRect;
+    if (!fullCapture) {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const visLeft = Math.max(0, rawRect.x);
+      const visTop = Math.max(0, rawRect.y);
+      const visRight = Math.min(vw, rawRect.x + rawRect.width);
+      const visBottom = Math.min(vh, rawRect.y + rawRect.height);
+      rect = {
+        x: visLeft,
+        y: visTop,
+        width: Math.max(0, visRight - visLeft),
+        height: Math.max(0, visBottom - visTop)
+      };
+    }
 
     // Prepare capture data
     const captureData = {

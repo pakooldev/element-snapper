@@ -157,6 +157,54 @@ function injectHighlightStyles() {
     @keyframes element-screenshot-spin {
       to { transform: rotate(360deg); }
     }
+
+    /* ── Fixed-position highlight overlay ── */
+    #element-screenshot-highlight-overlay {
+      position: fixed;
+      pointer-events: none;
+      z-index: 2147483646;
+      box-sizing: border-box;
+      border-radius: 2px;
+      overflow: visible;
+    }
+
+    /* Normal capture: solid blue — captures only the visible portion */
+    #element-screenshot-highlight-overlay.mode-normal {
+      border: 2px solid #3b82f6;
+      background: rgba(59, 130, 246, 0.07);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+    }
+
+    /* Full capture: element fits entirely in viewport */
+    #element-screenshot-highlight-overlay.mode-full-fits {
+      border: 2px solid #3b82f6;
+      background: rgba(59, 130, 246, 0.07);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+    }
+
+    /* Full capture: element extends beyond viewport — dashed indigo */
+    #element-screenshot-highlight-overlay.mode-full-extends {
+      border: 2px dashed #818cf8;
+      background: rgba(129, 140, 248, 0.07);
+      box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.15);
+    }
+
+    /* Badge shown at the clipped edge for extended full-capture elements */
+    #element-screenshot-extend-badge {
+      position: absolute;
+      bottom: -1px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100%);
+      background: #818cf8;
+      color: white;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    }
   `;
 
   document.head.appendChild(style);
@@ -168,6 +216,78 @@ function injectHighlightStyles() {
 function removeHighlightStyles() {
   const style = document.getElementById('element-screenshot-styles');
   if (style) style.remove();
+}
+
+/**
+ * Create the fixed-position highlight overlay element (and its badge child).
+ * @returns {HTMLElement} The overlay div
+ */
+function createHighlightOverlay() {
+  const existing = document.getElementById('element-screenshot-highlight-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'element-screenshot-highlight-overlay';
+
+  const badge = document.createElement('div');
+  badge.id = 'element-screenshot-extend-badge';
+  overlay.appendChild(badge);
+
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+/**
+ * Position and style the highlight overlay based on the hovered element and capture mode.
+ * @param {HTMLElement} overlay - The overlay element returned by createHighlightOverlay
+ * @param {HTMLElement} element - The hovered DOM element
+ * @param {boolean} fullCapture - Whether "Scroll Element" (full capture) is enabled
+ */
+function updateHighlightOverlay(overlay, element, fullCapture) {
+  const rect = element.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  // Visible intersection of element with viewport
+  const visLeft = Math.max(0, rect.left);
+  const visTop = Math.max(0, rect.top);
+  const visRight = Math.min(vw, rect.right);
+  const visBottom = Math.min(vh, rect.bottom);
+  const visW = visRight - visLeft;
+  const visH = visBottom - visTop;
+
+  if (visW <= 0 || visH <= 0) {
+    overlay.style.display = 'none';
+    return;
+  }
+
+  overlay.style.display = 'block';
+  overlay.style.left = visLeft + 'px';
+  overlay.style.top = visTop + 'px';
+  overlay.style.width = visW + 'px';
+  overlay.style.height = visH + 'px';
+
+  const extendsBeyond = rect.right > vw || rect.bottom > vh ||
+    rect.left < 0 || rect.top < 0;
+
+  const badge = overlay.querySelector('#element-screenshot-extend-badge');
+
+  if (!fullCapture) {
+    overlay.className = 'mode-normal';
+    if (badge) badge.style.display = 'none';
+  } else if (extendsBeyond) {
+    overlay.className = 'mode-full-extends';
+    if (badge) {
+      const arrows = [];
+      if (rect.top < 0 || rect.bottom > vh) arrows.push('↕');
+      if (rect.left < 0 || rect.right > vw) arrows.push('↔');
+      badge.textContent = arrows.join(' ') + ' Full Element';
+      badge.style.display = 'block';
+    }
+  } else {
+    overlay.className = 'mode-full-fits';
+    if (badge) badge.style.display = 'none';
+  }
 }
 
 /**
