@@ -1,5 +1,33 @@
 # Release Notes
 
+## v1.2.3 (2026-03-04)
+
+This update improves the element selection experience with smarter highlighting and a new keyboard shortcut.
+
+### ✨ New Features
+
+- **Cancel selection with Escape**: Press `Esc` at any time during element selection to cancel and return to idle state. The popup status indicator resets automatically.
+
+### 🎨 Improvements
+
+- **Smart highlight overlay**: The selection highlight is now a fixed-position overlay instead of a CSS outline, so it always reflects precisely what will be captured:
+  - **Clipboard OFF (normal capture)**: Dashed blue border clipped to the visible viewport — shows exactly what the screenshot will contain.
+  - **Scroll Element ON, element fits**: Dashed blue border covering the full element.
+  - **Scroll Element ON, element extends beyond viewport**: Dashed indigo border at the visible clip edge, plus a **"↕ Full Element"** badge to indicate the capture includes content below the fold.
+- **Viewport-clip for oversized elements**: When _Scroll Element_ is disabled and you click an element that extends beyond the viewport, the capture rect is now clamped to the visible area — no more black/empty regions in the output image.
+- **Dimension label improvements**:
+  - Label always stays on one line (`white-space: nowrap`).
+  - Horizontally clamped so it never overflows the left or right viewport edge.
+  - Flips above the bottom edge when there is not enough space below.
+  - Shows the clipped (visible) dimensions when _Scroll Element_ is OFF, and the full element dimensions when it is ON.
+- **Full Element badge positioning**: The badge flips inside the overlay when it would overflow the bottom of the screen.
+
+### 🐛 Fixes
+
+- Fixed capture of elements larger than the viewport producing black/empty areas when _Scroll Element_ is disabled.
+
+---
+
 ## v1.2.2 (2026-02-14)
 
 This update focuses on streamlining the user interface and improving the overall user experience with a cleaner, more modern design.
