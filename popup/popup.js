@@ -286,6 +286,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     updateUI('success');
   } else if (message.action === 'captureError') {
     updateUI('error', message.error);
+  } else if (message.action === 'selectionCancelled') {
+    // User pressed Escape on the page — reset popup to idle
+    updateUI('idle');
   }
   return true;
 });

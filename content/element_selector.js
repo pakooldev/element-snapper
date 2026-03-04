@@ -9,6 +9,7 @@ class ElementSelector {
     this.currentElement = null;
     this.boundMouseMove = this.handleMouseMove.bind(this);
     this.boundClick = this.handleClick.bind(this);
+    this.boundKeyDown = this.handleKeyDown.bind(this);
   }
 
   /**
@@ -24,6 +25,7 @@ class ElementSelector {
     // Add event listeners using capture phase
     document.addEventListener('mousemove', this.boundMouseMove, true);
     document.addEventListener('click', this.boundClick, true);
+    document.addEventListener('keydown', this.boundKeyDown, true);
 
     // Create dimension label
     this.dimensionLabel = document.createElement('div');
@@ -47,6 +49,7 @@ class ElementSelector {
     // Remove event listeners
     document.removeEventListener('mousemove', this.boundMouseMove, true);
     document.removeEventListener('click', this.boundClick, true);
+    document.removeEventListener('keydown', this.boundKeyDown, true);
 
     // Clear current highlight
     if (this.currentElement) {
@@ -101,6 +104,26 @@ class ElementSelector {
       this.dimensionLabel.style.left = `${rect.right + scrollX - this.dimensionLabel.offsetWidth}px`;
       this.dimensionLabel.style.top = `${rect.bottom + scrollY + 4}px`;
       this.dimensionLabel.style.display = 'block';
+    }
+  }
+
+  /**
+   * Handle keydown event
+   * Cancels selection when Escape is pressed
+   * @param {KeyboardEvent} event - Keydown event
+   */
+  handleKeyDown(event) {
+    if (!this.isActive) return;
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      this.stop();
+
+      // Notify popup so it resets its UI back to idle
+      chrome.runtime.sendMessage({ action: 'selectionCancelled' });
     }
   }
 
