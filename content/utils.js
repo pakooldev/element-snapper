@@ -115,6 +115,7 @@ function injectHighlightStyles() {
       pointer-events: none;
       z-index: 2147483647;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      white-space: nowrap;
     }
 
     /* Minimal capture overlay - dark glass effect */
@@ -283,6 +284,19 @@ function updateHighlightOverlay(overlay, element, fullCapture) {
       if (rect.left < 0 || rect.right > vw) arrows.push('↔');
       badge.textContent = arrows.join(' ') + ' Full Element';
       badge.style.display = 'block';
+
+      // Reset to default below-overlay position
+      badge.style.bottom = '-1px';
+      badge.style.top = 'auto';
+      badge.style.transform = 'translateX(-50%) translateY(100%)';
+      badge.style.display = 'block';
+
+      // If badge would overflow the viewport bottom, flip it inside the overlay
+      const badgeH = badge.offsetHeight;
+      if (visBottom + badgeH + 4 > vh) {
+        badge.style.bottom = '4px';
+        badge.style.transform = 'translateX(-50%)';
+      }
     }
   } else {
     overlay.className = 'mode-full-fits';
