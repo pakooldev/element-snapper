@@ -1,5 +1,7 @@
 # Element Snapper
 
+🌐 **Website:** [element-snapper.pakool.com](https://element-snapper.pakool.com/)
+
 **v1.2.3** — A professional Chrome extension that captures pixel-perfect screenshots of any webpage element, the visible viewport, or an entire scrollable page — with clipboard support, delayed capture, and smart element highlighting.
 
 ## Features
