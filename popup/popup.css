@@ -544,3 +544,37 @@ body {
   background: rgba(255, 221, 0, 0.1);
   transform: translateY(-1px);
 }
+
+.how-it-works-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.how-it-works-btn .external-icon {
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.how-it-works-btn:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.how-it-works-btn:hover .external-icon {
+  opacity: 1;
+}
