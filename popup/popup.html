@@ -78,6 +78,35 @@
                 <span class="status-dot"></span>
                 <span class="status-text" id="statusText">Ready</span>
               </div>
+              <a
+                href="https://element-snapper.pakool.com/#how-it-works"
+                target="_blank"
+                class="icon-btn"
+                aria-label="How it works"
+                title="How it works"
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  />
+                  <path
+                    d="M12 16v-4M12 8h.01"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </a>
               <button class="icon-btn" id="settingsBtn" aria-label="Settings">
                 <svg
                   width="20"
@@ -161,170 +190,124 @@
                 <div class="toggle-switch"></div>
               </label>
             </div>
+          </main>
+        </div>
 
-            <a
-              href="https://element-snapper.pakool.com/#how-it-works"
-              target="_blank"
-              class="how-it-works-btn"
-            >
+      <!-- Settings View -->
+      <div class="view view-settings" id="settingsView">
+        <header class="header">
+          <div class="brand">
+            <button class="icon-btn" id="backBtn" aria-label="Back">
               <svg
-                width="16"
-                height="16"
+                width="24"
+                height="24"
                 viewBox="0 0 24 24"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="2"
-                />
                 <path
-                  d="M12 16v-4M12 8h.01"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                />
-              </svg>
-              <span>How it Works</span>
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                class="external-icon"
-              >
-                <path
-                  d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"
+                  d="M15 18L9 12L15 6"
                   stroke="currentColor"
                   stroke-width="2"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 />
               </svg>
-            </a>
-          </main>
-        </div>
+            </button>
+            <h1>Settings</h1>
+          </div>
+        </header>
 
-        <!-- Settings View -->
-        <div class="view view-settings" id="settingsView">
-          <header class="header">
-            <div class="brand">
-              <button class="icon-btn" id="backBtn" aria-label="Back">
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M15 18L9 12L15 6"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </button>
-              <h1>Settings</h1>
+        <main class="main-content">
+          <div class="settings-container">
+            <div class="setting-group">
+              <label class="setting-label">Format</label>
+              <div class="toggle-group">
+                <input
+                  type="radio"
+                  name="format"
+                  id="fmt-png"
+                  value="png"
+                  checked
+                />
+                <label for="fmt-png" class="toggle-option">PNG</label>
+                <input type="radio" name="format" id="fmt-jpg" value="jpg" />
+                <label for="fmt-jpg" class="toggle-option">JPG</label>
+              </div>
             </div>
-          </header>
 
-          <main class="main-content">
-            <div class="settings-container">
-              <div class="setting-group">
-                <label class="setting-label">Format</label>
-                <div class="toggle-group">
-                  <input
-                    type="radio"
-                    name="format"
-                    id="fmt-png"
-                    value="png"
-                    checked
-                  />
-                  <label for="fmt-png" class="toggle-option">PNG</label>
-                  <input type="radio" name="format" id="fmt-jpg" value="jpg" />
-                  <label for="fmt-jpg" class="toggle-option">JPG</label>
+            <div class="setting-group setting-row">
+              <label class="setting-label">Quality</label>
+              <input
+                type="range"
+                id="qualityInput"
+                min="1"
+                max="100"
+                value="95"
+                class="slider"
+                style="--val: 95%"
+              />
+              <span id="qualityValue" class="slider-value">95%</span>
+            </div>
+
+            <div class="setting-group setting-row">
+              <label class="setting-label">Delay</label>
+              <input
+                type="range"
+                id="delayInput"
+                min="0"
+                max="10"
+                value="0"
+                class="slider"
+                style="--val: 0%"
+              />
+              <span id="delayValue" class="slider-value">0s</span>
+            </div>
+
+            <div class="switch-group">
+              <label class="switch-row">
+                <div class="switch-content">
+                  <span class="switch-label">Scroll Element</span>
+                  <span class="switch-desc">Capture scrollable content</span>
                 </div>
-              </div>
-
-              <div class="setting-group setting-row">
-                <label class="setting-label">Quality</label>
-                <input
-                  type="range"
-                  id="qualityInput"
-                  min="1"
-                  max="100"
-                  value="95"
-                  class="slider"
-                  style="--val: 95%"
-                />
-                <span id="qualityValue" class="slider-value">95%</span>
-              </div>
-
-              <div class="setting-group setting-row">
-                <label class="setting-label">Delay</label>
-                <input
-                  type="range"
-                  id="delayInput"
-                  min="0"
-                  max="10"
-                  value="0"
-                  class="slider"
-                  style="--val: 0%"
-                />
-                <span id="delayValue" class="slider-value">0s</span>
-              </div>
-
-              <div class="switch-group">
-                <label class="switch-row">
-                  <div class="switch-content">
-                    <span class="switch-label">Scroll Element</span>
-                    <span class="switch-desc">Capture scrollable content</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    id="fullCaptureCheckbox"
-                    class="switch-input"
-                  />
-                  <div class="toggle-switch"></div>
-                </label>
-
-                <!-- Debug Mode hidden - available via dev mode environment variable -->
                 <input
                   type="checkbox"
-                  id="debugModeCheckbox"
+                  id="fullCaptureCheckbox"
                   class="switch-input"
-                  style="display: none"
                 />
-              </div>
+                <div class="toggle-switch"></div>
+              </label>
 
-              <a
-                href="https://buymeacoffee.com/panat.siriwong"
-                target="_blank"
-                class="bmc-btn"
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M8 17H16C17.6569 17 19 15.6569 19 14V12H21V7H19V4H5V7H3V12H5V14C5 15.6569 6.34315 17 8 17ZM7 4H17V12H7V4ZM3 9H5V10H3V9ZM19 10V9H21V10H19ZM16 19H8V21H16V19Z"
-                    fill="currentColor"
-                  />
-                </svg>
-                <span>Buy me a coffee</span>
-              </a>
+              <!-- Debug Mode hidden - available via dev mode environment variable -->
+              <input
+                type="checkbox"
+                id="debugModeCheckbox"
+                class="switch-input"
+                style="display: none"
+              />
             </div>
-          </main>
-        </div>
+
+            <a
+              href="https://buymeacoffee.com/panat.siriwong"
+              target="_blank"
+              class="bmc-btn"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M8 17H16C17.6569 17 19 15.6569 19 14V12H21V7H19V4H5V7H3V12H5V14C5 15.6569 6.34315 17 8 17ZM7 4H17V12H7V4ZM3 9H5V10H3V9ZM19 10V9H21V10H19ZM16 19H8V21H16V19Z"
+                  fill="currentColor"
+                />
+              </svg>
+              <span>Buy me a coffee</span>
+            </a>
+          </div>
+        </main>
       </div>
     </div>
 
