@@ -440,7 +440,6 @@ function showCountdownOverlay(seconds) {
     overlay.textContent = seconds;
 
     document.body.appendChild(overlay);
-    document.body.appendChild(overlay);
 
     // Countdown logic
     let remaining = seconds;

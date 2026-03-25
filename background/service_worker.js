@@ -294,7 +294,6 @@ async function handleElementCapture(data, tabId) {
     }
 
     // Save to downloads or copy to clipboard based on settings
-    // Save to downloads or copy to clipboard based on settings
     if (copyToClipboard) {
       await copyImageToClipboard(croppedBlob);
       return { success: true, action: 'copy' };
