@@ -23,6 +23,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch(error => sendResponse({ success: false, error: error.message }));
 
     return true; // Keep channel open for async response
+  } else if (message.action === 'captureRegion') {
+    // Handle selected region capture
+    handleRegionCapture(message.data, sender.tab.id)
+      .then(result => sendResponse(result))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+
+    return true; // Keep channel open for async response
   }
 });
 
@@ -304,6 +311,43 @@ async function handleElementCapture(data, tabId) {
     }
   } catch (error) {
     console.error('Capture failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Handle selected region capture
+ * Captures viewport and crops to the user-selected rectangle
+ * @param {object} data - Capture data with rect (viewport-relative), DPR
+ * @param {number} tabId - Tab ID for capturing
+ * @returns {Promise<object>} Result object with success status
+ */
+async function handleRegionCapture(data, tabId) {
+  try {
+    // Load settings
+    const settings = await chrome.storage.local.get(['format', 'quality', 'copyToClipboard']);
+    const outputFormat = settings.format || 'png';
+    const outputQuality = settings.quality || 95;
+    const copyToClipboard = settings.copyToClipboard ?? true;
+
+    // Capture the visible tab
+    const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
+
+    // Reuse cropImageToElement — the region rect is viewport-relative,
+    // which is the same coordinate space as a single-tile element capture
+    const croppedBlob = await cropImageToElement(dataUrl, data, outputFormat, outputQuality);
+
+    // Save to downloads or copy to clipboard based on settings
+    if (copyToClipboard) {
+      await copyImageToClipboard(croppedBlob);
+      return { success: true, action: 'copy' };
+    } else {
+      const filename = generateViewportFilename('region', outputFormat);
+      await downloadImage(croppedBlob, filename);
+      return { success: true, action: 'download' };
+    }
+  } catch (error) {
+    console.error('Region capture failed:', error);
     return { success: false, error: error.message };
   }
 }

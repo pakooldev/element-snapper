@@ -74,6 +74,67 @@ async function handleViewportCapture() {
 }
 
 /**
+ * Handle region (selected area) capture
+ * Called by RegionSelector after user finishes drag selection
+ * @param {number} x - Left position (viewport CSS pixels)
+ * @param {number} y - Top position (viewport CSS pixels)
+ * @param {number} width - Width (CSS pixels)
+ * @param {number} height - Height (CSS pixels)
+ */
+async function handleRegionCaptureRequest(x, y, width, height) {
+  try {
+    // Load delay setting
+    const settings = await chrome.storage.local.get(['delay']);
+    const delay = settings.delay || 0;
+
+    // Show countdown if delay is enabled
+    if (delay > 0) {
+      injectCountdownStyles();
+      await showCountdownOverlay(delay);
+    }
+
+    // Notify popup that capture started
+    chrome.runtime.sendMessage({ action: 'captureStarted' });
+
+    // Build capture data (viewport-relative rect)
+    const dpr = window.devicePixelRatio || 1;
+    const scroll = getScrollOffsets();
+
+    const captureData = {
+      rect: { x, y, width, height },
+      scroll: scroll,
+      devicePixelRatio: dpr,
+      viewport: {
+        width: window.innerWidth,
+        height: window.innerHeight
+      },
+      timestamp: Date.now()
+    };
+
+    // Request capture from service worker
+    const response = await chrome.runtime.sendMessage({
+      action: 'captureRegion',
+      data: captureData
+    });
+
+    if (response && response.success) {
+      if (response.action === 'download') {
+        showNotification('Screenshot saved to downloads', 'success');
+      }
+      chrome.runtime.sendMessage({ action: 'captureSuccess' });
+    } else {
+      const errorMsg = response?.error || 'Unknown error';
+      chrome.runtime.sendMessage({ action: 'captureError', error: errorMsg });
+      showNotification('Capture failed: ' + errorMsg, 'error');
+    }
+  } catch (error) {
+    console.error('Region capture failed:', error);
+    chrome.runtime.sendMessage({ action: 'captureError', error: error.message });
+    showNotification('Capture failed: ' + error.message, 'error');
+  }
+}
+
+/**
  * Handle clipboard copy
  * Copies image data URL to clipboard
  * @param {string} dataUrl - Image data URL
@@ -192,7 +253,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     switch (message.action) {
       case 'getState':
         // Return current selection state
-        sendResponse({ isSelecting: elementSelector.isSelecting() });
+        sendResponse({
+          isSelecting: elementSelector.isSelecting(),
+          isSelectingRegion: regionSelector.isSelecting()
+        });
         break;
 
       case 'startSelection':
@@ -275,6 +339,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'hideDebugBorder':
         // Hide debug border
         hideDebugBorder();
+        sendResponse({ success: true });
+        break;
+
+      case 'startRegionSelection':
+        // Start region (area) selection mode
+        regionSelector.start();
+        sendResponse({ success: true });
+        break;
+
+      case 'cancelRegionSelection':
+        // Cancel region selection mode
+        regionSelector.stop();
         sendResponse({ success: true });
         break;
 

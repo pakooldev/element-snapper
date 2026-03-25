@@ -512,6 +512,80 @@ function injectCountdownStyles() {
 
   document.head.appendChild(style);
 }
+
+/**
+ * Inject styles for the region selector (click-and-drag area capture)
+ */
+function injectRegionSelectorStyles() {
+  if (document.getElementById('region-selector-styles')) return;
+
+  const style = document.createElement('style');
+  style.id = 'region-selector-styles';
+  style.textContent = `
+    /* Full-screen dark overlay with clip-path cut-out */
+    #region-selector-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(15, 23, 42, 0.5);
+      z-index: 2147483645;
+      pointer-events: none;
+      transition: clip-path 0s;
+    }
+
+    /* Selection rectangle border */
+    #region-selector-selection {
+      position: fixed;
+      border: 2px dashed #3b82f6;
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+      border-radius: 2px;
+      pointer-events: none;
+      z-index: 2147483646;
+      box-sizing: border-box;
+    }
+
+    /* Dimension label */
+    #region-selector-dimensions {
+      position: fixed;
+      background: #3b82f6;
+      color: white;
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 4px;
+      pointer-events: none;
+      z-index: 2147483647;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      white-space: nowrap;
+    }
+
+    /* Instruction hint */
+    #region-selector-hint {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(8px);
+      color: white;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 12px 20px;
+      border-radius: 10px;
+      pointer-events: none;
+      z-index: 2147483647;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      animation: element-screenshot-fade-in 0.3s ease;
+    }
+  `;
+
+  document.head.appendChild(style);
+}
+
 /**
  * Show toast notification
  * @param {string} message - Notification message

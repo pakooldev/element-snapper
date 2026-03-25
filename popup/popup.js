@@ -10,6 +10,7 @@ const statusPill = document.getElementById('statusPill');
 const statusText = document.getElementById('statusText');
 const captureViewportBtn = document.getElementById('captureViewportBtn');
 const captureFullPageBtn = document.getElementById('captureFullPageBtn');
+const captureRegionBtn = document.getElementById('captureRegionBtn');
 
 // Settings elements
 const qualityInput = document.getElementById('qualityInput');
@@ -83,7 +84,7 @@ async function sendToContentScript(message) {
       // This uses the user's gesture (popup click) and the `activeTab` + `scripting` permission.
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        files: ['content/utils.js', 'content/element_selector.js', 'content/content-main.js']
+        files: ['content/utils.js', 'content/element_selector.js', 'content/region_selector.js', 'content/content-main.js']
       });
     }
 
@@ -199,7 +200,7 @@ async function saveSettings() {
   try {
     const response = await sendToContentScript({ action: 'getState' });
 
-    if (response && response.isSelecting) {
+    if (response && (response.isSelecting || response.isSelectingRegion)) {
       updateUI('selecting');
     } else {
       updateUI('idle');
@@ -272,6 +273,17 @@ captureFullPageBtn.addEventListener('click', async () => {
   try {
     updateUI('capturing', 'Capturing full page');
     await sendToContentScript({ action: 'captureFullPage' });
+    window.close();
+  } catch (error) {
+    updateUI('error', error.message);
+  }
+});
+
+// Action Buttons - Region (Select Area) Capture
+captureRegionBtn.addEventListener('click', async () => {
+  try {
+    updateUI('selecting', 'Select area');
+    await sendToContentScript({ action: 'startRegionSelection' });
     window.close();
   } catch (error) {
     updateUI('error', error.message);

@@ -6,7 +6,7 @@
 
 [x] **Visible Area (viewport)** - Capture current visible viewport only (no scrolling)
 [x] **Full Page (scrolling)** - Capture entire scrollable page with auto-scroll
-[ ] **Selected Portion** - Capture user-defined area by click-and-drag selection
+[x] **Selected Portion** - Capture user-defined area by click-and-drag selection
 
 ### Settings Options
 
