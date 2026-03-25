@@ -38,7 +38,7 @@ async function handleViewportOrPageCapture(data, tabId) {
     const settings = await chrome.storage.local.get(['format', 'quality', 'copyToClipboard']);
     const outputFormat = settings.format || 'png';
     const outputQuality = settings.quality || 95;
-    const copyToClipboard = settings.copyToClipboard || false;
+    const copyToClipboard = settings.copyToClipboard ?? true;
 
     let captureBlob;
     let filename;
@@ -276,7 +276,7 @@ async function handleElementCapture(data, tabId) {
     const outputFormat = settings.format || 'png';
     const outputQuality = settings.quality || 95;
     const fullCapture = settings.fullCapture || false;
-    const copyToClipboard = settings.copyToClipboard || false;
+    const copyToClipboard = settings.copyToClipboard ?? true;
 
     // Determine if multi-capture is needed
     const needsMultiCapture = fullCapture && (
