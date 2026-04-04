@@ -348,3 +348,8 @@ if (backBtn) {
     resizeToView(homeView);
   });
 }
+
+const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+if (settingsCloseBtn) {
+  settingsCloseBtn.addEventListener('click', () => window.close());
+}

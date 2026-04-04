@@ -462,6 +462,11 @@
                     <path d="M12 16v-4M12 8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                   </svg>
                 </a>
+                <button class="icon-btn" id="settingsCloseBtn" aria-label="Close panel">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
               </div>
             </header>
 
@@ -733,8 +738,11 @@
     resizeToView(homeView);
   });
 
-  // Close button
+  // Close button (home view)
   closeBtn.addEventListener('click', () => hidePanel());
+
+  // Close button (settings view)
+  $('settingsCloseBtn').addEventListener('click', () => hidePanel());
 
   // Format radios
   formatRadios.forEach(r => r.addEventListener('change', saveSettings));
