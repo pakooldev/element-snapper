@@ -7,7 +7,6 @@
 const captureBtn = document.getElementById('captureBtn');
 const btnLabel = document.getElementById('btnLabel');
 const statusPill = document.getElementById('statusPill');
-const statusText = document.getElementById('statusText');
 const captureViewportBtn = document.getElementById('captureViewportBtn');
 const captureFullPageBtn = document.getElementById('captureFullPageBtn');
 const captureRegionBtn = document.getElementById('captureRegionBtn');
@@ -58,9 +57,6 @@ function updateUI(state, message) {
   // Remove old state classes
   statusPill.classList.remove('idle', 'selecting', 'capturing', 'success', 'error');
   statusPill.classList.add(config.pill);
-
-  // Update status text
-  statusText.textContent = message || config.msg;
 
   // Auto-reset for success/error
   if (state === 'success') {

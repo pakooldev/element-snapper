@@ -130,7 +130,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 10px;
+      padding: 4px 6px;
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--border-light);
       border-radius: 20px;
@@ -393,7 +393,6 @@
               <div class="header-controls">
                 <div class="status-pill idle" id="statusPill">
                   <span class="status-dot"></span>
-                  <span class="status-text" id="statusText">Ready</span>
                 </div>
                 <button class="icon-btn" id="settingsBtn" aria-label="Settings">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -550,7 +549,6 @@
   const captureBtn        = $('captureBtn');
   const btnLabel          = $('btnLabel');
   const statusPill        = $('statusPill');
-  const statusText        = $('statusText');
   const captureViewportBtn = $('captureViewportBtn');
   const captureFullPageBtn = $('captureFullPageBtn');
   const captureRegionBtn  = $('captureRegionBtn');
@@ -596,7 +594,6 @@
 
     statusPill.classList.remove('idle', 'selecting', 'capturing', 'success', 'error');
     statusPill.classList.add(config.pill);
-    statusText.textContent = message || config.msg;
 
     if (state === 'success') {
       setTimeout(() => updateUI('idle'), 2000);
