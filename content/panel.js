@@ -351,6 +351,32 @@
     }
 
     /* ── Shortcuts ── */
+    .shortcut-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .shortcut-section-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .reset-btn {
+      background: transparent;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-family: inherit;
+      padding: 3px 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .reset-btn:hover { border-color: var(--border-hover); color: var(--text-primary); }
+
     .shortcuts-list {
       display: flex;
       flex-direction: column;
@@ -549,7 +575,16 @@
                 </div>
 
                 <div class="setting-group">
-                  <label class="setting-label">Shortcuts</label>
+                  <div class="shortcut-section-header">
+                    <label class="setting-label" style="margin-bottom:0">Shortcuts</label>
+                    <div class="shortcut-section-controls">
+                      <button class="reset-btn" id="scResetBtn">Reset</button>
+                      <label style="display:flex;align-items:center;cursor:pointer">
+                        <input type="checkbox" id="sc-enabled" class="switch-input"/>
+                        <div class="toggle-switch"></div>
+                      </label>
+                    </div>
+                  </div>
                   <div class="shortcuts-list">
                     <div class="shortcut-row">
                       <span class="shortcut-label">Toggle Panel</span>
@@ -776,15 +811,21 @@
   }
 
   async function loadShortcuts() {
-    let { shortcuts } = await chrome.storage.local.get('shortcuts');
+    let { shortcuts, shortcutsEnabled } = await chrome.storage.local.get(['shortcuts', 'shortcutsEnabled']);
     if (!shortcuts) {
       shortcuts = { ...SC_DEFAULTS };
       await chrome.storage.local.set({ shortcuts });
+    }
+    if (shortcutsEnabled === undefined) {
+      await chrome.storage.local.set({ shortcutsEnabled: true });
+      shortcutsEnabled = true;
     }
     SC_ACTIONS.forEach(action => {
       const el = $(`sc-${action}`);
       if (el) el.value = shortcuts[action] ?? '';
     });
+    const scEnabled = $('sc-enabled');
+    if (scEnabled) scEnabled.checked = shortcutsEnabled;
   }
 
   async function saveShortcuts() {
@@ -847,6 +888,17 @@
     });
   });
 
+  // Enable toggle
+  $('sc-enabled').addEventListener('change', async (e) => {
+    await chrome.storage.local.set({ shortcutsEnabled: e.target.checked });
+  });
+
+  // Reset button
+  $('scResetBtn').addEventListener('click', async () => {
+    await chrome.storage.local.set({ shortcuts: { ...SC_DEFAULTS } });
+    await loadShortcuts();
+  });
+
   // Global keyboard shortcut listener
   document.addEventListener('keydown', async (e) => {
     if (isRecordingShortcut) return;
@@ -854,7 +906,8 @@
     const combo = formatCombo(e);
     if (!combo) return;
 
-    const { shortcuts = {} } = await chrome.storage.local.get('shortcuts');
+    const { shortcuts = {}, shortcutsEnabled } = await chrome.storage.local.get(['shortcuts', 'shortcutsEnabled']);
+    if (shortcutsEnabled === false) return;
     const resolved = { ...SC_DEFAULTS, ...shortcuts };
 
     for (const [action, shortcut] of Object.entries(resolved)) {
