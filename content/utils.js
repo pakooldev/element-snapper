@@ -607,7 +607,8 @@ function showNotification(message, type = 'success') {
   notification.style.cssText = `
     position: fixed;
     top: 20px;
-    right: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
     background: rgba(15, 23, 42, 0.9);
     backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -622,7 +623,6 @@ function showNotification(message, type = 'success') {
     font-weight: 500;
     z-index: 2147483647;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    transform: translateY(-20px);
     opacity: 0;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
@@ -637,13 +637,13 @@ function showNotification(message, type = 'success') {
 
   // Trigger animation
   requestAnimationFrame(() => {
-    notification.style.transform = 'translateY(0)';
+    notification.style.transform = 'translateX(-50%) translateY(0)';
     notification.style.opacity = '1';
   });
 
   // Auto remove
   setTimeout(() => {
-    notification.style.transform = 'translateY(-20px)';
+    notification.style.transform = 'translateX(-50%) translateY(-20px)';
     notification.style.opacity = '0';
     setTimeout(() => notification.remove(), 300);
   }, 3000);
