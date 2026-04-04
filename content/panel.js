@@ -1,0 +1,815 @@
+/**
+ * Element Snapper - Floating Panel
+ * Creates an in-page floating panel injected when the extension icon is clicked.
+ * Uses Shadow DOM for CSS isolation.
+ */
+(function () {
+  'use strict';
+
+  const PANEL_HOST_ID = '__element-snapper-panel-host__';
+
+  // ─── Toggle existing panel ────────────────────────────────────────────────
+  const existingHost = document.getElementById(PANEL_HOST_ID);
+  if (existingHost) {
+    existingHost.style.display = existingHost.style.display === 'none' ? 'block' : 'none';
+    return;
+  }
+
+  // ─── Panel CSS (scoped inside Shadow DOM) ─────────────────────────────────
+  const PANEL_CSS = `
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .panel-root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --bg-hover: #334155;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-primary: #3b82f6;
+      --accent-hover: #2563eb;
+      --accent-alpha: rgba(59, 130, 246, 0.2);
+      --success: #10b981;
+      --error: #ef4444;
+      --warning: #f59e0b;
+      --border-light: rgba(255, 255, 255, 0.1);
+      --border-hover: rgba(255, 255, 255, 0.2);
+      --radius-sm: 6px;
+      --radius-md: 12px;
+      --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+      background-color: var(--bg-dark);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: height 0.4s var(--ease);
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .app-container {
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ── View Sliding Mechanism ── */
+    .views-wrapper {
+      position: relative;
+      width: 100%;
+      overflow: hidden;
+      transition: height 0.4s var(--ease);
+    }
+
+    .view {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--bg-dark);
+      padding: 16px 20px;
+      transition: transform 0.4s var(--ease), opacity 0.4s var(--ease);
+    }
+
+    .view-home  { z-index: 10; transform: translateX(0); }
+    .view-settings { z-index: 20; transform: translateX(100%); }
+
+    .views-wrapper.settings-open .view-home {
+      transform: translateX(-30%);
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    .views-wrapper.settings-open .view-settings { transform: translateX(0); }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      height: 32px;
+    }
+
+    .header.draggable {
+      cursor: move;
+      user-select: none;
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+
+    .brand h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+
+    .brand-logo { color: var(--text-primary); transition: transform 0.3s var(--ease); }
+    .brand:hover .brand-logo { transform: scale(1.1) rotate(5deg); }
+
+    .logo-dash {
+      animation: marchingAnts 3s linear infinite;
+      opacity: 0.4;
+      transition: opacity 0.3s;
+    }
+    .brand:hover .logo-dash { opacity: 1; animation-duration: 1.5s; }
+
+    @keyframes marchingAnts { to { stroke-dashoffset: -12; } }
+
+    .header-controls { display: flex; align-items: center; gap: 8px; }
+
+    /* ── Status Pill ── */
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-light);
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); }
+    .status-pill.idle     .status-dot { background: var(--accent-primary); box-shadow: 0 0 8px var(--accent-alpha); }
+    .status-pill.selecting .status-dot { background: var(--accent-primary); animation: pulse 1s infinite; }
+    .status-pill.capturing .status-dot { background: var(--warning); }
+    .status-pill.success  .status-dot { background: var(--success); }
+    .status-pill.error    .status-dot { background: var(--error); }
+
+    @keyframes pulse {
+      0%   { transform: scale(1);   opacity: 1; }
+      50%  { transform: scale(1.5); opacity: 0.5; }
+      100% { transform: scale(1);   opacity: 1; }
+    }
+
+    /* ── Icon Buttons ── */
+    .icon-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 6px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+    /* ── Main Content ── */
+    .main-content { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+
+    /* ── Primary Capture Button ── */
+    .capture-btn {
+      position: relative;
+      width: 100%;
+      height: 54px;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
+      border: none;
+      border-radius: var(--radius-md);
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px var(--accent-alpha);
+      transition: transform 0.1s, box-shadow 0.2s;
+      font-family: inherit;
+    }
+    .capture-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px var(--accent-alpha); }
+    .capture-btn:active { transform: scale(0.98); }
+
+    .capture-btn .btn-content { display: flex; align-items: center; gap: 8px; }
+    .btn-loading { display: none; }
+
+    .capture-btn[data-state="capturing"] .btn-content { display: none; }
+    .capture-btn[data-state="capturing"] .btn-loading { display: flex; }
+    .capture-btn[data-state="selecting"] {
+      background: var(--bg-card);
+      border: 1px solid var(--accent-primary);
+      color: var(--accent-primary);
+      box-shadow: none;
+    }
+
+    /* ── Spinner ── */
+    .spinner { width: 20px; height: 20px; animation: rotate 2s linear infinite; }
+    .spinner .path { stroke: white; stroke-linecap: round; animation: dash 1.5s ease-in-out infinite; }
+
+    @keyframes rotate { 100% { transform: rotate(360deg); } }
+    @keyframes dash {
+      0%   { stroke-dasharray: 1, 150;  stroke-dashoffset: 0; }
+      50%  { stroke-dasharray: 90, 150; stroke-dashoffset: -35; }
+      100% { stroke-dasharray: 90, 150; stroke-dashoffset: -124; }
+    }
+
+    /* ── Secondary Action Buttons ── */
+    .action-buttons { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+    .action-btn {
+      padding: 14px 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .action-btn:hover { border-color: var(--accent-primary); background: rgba(59, 130, 246, 0.05); }
+
+    /* ── Switches ── */
+    .switch-group, .setting-group { margin-top: 4px; }
+
+    .switch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .switch-row:hover { border-color: var(--border-hover); }
+
+    .switch-content { display: flex; flex-direction: column; gap: 4px; }
+    .switch-label { font-size: 14px; font-weight: 500; }
+    .switch-desc  { font-size: 12px; color: var(--text-secondary); }
+
+    .switch-input { display: none; }
+
+    .toggle-switch {
+      width: 44px; height: 24px;
+      background: var(--bg-dark);
+      border-radius: 20px;
+      position: relative;
+      transition: background 0.3s;
+      border: 1px solid var(--border-light);
+      flex-shrink: 0;
+    }
+    .toggle-switch::after {
+      content: "";
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 18px; height: 18px;
+      background: var(--text-secondary);
+      border-radius: 50%;
+      transition: transform 0.3s, background 0.3s;
+    }
+    .switch-input:checked + .toggle-switch { background: var(--accent-primary); border-color: var(--accent-primary); }
+    .switch-input:checked + .toggle-switch::after { transform: translateX(20px); background: white; }
+
+    /* ── Settings Page ── */
+    .settings-container { display: flex; flex-direction: column; gap: 16px; }
+
+    .setting-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .toggle-group {
+      display: flex;
+      background: var(--bg-card);
+      padding: 4px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-light);
+    }
+    .toggle-group input { display: none; }
+    .toggle-option {
+      flex: 1;
+      text-align: center;
+      padding: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+    .toggle-group input:checked + .toggle-option { background: var(--accent-primary); color: white; font-weight: 500; }
+
+    .setting-row { display: flex; align-items: center; gap: 16px; margin-top: 12px; }
+    .setting-row .setting-label { margin-bottom: 0; width: 60px; flex-shrink: 0; }
+
+    .slider-value {
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--accent-primary);
+      background: rgba(59, 130, 246, 0.1);
+      padding: 4px 8px;
+      border-radius: 4px;
+      min-width: 48px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .slider {
+      appearance: none;
+      -webkit-appearance: none;
+      flex: 1;
+      height: 6px;
+      background-color: var(--bg-card);
+      border-radius: 3px;
+      outline: none;
+      background-image: linear-gradient(var(--accent-primary), var(--accent-primary));
+      background-repeat: no-repeat;
+      background-size: var(--val, 0%) 100%;
+    }
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      background: white;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      transition: transform 0.1s, box-shadow 0.2s;
+    }
+    .slider::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 0 4px var(--accent-alpha);
+    }
+
+    .bmc-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 12px;
+      background: rgba(255, 221, 0, 0.05);
+      border: 1px solid rgba(255, 221, 0, 0.2);
+      border-radius: var(--radius-md);
+      color: #fbbf24;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .bmc-btn:hover { background: rgba(255, 221, 0, 0.1); transform: translateY(-1px); }
+  `;
+
+  // ─── Panel HTML ────────────────────────────────────────────────────────────
+  const PANEL_HTML = `
+    <div class="panel-root">
+      <div class="app-container">
+        <div class="views-wrapper" id="viewsWrapper">
+
+          <!-- ── Home View ── -->
+          <div class="view view-home" id="homeView">
+            <header class="header draggable" id="dragHandle">
+              <div class="brand">
+                <svg width="22" height="22" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" class="brand-logo">
+                  <rect x="3" y="3" width="22" height="22" rx="4" stroke="currentColor" stroke-width="2" stroke-dasharray="4 2" class="logo-dash"/>
+                  <path d="M3 9V7C3 4.79086 4.79086 3 7 3H9"    stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M25 9V7C25 4.79086 23.2091 3 21 3H19" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M3 19V21C3 23.2091 4.79086 25 7 25H9"  stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M25 19V21C25 23.2091 23.2091 25 21 25H19" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+                  <circle cx="14" cy="14" r="5" fill="#3b82f6"/>
+                  <circle cx="14" cy="14" r="2" fill="#0f172a"/>
+                </svg>
+                <h1>Element Snapper</h1>
+              </div>
+              <div class="header-controls">
+                <div class="status-pill idle" id="statusPill">
+                  <span class="status-dot"></span>
+                  <span class="status-text" id="statusText">Ready</span>
+                </div>
+                <button class="icon-btn" id="settingsBtn" aria-label="Settings">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M10.3246 4.31731C10.751 2.5609 13.249 2.5609 13.6754 4.31731C13.9508 5.45193 15.2507 5.99038 16.2478 5.38228C17.7913 4.44105 19.5589 6.2087 18.6177 7.75218C18.0096 8.74925 18.5481 10.0492 19.6827 10.3246C21.4391 10.751 21.4391 13.249 19.6827 13.6754C18.5481 13.9508 18.0096 15.2507 18.6177 16.2478C19.5589 17.7913 17.7913 19.5589 16.2478 18.6177C15.2507 18.0096 13.9508 18.5481 13.6754 19.6827C13.249 21.4391 10.751 21.4391 10.3246 19.6827C10.0492 18.5481 8.74926 18.0096 7.75219 18.6177C6.2087 19.5589 4.44105 17.7913 5.38228 16.2478C5.99038 15.2507 5.45193 13.9508 4.31731 13.6754C2.5609 13.249 2.5609 10.751 4.31731 10.3246C5.45193 10.0492 5.99038 8.74926 5.38228 7.75219C4.44105 6.2087 6.2087 4.44105 7.75219 5.38228C8.74926 5.99038 10.0492 5.45193 10.3246 4.31731Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+                <button class="icon-btn" id="closeBtn" aria-label="Close panel">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+            </header>
+
+            <main class="main-content">
+              <button class="capture-btn" id="captureBtn" data-state="idle">
+                <div class="btn-content">
+                  <div class="btn-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M4 4H10V6H6V10H4V4ZM20 4V10H18V6H14V4H20ZM4 20V14H6V18H10V20H4ZM20 20H14V18H18V14H20V20ZM12 8C14.2091 8 16 9.79086 16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8Z" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  <span class="btn-label" id="btnLabel">Select Element</span>
+                </div>
+                <div class="btn-loading">
+                  <svg class="spinner" viewBox="0 0 50 50">
+                    <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+                  </svg>
+                </div>
+              </button>
+
+              <div class="action-buttons">
+                <button class="action-btn" id="captureViewportBtn"><span>Screen Shot</span></button>
+                <button class="action-btn" id="captureFullPageBtn"><span>Full Page</span></button>
+                <button class="action-btn" id="captureRegionBtn"><span>Select Area</span></button>
+              </div>
+
+              <div class="switch-group">
+                <label class="switch-row">
+                  <div class="switch-content">
+                    <span class="switch-label">Clipboard</span>
+                    <span class="switch-desc">Copy instead of download</span>
+                  </div>
+                  <input type="checkbox" id="clipboardCheckbox" class="switch-input"/>
+                  <div class="toggle-switch"></div>
+                </label>
+              </div>
+            </main>
+          </div>
+
+          <!-- ── Settings View ── -->
+          <div class="view view-settings" id="settingsView">
+            <header class="header">
+              <div class="brand">
+                <button class="icon-btn" id="backBtn" aria-label="Back">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+                <h1>Settings</h1>
+              </div>
+              <div class="header-controls">
+                <a href="https://element-snapper.pakool.com/#how-it-works" target="_blank" class="icon-btn" aria-label="How it works" title="How it works">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                    <path d="M12 16v-4M12 8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                </a>
+              </div>
+            </header>
+
+            <main class="main-content">
+              <div class="settings-container">
+                <div class="setting-group">
+                  <label class="setting-label">Format</label>
+                  <div class="toggle-group">
+                    <input type="radio" name="format" id="fmt-png" value="png" checked/>
+                    <label for="fmt-png" class="toggle-option">PNG</label>
+                    <input type="radio" name="format" id="fmt-jpg" value="jpg"/>
+                    <label for="fmt-jpg" class="toggle-option">JPG</label>
+                  </div>
+                </div>
+
+                <div class="setting-group setting-row" id="qualityGroup">
+                  <label class="setting-label">Quality</label>
+                  <input type="range" id="qualityInput" min="1" max="100" value="95" class="slider" style="--val: 95%"/>
+                  <span id="qualityValue" class="slider-value">95%</span>
+                </div>
+
+                <div class="setting-group setting-row">
+                  <label class="setting-label">Delay</label>
+                  <input type="range" id="delayInput" min="0" max="10" value="0" class="slider" style="--val: 0%"/>
+                  <span id="delayValue" class="slider-value">Off</span>
+                </div>
+
+                <div class="switch-group">
+                  <label class="switch-row">
+                    <div class="switch-content">
+                      <span class="switch-label">Scroll Element</span>
+                      <span class="switch-desc">Capture scrollable content</span>
+                    </div>
+                    <input type="checkbox" id="fullCaptureCheckbox" class="switch-input"/>
+                    <div class="toggle-switch"></div>
+                  </label>
+                  <input type="checkbox" id="debugModeCheckbox" class="switch-input" style="display:none"/>
+                </div>
+
+                <a href="https://buymeacoffee.com/panat.siriwong" target="_blank" class="bmc-btn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 17H16C17.6569 17 19 15.6569 19 14V12H21V7H19V4H5V7H3V12H5V14C5 15.6569 6.34315 17 8 17ZM7 4H17V12H7V4ZM3 9H5V10H3V9ZM19 10V9H21V10H19ZM16 19H8V21H16V19Z" fill="currentColor"/>
+                  </svg>
+                  <span>Buy me a coffee</span>
+                </a>
+              </div>
+            </main>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  `;
+
+  // ─── Create Shadow DOM host ───────────────────────────────────────────────
+  const host = document.createElement('div');
+  host.id = PANEL_HOST_ID;
+  Object.assign(host.style, {
+    position: 'fixed',
+    top: '20px',
+    right: '20px',
+    zIndex: '2147483647',
+    width: '340px',
+    borderRadius: '12px',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.3)',
+  });
+
+  const shadow = host.attachShadow({ mode: 'open' });
+
+  const styleEl = document.createElement('style');
+  styleEl.textContent = PANEL_CSS;
+
+  const tmp = document.createElement('div');
+  tmp.innerHTML = PANEL_HTML;
+
+  shadow.appendChild(styleEl);
+  shadow.appendChild(tmp.firstElementChild);
+
+  document.documentElement.appendChild(host);
+
+  // ─── DOM References ───────────────────────────────────────────────────────
+  const $  = (id)  => shadow.getElementById(id);
+  const $$ = (sel) => shadow.querySelectorAll(sel);
+
+  const captureBtn        = $('captureBtn');
+  const btnLabel          = $('btnLabel');
+  const statusPill        = $('statusPill');
+  const statusText        = $('statusText');
+  const captureViewportBtn = $('captureViewportBtn');
+  const captureFullPageBtn = $('captureFullPageBtn');
+  const captureRegionBtn  = $('captureRegionBtn');
+  const qualityInput      = $('qualityInput');
+  const qualityValue      = $('qualityValue');
+  const delayInput        = $('delayInput');
+  const delayValue        = $('delayValue');
+  const fullCaptureCheckbox = $('fullCaptureCheckbox');
+  const debugModeCheckbox = $('debugModeCheckbox');
+  const clipboardCheckbox = $('clipboardCheckbox');
+  const formatRadios      = $$('input[name="format"]');
+  const viewsWrapper      = $('viewsWrapper');
+  const settingsBtn       = $('settingsBtn');
+  const backBtn           = $('backBtn');
+  const homeView          = $('homeView');
+  const settingsView      = $('settingsView');
+  const closeBtn          = $('closeBtn');
+  const dragHandle        = $('dragHandle');
+  const panelRoot         = shadow.querySelector('.panel-root');
+
+  // ─── State ────────────────────────────────────────────────────────────────
+  let currentState = 'idle';
+
+  const STATE_CONFIG = {
+    idle:      { btn: 'Select Element',   pill: 'idle',      msg: 'Ready'      },
+    selecting: { btn: 'Cancel Selection', pill: 'selecting', msg: 'Selecting'  },
+    capturing: { btn: 'Capturing...',     pill: 'capturing', msg: 'Processing' },
+    success:   { btn: 'Captured!',        pill: 'success',   msg: 'Saved'      },
+    error:     { btn: 'Retry',            pill: 'error',     msg: 'Error'      },
+  };
+
+  // ─── UI helpers ───────────────────────────────────────────────────────────
+  function showPanel() { host.style.display = 'block'; }
+  function hidePanel() { host.style.display = 'none'; }
+
+  function updateUI(state, message) {
+    currentState = state;
+    const config = STATE_CONFIG[state];
+
+    captureBtn.setAttribute('data-state', state);
+    if (state !== 'capturing') btnLabel.textContent = config.btn;
+    captureBtn.disabled = (state === 'capturing');
+
+    statusPill.classList.remove('idle', 'selecting', 'capturing', 'success', 'error');
+    statusPill.classList.add(config.pill);
+    statusText.textContent = message || config.msg;
+
+    if (state === 'success') {
+      setTimeout(() => updateUI('idle'), 2000);
+    } else if (state === 'error') {
+      setTimeout(() => updateUI('idle'), 3000);
+    }
+  }
+
+  function resizeToView(view) {
+    const isHidden = view === settingsView && !viewsWrapper.classList.contains('settings-open');
+    if (isHidden) {
+      view.style.visibility = 'hidden';
+      view.style.transform  = 'translateX(0)';
+    }
+
+    const targetHeight = view.scrollHeight;
+
+    if (isHidden) {
+      view.style.visibility = '';
+      view.style.transform  = '';
+    }
+
+    panelRoot.style.height   = targetHeight + 'px';
+    viewsWrapper.style.height = targetHeight + 'px';
+  }
+
+  // ─── Settings ─────────────────────────────────────────────────────────────
+  function updateQualityDisplay(value) {
+    qualityValue.textContent = `${value}%`;
+    qualityInput.style.setProperty('--val', `${value}%`);
+  }
+
+  function updateDelayDisplay(value) {
+    delayValue.textContent = Number(value) === 0 ? 'Off' : `${value}s`;
+    delayInput.style.setProperty('--val', `${(value / 10) * 100}%`);
+  }
+
+  function updateQualityState() {
+    const selected = shadow.querySelector('input[name="format"]:checked')?.value || 'png';
+    $('qualityGroup').style.display = selected === 'png' ? 'none' : 'flex';
+  }
+
+  async function loadSettings() {
+    const s = await chrome.storage.local.get(['format', 'quality', 'delay', 'fullCapture', 'debugMode', 'copyToClipboard']);
+
+    if (s.format) {
+      const radio = shadow.querySelector(`input[name="format"][value="${s.format}"]`);
+      if (radio) radio.checked = true;
+    }
+    if (s.quality) {
+      qualityInput.value = s.quality;
+      updateQualityDisplay(s.quality);
+    }
+    if (s.delay !== undefined) {
+      delayInput.value = s.delay;
+      updateDelayDisplay(s.delay);
+    }
+    if (s.fullCapture !== undefined)  fullCaptureCheckbox.checked = s.fullCapture;
+    if (s.debugMode   !== undefined)  debugModeCheckbox.checked   = s.debugMode;
+    clipboardCheckbox.checked = s.copyToClipboard !== undefined ? s.copyToClipboard : true;
+  }
+
+  async function saveSettings() {
+    const selected = shadow.querySelector('input[name="format"]:checked').value;
+    updateQualityState();
+    if (viewsWrapper.classList.contains('settings-open')) resizeToView(settingsView);
+
+    await chrome.storage.local.set({
+      format:          selected,
+      quality:         parseInt(qualityInput.value),
+      delay:           parseInt(delayInput.value),
+      fullCapture:     fullCaptureCheckbox.checked,
+      debugMode:       debugModeCheckbox.checked,
+      copyToClipboard: clipboardCheckbox.checked,
+    });
+  }
+
+  // ─── Initialize ───────────────────────────────────────────────────────────
+  (async () => {
+    await loadSettings();
+    updateQualityState();
+    resizeToView(homeView);
+
+    // Sync UI with any in-progress selection
+    try {
+      const isSelecting = typeof elementSelector !== 'undefined' && elementSelector.isSelecting();
+      const isRegion    = typeof regionSelector   !== 'undefined' && regionSelector.isSelecting();
+      updateUI((isSelecting || isRegion) ? 'selecting' : 'idle');
+    } catch (_) {
+      updateUI('idle');
+    }
+  })();
+
+  // ─── Event Listeners ──────────────────────────────────────────────────────
+
+  // Primary capture button: start/cancel element selection
+  captureBtn.addEventListener('click', () => {
+    if (currentState === 'idle' || currentState === 'success' || currentState === 'error') {
+      updateUI('selecting');
+      hidePanel();
+      if (typeof elementSelector !== 'undefined') elementSelector.start();
+    } else if (currentState === 'selecting') {
+      if (typeof elementSelector !== 'undefined') elementSelector.stop();
+      if (typeof regionSelector  !== 'undefined') regionSelector.stop();
+      showPanel();
+      updateUI('idle');
+    }
+  });
+
+  // Viewport capture — panel stays open, shows capturing state
+  captureViewportBtn.addEventListener('click', () => {
+    updateUI('capturing', 'Capturing viewport');
+    if (typeof handleViewportCapture === 'function') handleViewportCapture();
+  });
+
+  // Full page capture — panel stays open
+  captureFullPageBtn.addEventListener('click', () => {
+    updateUI('capturing', 'Capturing full page');
+    if (typeof handleFullPageCapture === 'function') handleFullPageCapture();
+  });
+
+  // Region selection — hide panel while drawing
+  captureRegionBtn.addEventListener('click', () => {
+    updateUI('selecting', 'Select area');
+    hidePanel();
+    if (typeof regionSelector !== 'undefined') regionSelector.start();
+  });
+
+  // Settings / Back navigation
+  settingsBtn.addEventListener('click', () => {
+    viewsWrapper.classList.add('settings-open');
+    resizeToView(settingsView);
+  });
+
+  backBtn.addEventListener('click', () => {
+    viewsWrapper.classList.remove('settings-open');
+    resizeToView(homeView);
+  });
+
+  // Close button
+  closeBtn.addEventListener('click', () => hidePanel());
+
+  // Format radios
+  formatRadios.forEach(r => r.addEventListener('change', saveSettings));
+
+  // Quality slider
+  qualityInput.addEventListener('input',  (e) => updateQualityDisplay(e.target.value));
+  qualityInput.addEventListener('change', saveSettings);
+
+  // Delay slider
+  delayInput.addEventListener('input',  (e) => updateDelayDisplay(e.target.value));
+  delayInput.addEventListener('change', saveSettings);
+
+  // Checkboxes
+  fullCaptureCheckbox.addEventListener('change', saveSettings);
+  debugModeCheckbox.addEventListener('change', saveSettings);
+  clipboardCheckbox.addEventListener('change', saveSettings);
+
+  // ─── Chrome message listener ──────────────────────────────────────────────
+  // Receives notifications relayed from the service worker and togglePanel from service worker.
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    switch (message.action) {
+      case 'togglePanel':
+        if (host.style.display === 'none') showPanel(); else hidePanel();
+        sendResponse({ success: true });
+        return false;
+
+      case 'captureStarted':
+        updateUI('capturing');
+        break;
+
+      case 'captureSuccess':
+        showPanel();
+        updateUI('success');
+        break;
+
+      case 'captureError':
+        showPanel();
+        updateUI('error', message.error);
+        break;
+
+      case 'selectionCancelled':
+        showPanel();
+        updateUI('idle');
+        break;
+    }
+  });
+
+  // ─── Drag ────────────────────────────────────────────────────────────────
+  let isDragging  = false;
+  let dragStartX  = 0, dragStartY  = 0;
+  let panelStartL = 0, panelStartT = 0;
+
+  dragHandle.addEventListener('mousedown', (e) => {
+    // Don't initiate drag on clickable controls inside the header
+    if (e.target.closest('.icon-btn') || e.target.closest('a')) return;
+    isDragging  = true;
+    dragStartX  = e.clientX;
+    dragStartY  = e.clientY;
+    const rect  = host.getBoundingClientRect();
+    panelStartL = rect.left;
+    panelStartT = rect.top;
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const newLeft = Math.max(0, Math.min(window.innerWidth  - 340, panelStartL + (e.clientX - dragStartX)));
+    const newTop  = Math.max(0, Math.min(window.innerHeight -  60, panelStartT + (e.clientY - dragStartY)));
+    host.style.left  = newLeft + 'px';
+    host.style.top   = newTop  + 'px';
+    host.style.right = 'auto';
+  });
+
+  document.addEventListener('mouseup', () => { isDragging = false; });
+})();

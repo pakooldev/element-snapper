@@ -30,6 +30,59 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch(error => sendResponse({ success: false, error: error.message }));
 
     return true; // Keep channel open for async response
+  } else if (['captureStarted', 'captureSuccess', 'captureError', 'selectionCancelled'].includes(message.action)) {
+    // Relay status notifications from content scripts back to the floating panel in the same tab
+    if (sender.tab && sender.tab.id) {
+      chrome.tabs.sendMessage(sender.tab.id, message).catch(() => {});
+    }
+    sendResponse({ relayed: true });
+  }
+});
+
+/**
+ * Handle extension icon click — inject or toggle the floating panel
+ */
+chrome.action.onClicked.addListener(async (tab) => {
+  if (!tab.id || !tab.url) return;
+
+  // Cannot inject into browser system pages
+  if (
+    tab.url.startsWith('chrome://') ||
+    tab.url.startsWith('chrome-extension://') ||
+    tab.url.startsWith('about:') ||
+    tab.url.startsWith('edge://')
+  ) return;
+
+  try {
+    // Check if the panel already exists in the DOM; if so, just toggle it.
+    const [{ result: panelExists }] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const host = document.getElementById('__element-snapper-panel-host__');
+        if (host) {
+          host.style.display = host.style.display === 'none' ? 'block' : 'none';
+          return true;
+        }
+        return false;
+      },
+    });
+
+    if (!panelExists) {
+      // First time on this page — inject all content scripts.
+      // panel.js will create and show the panel automatically.
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: [
+          'content/utils.js',
+          'content/element_selector.js',
+          'content/region_selector.js',
+          'content/content-main.js',
+          'content/panel.js',
+        ],
+      });
+    }
+  } catch (injectionError) {
+    console.error('Element Snapper: Cannot inject into this page:', injectionError);
   }
 });
 
