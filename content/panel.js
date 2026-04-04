@@ -426,9 +426,9 @@
               </button>
 
               <div class="action-buttons">
-                <button class="action-btn" id="captureViewportBtn"><span>Screen Shot</span></button>
-                <button class="action-btn" id="captureFullPageBtn"><span>Full Page</span></button>
-                <button class="action-btn" id="captureRegionBtn"><span>Select Area</span></button>
+                <button class="action-btn" id="captureRegionBtn"><span>Area</span></button>
+                <button class="action-btn" id="captureViewportBtn"><span>Screen</span></button>
+                <button class="action-btn" id="captureFullPageBtn"><span>Page</span></button>
               </div>
 
               <div class="switch-group">
