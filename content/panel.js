@@ -680,6 +680,7 @@
 
   // ─── State ────────────────────────────────────────────────────────────────
   let currentState = 'idle';
+  let restorePanelAfterCapture = false;
 
   const STATE_CONFIG = {
     idle:      { btn: 'Select Element',   pill: 'idle',      msg: 'Ready'      },
@@ -918,22 +919,24 @@
           if (host.style.display === 'none') showPanel(); else hidePanel();
           break;
         case 'element':
+          restorePanelAfterCapture = true;
           showPanel();
           updateUI('selecting');
           if (typeof elementSelector !== 'undefined') elementSelector.start();
           break;
         case 'area':
+          restorePanelAfterCapture = true;
           updateUI('selecting', 'Select area');
           hidePanel();
           if (typeof regionSelector !== 'undefined') regionSelector.start();
           break;
         case 'screen':
-          showPanel();
+          restorePanelAfterCapture = false;
           updateUI('capturing', 'Capturing viewport');
           if (typeof handleViewportCapture === 'function') handleViewportCapture();
           break;
         case 'page':
-          showPanel();
+          restorePanelAfterCapture = false;
           updateUI('capturing', 'Capturing full page');
           if (typeof handleFullPageCapture === 'function') handleFullPageCapture();
           break;
@@ -964,10 +967,12 @@
   // Primary capture button: start/cancel element selection
   captureBtn.addEventListener('click', () => {
     if (currentState === 'idle' || currentState === 'success' || currentState === 'error') {
+      restorePanelAfterCapture = true;
       updateUI('selecting');
       hidePanel();
       if (typeof elementSelector !== 'undefined') elementSelector.start();
     } else if (currentState === 'selecting') {
+      restorePanelAfterCapture = false;
       if (typeof elementSelector !== 'undefined') elementSelector.stop();
       if (typeof regionSelector  !== 'undefined') regionSelector.stop();
       showPanel();
@@ -977,18 +982,21 @@
 
   // Viewport capture — panel stays open, shows capturing state
   captureViewportBtn.addEventListener('click', () => {
+    restorePanelAfterCapture = true;
     updateUI('capturing', 'Capturing viewport');
     if (typeof handleViewportCapture === 'function') handleViewportCapture();
   });
 
   // Full page capture — panel stays open
   captureFullPageBtn.addEventListener('click', () => {
+    restorePanelAfterCapture = true;
     updateUI('capturing', 'Capturing full page');
     if (typeof handleFullPageCapture === 'function') handleFullPageCapture();
   });
 
   // Region selection — hide panel while drawing
   captureRegionBtn.addEventListener('click', () => {
+    restorePanelAfterCapture = true;
     updateUI('selecting', 'Select area');
     hidePanel();
     if (typeof regionSelector !== 'undefined') regionSelector.start();
@@ -1041,12 +1049,14 @@
         break;
 
       case 'captureSuccess':
-        showPanel();
+        if (restorePanelAfterCapture) showPanel();
+        restorePanelAfterCapture = false;
         updateUI('success');
         break;
 
       case 'captureError':
-        showPanel();
+        if (restorePanelAfterCapture) showPanel();
+        restorePanelAfterCapture = false;
         updateUI('error', message.error);
         break;
 
