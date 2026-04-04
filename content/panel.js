@@ -350,6 +350,48 @@
       box-shadow: 0 0 0 4px var(--accent-alpha);
     }
 
+    /* ── Shortcuts ── */
+    .shortcuts-list {
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .shortcut-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .shortcut-row:last-child { border-bottom: none; }
+
+    .shortcut-label { font-size: 13px; color: var(--text-primary); }
+
+    .shortcut-key {
+      background: var(--bg-dark);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      color: var(--accent-primary);
+      font-family: monospace;
+      font-size: 12px;
+      padding: 3px 8px;
+      cursor: pointer;
+      min-width: 80px;
+      text-align: center;
+      outline: none;
+      transition: all 0.2s;
+      caret-color: transparent;
+    }
+    .shortcut-key.recording {
+      border-color: var(--accent-primary);
+      background: var(--accent-alpha);
+      color: var(--text-secondary);
+    }
+
     .bmc-btn {
       display: flex;
       align-items: center;
@@ -504,6 +546,32 @@
                     <div class="toggle-switch"></div>
                   </label>
                   <input type="checkbox" id="debugModeCheckbox" class="switch-input" style="display:none"/>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-label">Shortcuts</label>
+                  <div class="shortcuts-list">
+                    <div class="shortcut-row">
+                      <span class="shortcut-label">Toggle Panel</span>
+                      <input type="text" class="shortcut-key" id="sc-panel" readonly placeholder="—"/>
+                    </div>
+                    <div class="shortcut-row">
+                      <span class="shortcut-label">Element</span>
+                      <input type="text" class="shortcut-key" id="sc-element" readonly placeholder="—"/>
+                    </div>
+                    <div class="shortcut-row">
+                      <span class="shortcut-label">Area</span>
+                      <input type="text" class="shortcut-key" id="sc-area" readonly placeholder="—"/>
+                    </div>
+                    <div class="shortcut-row">
+                      <span class="shortcut-label">Screen</span>
+                      <input type="text" class="shortcut-key" id="sc-screen" readonly placeholder="—"/>
+                    </div>
+                    <div class="shortcut-row">
+                      <span class="shortcut-label">Page</span>
+                      <input type="text" class="shortcut-key" id="sc-page" readonly placeholder="—"/>
+                    </div>
+                  </div>
                 </div>
 
                 <a href="https://buymeacoffee.com/panat.siriwong" target="_blank" class="bmc-btn">
@@ -677,9 +745,154 @@
     });
   }
 
+  // ─── Shortcuts ────────────────────────────────────────────────────────────
+  const SC_ACTIONS = ['panel', 'element', 'area', 'screen', 'page'];
+  const isMac = /Mac/i.test(navigator.userAgent);
+  const SC_DEFAULTS = isMac ? {
+    panel:   'Shift+Cmd+E',
+    element: 'Shift+Cmd+Y',
+    area:    'Shift+Cmd+U',
+    screen:  'Shift+Cmd+I',
+    page:    'Shift+Cmd+O',
+  } : {
+    panel:   'Alt+Shift+E',
+    element: 'Alt+Shift+Y',
+    area:    'Alt+Shift+U',
+    screen:  'Alt+Shift+I',
+    page:    'Alt+Shift+O',
+  };
+  let isRecordingShortcut = false;
+
+  function formatCombo(e) {
+    const mods = [];
+    if (e.ctrlKey)  mods.push('Ctrl');
+    if (e.altKey)   mods.push(isMac ? 'Option' : 'Alt');
+    if (e.shiftKey) mods.push('Shift');
+    if (e.metaKey)  mods.push(isMac ? 'Cmd' : 'Meta');
+    const key = e.key;
+    if (['Control', 'Alt', 'Shift', 'Meta'].includes(key)) return '';
+    mods.push(key.length === 1 ? key.toUpperCase() : key);
+    return mods.join('+');
+  }
+
+  async function loadShortcuts() {
+    let { shortcuts } = await chrome.storage.local.get('shortcuts');
+    if (!shortcuts) {
+      shortcuts = { ...SC_DEFAULTS };
+      await chrome.storage.local.set({ shortcuts });
+    }
+    SC_ACTIONS.forEach(action => {
+      const el = $(`sc-${action}`);
+      if (el) el.value = shortcuts[action] ?? '';
+    });
+  }
+
+  async function saveShortcuts() {
+    const shortcuts = {};
+    SC_ACTIONS.forEach(action => {
+      const el = $(`sc-${action}`);
+      if (el) shortcuts[action] = el.value;
+    });
+    await chrome.storage.local.set({ shortcuts });
+  }
+
+  SC_ACTIONS.forEach(action => {
+    const input = $(`sc-${action}`);
+    if (!input) return;
+
+    input.addEventListener('focus', () => { isRecordingShortcut = true; });
+    input.addEventListener('blur',  () => { isRecordingShortcut = false; });
+
+    input.addEventListener('click', () => {
+      input.value = '';
+      input.placeholder = 'Press keys…';
+      input.classList.add('recording');
+      input.focus();
+    });
+
+    input.addEventListener('keydown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (e.key === 'Escape') {
+        input.classList.remove('recording');
+        input.placeholder = '—';
+        loadShortcuts();
+        input.blur();
+        return;
+      }
+
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        input.value = '';
+        input.classList.remove('recording');
+        input.placeholder = '—';
+        saveShortcuts();
+        input.blur();
+        return;
+      }
+
+      const combo = formatCombo(e);
+      if (combo) {
+        input.value = combo;
+        input.classList.remove('recording');
+        input.placeholder = '—';
+        saveShortcuts();
+        input.blur();
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      input.classList.remove('recording');
+      if (!input.value) input.placeholder = '—';
+    });
+  });
+
+  // Global keyboard shortcut listener
+  document.addEventListener('keydown', async (e) => {
+    if (isRecordingShortcut) return;
+
+    const combo = formatCombo(e);
+    if (!combo) return;
+
+    const { shortcuts = {} } = await chrome.storage.local.get('shortcuts');
+    const resolved = { ...SC_DEFAULTS, ...shortcuts };
+
+    for (const [action, shortcut] of Object.entries(resolved)) {
+      if (!shortcut || shortcut !== combo) continue;
+      e.preventDefault();
+      switch (action) {
+        case 'panel':
+          if (host.style.display === 'none') showPanel(); else hidePanel();
+          break;
+        case 'element':
+          showPanel();
+          updateUI('selecting');
+          if (typeof elementSelector !== 'undefined') elementSelector.start();
+          break;
+        case 'area':
+          updateUI('selecting', 'Select area');
+          hidePanel();
+          if (typeof regionSelector !== 'undefined') regionSelector.start();
+          break;
+        case 'screen':
+          showPanel();
+          updateUI('capturing', 'Capturing viewport');
+          if (typeof handleViewportCapture === 'function') handleViewportCapture();
+          break;
+        case 'page':
+          showPanel();
+          updateUI('capturing', 'Capturing full page');
+          if (typeof handleFullPageCapture === 'function') handleFullPageCapture();
+          break;
+      }
+      break;
+    }
+  });
+
   // ─── Initialize ───────────────────────────────────────────────────────────
   (async () => {
     await loadSettings();
+    await loadShortcuts();
     updateQualityState();
     resizeToView(homeView);
 
