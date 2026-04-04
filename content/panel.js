@@ -446,7 +446,7 @@
 
           <!-- ── Settings View ── -->
           <div class="view view-settings" id="settingsView">
-            <header class="header">
+            <header class="header draggable" id="settingsDragHandle">
               <div class="brand">
                 <button class="icon-btn" id="backBtn" aria-label="Back">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -572,6 +572,7 @@
   const settingsView      = $('settingsView');
   const closeBtn          = $('closeBtn');
   const dragHandle        = $('dragHandle');
+  const settingsDragHandle = $('settingsDragHandle');
   const panelRoot         = shadow.querySelector('.panel-root');
 
   // ─── State ────────────────────────────────────────────────────────────────
@@ -795,7 +796,7 @@
   let dragStartX  = 0, dragStartY  = 0;
   let panelStartL = 0, panelStartT = 0;
 
-  dragHandle.addEventListener('mousedown', (e) => {
+  function onDragHandleMouseDown(e) {
     // Don't initiate drag on clickable controls inside the header
     if (e.target.closest('.icon-btn') || e.target.closest('a')) return;
     isDragging  = true;
@@ -805,7 +806,10 @@
     panelStartL = rect.left;
     panelStartT = rect.top;
     e.preventDefault();
-  });
+  }
+
+  dragHandle.addEventListener('mousedown', onDragHandleMouseDown);
+  settingsDragHandle.addEventListener('mousedown', onDragHandleMouseDown);
 
   document.addEventListener('mousemove', (e) => {
     if (!isDragging) return;
