@@ -31,7 +31,7 @@ The popup uses a **slide navigation** pattern. Both views are absolutely positio
 │  │   [⊞]  Select Element       │  │  ← Primary capture button (54px)
 │  └──────────────────────────────┘  │
 │  ┌──────────┐┌──────────┐┌──────┐  │
-│  │Screenshot││ Full Page││ Area │  │  ← Secondary actions (3-col grid)
+│  │   Area   ││  Screen  ││ Page │  │  ← Secondary actions (3-col grid)
 │  └──────────┘└──────────┘└──────┘  │
 │  ┌──────────────────────────────┐  │
 │  │ Clipboard  Copy not download │○│  ← Toggle row
@@ -105,22 +105,22 @@ The popup uses a **slide navigation** pattern. Both views are absolutely positio
 
 Shared between both views. Height is always `32px`.
 
-- **Home:** `[Logo + Title]` on the left, `[Status Pill] [Settings Gear]` on the right.
-- **Settings:** `[Back Arrow] [Title]` on the left, `[Help Info icon]` on the right.
+- **Home:** `[Logo + Title]` on the left, `[Status Dot] [Settings Gear]` on the right.
+- **Settings:** `[Back Arrow] [Title]` on the left, `[Help Info icon] [Close X]` on the right.
 
 The **brand logo** is an inline SVG: a dashed bounding-box rectangle (marching ants animation) with four solid-blue corner crops and a camera lens (filled circle with a dark hole). On hover the logo scales up 10% and rotates 5°, and the dashes speed up.
 
 ### Status Pill
 
-A small rounded badge (border-radius `20px`) in the header showing the current extension state. It has a 6px colored dot on the left and a text label.
+A small rounded badge (border-radius `20px`) in the header showing the current extension state via a colored 6px dot. No text label is displayed.
 
-| State | Dot color | Label |
+| State | Dot color | Effect |
 |---|---|---|
-| `idle` | `--accent-primary` (with glow) | Ready |
-| `selecting` | `--accent-primary` (pulsing) | Selecting |
-| `capturing` | `--warning` | Processing |
-| `success` | `--success` | Saved |
-| `error` | `--error` | Error |
+| `idle` | `--accent-primary` | Glow shadow |
+| `selecting` | `--accent-primary` | Pulsing scale animation |
+| `capturing` | `--warning` | None |
+| `success` | `--success` | None |
+| `error` | `--error` | None |
 
 ### Primary Capture Button
 
@@ -140,13 +140,13 @@ The loading spinner is an SVG circle with a CSS `stroke-dasharray` animation tha
 
 ### Secondary Action Buttons
 
-Three equal-width buttons in a CSS grid (`1fr 1fr 1fr`), `14px` tall with `8px` padding. Card background with light border. On hover: border turns accent blue, background gets a faint blue tint.
+Three equal-width buttons in a CSS grid (`1fr 1fr 1fr`), `14px` vertical padding with `8px` horizontal padding. Card background with light border. On hover: border turns accent blue, background gets a faint blue tint.
 
-| Button | Action |
-|---|---|
-| Screen Shot | Captures the current viewport |
-| Full Page | Scrolls and stitches the entire page |
-| Select Area | Click-and-drag region selection |
+| Button | Label | Action |
+|---|---|---|
+| Area | `Area` | Click-and-drag region selection |
+| Screen | `Screen` | Captures the current viewport |
+| Page | `Page` | Scrolls and stitches the entire page |
 
 ### Toggle Switch (Clipboard / Scroll Element)
 
@@ -203,11 +203,14 @@ Clicking **Back**:
 2. Transitions reverse.
 3. JS calls `resizeToView(homeView)`.
 
+Clicking **Close** (X button in Settings header):
+- Calls `window.close()` — closes the popup immediately.
+
 ---
 
 ## Accessibility
 
-- All icon-only buttons have `aria-label` attributes (`"Settings"`, `"Back"`, `"How it works"`).
+- All icon-only buttons have `aria-label` attributes (`"Settings"`, `"Back"`, `"How it works"`, `"Close"`).
 - Radio inputs and range inputs are proper `<input>` elements associated with `<label>` tags.
 - Toggle switches use visually hidden `<input type="checkbox">` so keyboard and screen readers interact with the real control.
 - The help icon in Settings links to external documentation.
