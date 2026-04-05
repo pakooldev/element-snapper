@@ -5,7 +5,7 @@ description: Generate a new release for Element Snapper. Use this skill whenever
 
 # Release Notes Generator
 
-You help cut a new release for the Element Snapper Chrome extension. This involves four coordinated steps: determining the next version, writing detailed release notes, updating the public-facing changelog, and refreshing the README version badge.
+You help cut a new release for the Element Snapper Chrome extension. This involves coordinated steps: determining the next version, writing detailed release notes, updating extension/version metadata files, refreshing website release info, and packaging the extension zip.
 
 ## Step 1 — Gather context
 
@@ -67,7 +67,15 @@ Guidelines:
 - Be specific: name the UI element, describe the behavior change, mention the trigger/context
 - `fix:` prefixed commits go under Fixes, `feat:` under New Features, improvements and refactors under Improvements
 
-## Step 4 — Update `website/data/releases.json`
+## Step 4 — Update `manifest.json`
+
+Set the extension version to match the release version exactly (without the `v` prefix):
+
+- Release `v1.4.0` → `"version": "1.4.0"`
+
+Do not modify unrelated manifest fields.
+
+## Step 5 — Update `website/data/releases.json`
 
 Prepend a new entry at the **top** of the array (newest first). Keep it concise — this is what users see on the public website:
 
@@ -86,7 +94,15 @@ Prepend a new entry at the **top** of the array (newest first). Keep it concise 
 
 The summary should be written for end users, not developers — focus on what they get, not how it works. Highlights should be short noun phrases (e.g., "Configurable keyboard shortcuts" not "Added ability to configure keyboard shortcuts").
 
-## Step 5 — Update `README.md`
+## Step 6 — Update `website/index.html`
+
+Update the hero release badge text so it announces the new version:
+
+- Find the badge in the hero section (e.g., `Version 1.2.3 is out! ✨`)
+- Replace only the version number with the new release number
+- Keep the existing wording/style unless the user explicitly asks for marketing copy changes
+
+## Step 7 — Update `README.md`
 
 Find the version badge line near the top — it looks like:
 
@@ -96,11 +112,30 @@ Find the version badge line near the top — it looks like:
 
 Update the version number. Also update the feature list if significant new features were added — scan the `## Features` section and add bullets for anything genuinely new that isn't already listed. Don't remove existing bullets unless a feature was removed.
 
+## Step 8 — Create release zip
+
+Create a distributable zip from the repository root that includes exactly these extension assets:
+
+- `background/`
+- `content/`
+- `icons/`
+- `popup/`
+- `manifest.json`
+
+Use a versioned filename:
+
+```bash
+zip -r element-snapper-vX.X.X.zip background content icons popup manifest.json
+```
+
+If a zip with that name already exists, replace it so the archive matches the current release files.
+
 ## Finishing up
 
 After making all changes, summarize what was done:
 - The new version number and the rationale
 - The files changed
+- The generated zip filename
 - Any judgment calls you made (e.g., why minor vs patch)
 
 Do NOT create a git commit, git tag, or push anything unless the user explicitly asks.

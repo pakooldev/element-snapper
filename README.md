@@ -2,7 +2,7 @@
 
 🌐 **Website:** [element-snapper.pakool.com](https://element-snapper.pakool.com/)
 
-**v1.2.3** — A professional Chrome extension that captures pixel-perfect screenshots of any webpage element, the visible viewport, or an entire scrollable page — with clipboard support, delayed capture, and smart element highlighting.
+**v1.3.0** — A professional Chrome extension that captures pixel-perfect screenshots of any webpage element, the visible viewport, or an entire scrollable page — with a floating panel, configurable keyboard shortcuts, clipboard support, delayed capture, and smart element highlighting.
 
 ## Features
 
@@ -10,7 +10,10 @@
 - **Smart Element Highlight**: Fixed-position overlay shows exactly what will be captured — dashed blue for normal captures, dashed indigo when the element extends beyond the viewport
 - **Viewport-Clip**: When _Scroll Element_ is disabled, captures only the visible portion of any element — no black/empty areas
 - **Full Element Capture**: Multi-tile stitching for elements larger than the viewport
-- **Quick Actions**: One-click **Screen Shot** (viewport) and **Full Page** (entire scrollable page) buttons
+- **Floating In-Page Panel**: Persistent, draggable panel injected via Shadow DOM — stays open across captures without reloading the popup
+- **Configurable Keyboard Shortcuts**: Per-OS safe defaults for each capture mode, with an enable toggle and one-click reset
+- **Area Capture**: Click-and-drag region selection with live pixel-dimension label
+- **Quick Actions**: One-click **Area**, **Screen** (viewport), and **Page** (full scrollable page) buttons
 - **Cancel with Escape**: Press `Esc` during element selection to cancel and return to idle
 - **Clipboard Support**: Copy screenshots directly to clipboard instead of downloading
 - **Capture Notifications**: Toast feedback for successful captures and errors

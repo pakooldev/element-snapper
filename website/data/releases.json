@@ -1,5 +1,16 @@
 [
   {
+    "version": "v1.3.0",
+    "date": "2026-04-05",
+    "summary": "Major update introducing a persistent floating panel, configurable keyboard shortcuts, and click-and-drag area capture for a more flexible and powerful screenshot workflow.",
+    "highlights": [
+      "Persistent floating in-page panel",
+      "Configurable keyboard shortcuts",
+      "Click-and-drag area capture",
+      "Renamed action buttons: Area, Screen, Page"
+    ]
+  },
+  {
     "version": "v1.2.3",
     "date": "2026-03-04",
     "summary": "This update improves the element selection experience with smarter highlighting, a new Escape key to cancel, and better handling for oversized elements.",
