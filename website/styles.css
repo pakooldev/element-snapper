@@ -982,3 +982,710 @@ body {
   display: flex;
   align-items: flex-start;
 }
+
+/* ===================== */
+/* Manual Page Styles    */
+/* ===================== */
+.manual-section {
+  padding: 60px 0 100px;
+  position: relative;
+  z-index: 10;
+}
+
+.manual-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.manual-title {
+  font-size: 3rem;
+  font-weight: 800;
+  margin-bottom: 16px;
+  letter-spacing: -0.02em;
+}
+
+.manual-subtitle {
+  font-size: 1.25rem;
+  color: var(--text-secondary);
+}
+
+/* Step Cards */
+.manual-step {
+  max-width: 960px;
+  margin: 0 auto 48px;
+  padding: 40px 32px;
+  position: relative;
+  overflow: visible;
+}
+
+.step-number {
+  position: absolute;
+  top: -18px;
+  left: 32px;
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: white;
+  box-shadow: 0 4px 12px var(--accent-glow);
+}
+
+.step-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.step-desc {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+
+/* Step 1 — Chrome Toolbar */
+.step-visual {
+  display: flex;
+  justify-content: center;
+  overflow: visible;
+}
+
+.toolbar-svg {
+  width: 100%;
+  max-width: 700px;
+  height: auto;
+}
+
+.toolbar-ext-icon {
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.6));
+}
+
+.pulse-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+.pulse-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pulseRing 2s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.08; transform: scale(1); }
+  50% { opacity: 0.22; transform: scale(1.12); }
+}
+
+@keyframes pulseRing {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.1); }
+}
+
+/* Step 2 & 3 — Numbered badge + legend layout */
+.labeled-diagram {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+
+.diagram-popup {
+  display: flex;
+  justify-content: center;
+}
+
+/* Number badges overlaid on popup elements */
+.num-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: var(--accent-primary);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 50%;
+  flex-shrink: 0;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);
+  position: relative;
+  z-index: 5;
+}
+
+/* Badge positioning tweaks inside popup elements */
+.mp-status .num-badge,
+.mp-settings-btn .num-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+}
+
+.mp-status,
+.mp-settings-btn,
+.mp-info-btn,
+.mp-close-btn {
+  position: relative;
+}
+
+.mp-main-btn {
+  position: relative;
+}
+
+.mp-main-btn > .num-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+}
+
+.mp-action-btn {
+  position: relative;
+}
+
+.mp-action-btn > .num-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+}
+
+.mp-switch-row {
+  position: relative;
+}
+
+.mp-switch-row > .num-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+}
+
+.mp-setting-group {
+  position: relative;
+}
+
+.mp-setting-group > .num-badge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+}
+
+.mp-brand > .num-badge {
+  margin-left: 4px;
+}
+
+/* Legend grid below the popup */
+.legend-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 24px;
+  width: 100%;
+  max-width: 700px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(59, 130, 246, 0.04);
+  border: 1px solid rgba(59, 130, 246, 0.1);
+  border-radius: 10px;
+}
+
+.legend-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  background: var(--accent-primary);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 50%;
+  margin-top: 1px;
+}
+
+.legend-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.legend-text strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.legend-text span {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+/* Manual Popup Replica */
+.manual-popup {
+  width: 340px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-family: var(--font-sans);
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.mp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.mp-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+
+.mp-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mp-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mp-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+}
+
+.mp-status-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.mp-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+}
+
+/* Status states legend row */
+.mp-states-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.mp-state-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.mp-state-pill .mp-dot { box-shadow: none; }
+.mp-state-pill.is-idle .mp-dot       { background: #3b82f6; box-shadow: 0 0 6px rgba(59,130,246,0.5); }
+.mp-state-pill.is-selecting .mp-dot  { background: #3b82f6; animation: pulse 1s infinite; }
+.mp-state-pill.is-capturing .mp-dot  { background: #f59e0b; }
+.mp-state-pill.is-success .mp-dot    { background: #10b981; }
+.mp-state-pill.is-error .mp-dot      { background: #ef4444; }
+
+.mp-settings-btn,
+.mp-info-btn,
+.mp-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+.mp-info-btn a {
+  cursor: pointer;
+  color: inherit;
+  display: flex;
+  align-items: center;
+}
+
+.mp-main-btn {
+  width: 100%;
+  height: 54px;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
+  color: white;
+  border: none;
+  border-radius: var(--radius-md, 12px);
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+}
+
+.mp-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mp-action-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  padding: 14px 8px;
+  border-radius: var(--radius-md, 12px);
+  color: white;
+  font-weight: 500;
+  font-size: 12px;
+  text-align: center;
+}
+
+.mp-switch-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-card);
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+}
+
+.mp-switch-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.mp-switch-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.mp-switch-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.mp-toggle {
+  width: 44px;
+  height: 24px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.mp-toggle.on {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.mp-toggle-knob {
+  width: 18px;
+  height: 18px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.3s;
+}
+
+.mp-toggle.on .mp-toggle-knob {
+  transform: translateX(20px);
+  background: white;
+}
+
+/* Settings-specific */
+.mp-setting-group {
+  margin-bottom: 14px;
+}
+
+/* Shortcuts section inside settings replica */
+.mp-shortcuts-group {
+  margin-top: 4px;
+}
+
+.mp-shortcuts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.mp-shortcuts-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mp-reset-btn {
+  font-size: 10px;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: default;
+}
+
+.mp-shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.mp-shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.mp-shortcut-row:last-child {
+  border-bottom: none;
+}
+
+.mp-shortcut-label {
+  font-size: 11px;
+  color: var(--text-primary);
+}
+
+.mp-shortcut-key {
+  background: var(--bg-dark);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  color: var(--accent-primary);
+  font-family: monospace;
+  font-size: 10px;
+  padding: 2px 8px;
+  min-width: 56px;
+  text-align: center;
+}
+
+.mp-setting-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.mp-toggle-group {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.mp-toggle-opt {
+  flex: 1;
+  text-align: center;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  cursor: default;
+}
+
+.mp-toggle-opt.active {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.mp-setting-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mp-slider-track {
+  flex: 1;
+  height: 4px;
+  background: var(--bg-hover);
+  border-radius: 2px;
+  position: relative;
+}
+
+.mp-slider-fill {
+  height: 100%;
+  background: var(--accent-primary);
+  border-radius: 2px;
+}
+
+.mp-slider-thumb {
+  width: 12px;
+  height: 12px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: -4px;
+  transform: translateX(-50%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.mp-slider-value {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--accent-primary);
+  background: rgba(59, 130, 246, 0.1);
+  padding: 3px 7px;
+  border-radius: 4px;
+  min-width: 40px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* Dual popup side-by-side layout */
+.diagram-dual-popup {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.diagram-dual-popup .manual-popup + .manual-popup {
+  border-left: none;
+}
+
+/* Buy Me a Coffee row in settings mockup */
+.mp-bmc-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px;
+  background: rgba(255, 221, 0, 0.05);
+  border: 1px solid rgba(255, 221, 0, 0.2);
+  border-radius: var(--radius-md, 12px);
+  color: #fbbf24;
+  font-weight: 500;
+  font-size: 13px;
+  margin-top: 4px;
+  position: relative;
+}
+
+/* Tips Section */
+.manual-tips {
+  margin-top: 40px;
+}
+
+.tips-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  max-width: 900px;
+  margin: 30px auto 0;
+}
+
+.tip-card {
+  padding: 28px 24px;
+  text-align: center;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.tip-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.tip-icon {
+  font-size: 2rem;
+  margin-bottom: 16px;
+}
+
+.tip-card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.tip-card p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.tip-card kbd {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.8rem;
+  font-family: monospace;
+}
+
+.tip-card code {
+  background: var(--bg-hover);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.8rem;
+}
+
+/* Manual responsive */
+@media (max-width: 768px) {
+  .manual-title {
+    font-size: 2.2rem;
+  }
+
+  .manual-step {
+    padding: 28px 20px;
+  }
+
+  .tips-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .legend-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .manual-popup {
+    width: 290px;
+    padding: 14px 16px;
+  }
+}
