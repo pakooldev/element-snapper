@@ -507,36 +507,24 @@ export const PromoComposition: React.FC = () => {
               width: "100%",
             }}
           >
-            <div
-              style={{
-                flex: 1,
-                height: "60px",
-                background: "rgba(255,255,255,0.05)",
-                borderRadius: "12px",
-                border: "1px solid rgba(255,255,255,0.1)",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                fontWeight: 500,
-              }}
-            >
-              Screen Shot
-            </div>
-            <div
-              style={{
-                flex: 1,
-                height: "60px",
-                background: "rgba(255,255,255,0.05)",
-                borderRadius: "12px",
-                border: "1px solid rgba(255,255,255,0.1)",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                fontWeight: 500,
-              }}
-            >
-              Full Page
-            </div>
+            {["Area", "Screen", "Page"].map((label) => (
+              <div
+                key={label}
+                style={{
+                  flex: 1,
+                  height: "60px",
+                  background: "rgba(255,255,255,0.05)",
+                  borderRadius: "12px",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  fontWeight: 500,
+                }}
+              >
+                {label}
+              </div>
+            ))}
           </div>
         </div>
 

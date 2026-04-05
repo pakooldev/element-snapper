@@ -480,38 +480,27 @@ export const Screenshot1Hero: React.FC = () => {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr",
+                gridTemplateColumns: "1fr 1fr 1fr",
                 gap: "12px",
               }}
             >
-              <div
-                style={{
-                  padding: "14px",
-                  background: "#1e293b",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: "12px",
-                  color: "#f8fafc",
-                  fontSize: "13px",
-                  fontWeight: 500,
-                  textAlign: "center",
-                }}
-              >
-                Screen Shot
-              </div>
-              <div
-                style={{
-                  padding: "14px",
-                  background: "#1e293b",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: "12px",
-                  color: "#f8fafc",
-                  fontSize: "13px",
-                  fontWeight: 500,
-                  textAlign: "center",
-                }}
-              >
-                Full Page
-              </div>
+              {["Area", "Screen", "Page"].map((label) => (
+                <div
+                  key={label}
+                  style={{
+                    padding: "14px",
+                    background: "#1e293b",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: "12px",
+                    color: "#f8fafc",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    textAlign: "center",
+                  }}
+                >
+                  {label}
+                </div>
+              ))}
             </div>
 
             {/* Switch Row */}
