@@ -980,17 +980,19 @@
     }
   });
 
-  // Viewport capture — panel stays open, shows capturing state
+  // Viewport capture — hide panel before capturing so it doesn't appear in the screenshot
   captureViewportBtn.addEventListener('click', () => {
     restorePanelAfterCapture = true;
     updateUI('capturing', 'Capturing viewport');
+    hidePanel();
     if (typeof handleViewportCapture === 'function') handleViewportCapture();
   });
 
-  // Full page capture — panel stays open
+  // Full page capture — hide panel before capturing so it doesn't appear in the screenshot
   captureFullPageBtn.addEventListener('click', () => {
     restorePanelAfterCapture = true;
     updateUI('capturing', 'Capturing full page');
+    hidePanel();
     if (typeof handleFullPageCapture === 'function') handleFullPageCapture();
   });
 
