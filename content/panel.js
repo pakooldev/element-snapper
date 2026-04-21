@@ -686,7 +686,7 @@
     idle:      { btn: 'Select Element',   pill: 'idle',      msg: 'Ready'      },
     selecting: { btn: 'Cancel Selection', pill: 'selecting', msg: 'Selecting'  },
     capturing: { btn: 'Capturing...',     pill: 'capturing', msg: 'Processing' },
-    success:   { btn: 'Captured!',        pill: 'success',   msg: 'Saved'      },
+    success:   { btn: 'Select Element',   pill: 'success',   msg: 'Saved'      },
     error:     { btn: 'Retry',            pill: 'error',     msg: 'Error'      },
   };
 
