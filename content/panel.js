@@ -1054,12 +1054,18 @@
         if (restorePanelAfterCapture) showPanel();
         restorePanelAfterCapture = false;
         updateUI('success');
+        if (typeof showNotification === 'function') {
+          showNotification('Screenshot captured successfully', 'success');
+        }
         break;
 
       case 'captureError':
         if (restorePanelAfterCapture) showPanel();
         restorePanelAfterCapture = false;
         updateUI('error', message.error);
+        if (typeof showNotification === 'function') {
+          showNotification(message.error || 'Capture failed', 'error');
+        }
         break;
 
       case 'selectionCancelled':
