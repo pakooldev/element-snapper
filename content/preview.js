@@ -394,7 +394,6 @@
   }
 
   // Toast rendered inside the shadow root so it stacks above the modal/thumb.
-  // Replaces utils.showNotification for preview-initiated actions.
   let toastTimer = null;
   function showShadowToast(message, type = 'success') {
     const existing = root.querySelector('.toast');
