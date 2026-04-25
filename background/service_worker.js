@@ -77,8 +77,16 @@ chrome.action.onClicked.addListener(async (tab) => {
           'content/element_selector.js',
           'content/region_selector.js',
           'content/content-main.js',
+          'content/preview.js',
           'content/panel.js',
         ],
+      });
+    } else {
+      // Panel already loaded. Ensure preview.js is also present (idempotent IIFE)
+      // for tabs where the panel was injected before preview.js was added.
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content/preview.js'],
       });
     }
   } catch (injectionError) {
@@ -95,10 +103,11 @@ chrome.action.onClicked.addListener(async (tab) => {
 async function handleViewportOrPageCapture(data, tabId) {
   try {
     // Load settings
-    const settings = await chrome.storage.local.get(['format', 'quality', 'copyToClipboard']);
+    const settings = await chrome.storage.local.get(['format', 'quality', 'copyToClipboard', 'showPreview']);
     const outputFormat = settings.format || 'png';
     const outputQuality = settings.quality || 95;
     const copyToClipboard = settings.copyToClipboard ?? true;
+    const showPreview = settings.showPreview ?? false;
 
     let captureBlob;
     let filename;
@@ -137,14 +146,21 @@ async function handleViewportOrPageCapture(data, tabId) {
       throw new Error('Invalid capture mode');
     }
 
+    // Pre-compute dataURL once if preview is enabled — clipboard/download paths reuse it.
+    const previewDataUrl = showPreview ? await blobToDataURL(captureBlob) : null;
+
     // Save to downloads or copy to clipboard based on settings
+    let action;
     if (copyToClipboard) {
-      await copyImageToClipboard(captureBlob);
-      return { success: true, action: 'copy' };
+      await copyImageToClipboard(captureBlob, previewDataUrl);
+      action = 'copy';
     } else {
-      await downloadImage(captureBlob, filename);
-      return { success: true, action: 'download' };
+      await downloadImage(captureBlob, filename, previewDataUrl);
+      action = 'download';
     }
+    return previewDataUrl
+      ? { success: true, action, previewDataUrl }
+      : { success: true, action };
   } catch (error) {
     console.error('Capture failed:', error);
     return { success: false, error: error.message };
@@ -332,11 +348,12 @@ function generateViewportFilename(mode, format) {
 async function handleElementCapture(data, tabId) {
   try {
     // Load settings
-    const settings = await chrome.storage.local.get(['format', 'quality', 'fullCapture', 'copyToClipboard']);
+    const settings = await chrome.storage.local.get(['format', 'quality', 'fullCapture', 'copyToClipboard', 'showPreview']);
     const outputFormat = settings.format || 'png';
     const outputQuality = settings.quality || 95;
     const fullCapture = settings.fullCapture || false;
     const copyToClipboard = settings.copyToClipboard ?? true;
+    const showPreview = settings.showPreview ?? false;
 
     // Determine if multi-capture is needed
     const needsMultiCapture = fullCapture && (
@@ -353,15 +370,22 @@ async function handleElementCapture(data, tabId) {
       croppedBlob = await cropImageToElement(dataUrl, data, outputFormat, outputQuality);
     }
 
+    // Pre-compute dataURL once if preview is enabled — clipboard/download paths reuse it.
+    const previewDataUrl = showPreview ? await blobToDataURL(croppedBlob) : null;
+
     // Save to downloads or copy to clipboard based on settings
+    let action;
     if (copyToClipboard) {
-      await copyImageToClipboard(croppedBlob);
-      return { success: true, action: 'copy' };
+      await copyImageToClipboard(croppedBlob, previewDataUrl);
+      action = 'copy';
     } else {
       const filename = generateFilename(data.elementInfo, outputFormat);
-      await downloadImage(croppedBlob, filename);
-      return { success: true, action: 'download' };
+      await downloadImage(croppedBlob, filename, previewDataUrl);
+      action = 'download';
     }
+    return previewDataUrl
+      ? { success: true, action, previewDataUrl }
+      : { success: true, action };
   } catch (error) {
     console.error('Capture failed:', error);
     return { success: false, error: error.message };
@@ -378,10 +402,11 @@ async function handleElementCapture(data, tabId) {
 async function handleRegionCapture(data, tabId) {
   try {
     // Load settings
-    const settings = await chrome.storage.local.get(['format', 'quality', 'copyToClipboard']);
+    const settings = await chrome.storage.local.get(['format', 'quality', 'copyToClipboard', 'showPreview']);
     const outputFormat = settings.format || 'png';
     const outputQuality = settings.quality || 95;
     const copyToClipboard = settings.copyToClipboard ?? true;
+    const showPreview = settings.showPreview ?? false;
 
     // Capture the visible tab
     const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
@@ -390,15 +415,22 @@ async function handleRegionCapture(data, tabId) {
     // which is the same coordinate space as a single-tile element capture
     const croppedBlob = await cropImageToElement(dataUrl, data, outputFormat, outputQuality);
 
+    // Pre-compute dataURL once if preview is enabled — clipboard/download paths reuse it.
+    const previewDataUrl = showPreview ? await blobToDataURL(croppedBlob) : null;
+
     // Save to downloads or copy to clipboard based on settings
+    let action;
     if (copyToClipboard) {
-      await copyImageToClipboard(croppedBlob);
-      return { success: true, action: 'copy' };
+      await copyImageToClipboard(croppedBlob, previewDataUrl);
+      action = 'copy';
     } else {
       const filename = generateViewportFilename('region', outputFormat);
-      await downloadImage(croppedBlob, filename);
-      return { success: true, action: 'download' };
+      await downloadImage(croppedBlob, filename, previewDataUrl);
+      action = 'download';
     }
+    return previewDataUrl
+      ? { success: true, action, previewDataUrl }
+      : { success: true, action };
   } catch (error) {
     console.error('Region capture failed:', error);
     return { success: false, error: error.message };
@@ -759,9 +791,10 @@ async function blobToDataURL(blob) {
  * Copy image blob to clipboard
  * Uses Clipboard API to write image data
  * @param {Blob} blob - Image blob
+ * @param {string} [precomputedDataUrl] - Optional pre-computed dataURL to avoid re-encoding
  * @returns {Promise<void>}
  */
-async function copyImageToClipboard(blob) {
+async function copyImageToClipboard(blob, precomputedDataUrl) {
   try {
     // Service workers don't have direct access to navigator.clipboard
     // We need to send the blob to the content script to copy it
@@ -776,8 +809,8 @@ async function copyImageToClipboard(blob) {
     // Clipboard API requires document focus for security reasons
     await chrome.windows.update(tab.windowId, { focused: true });
 
-    // Convert blob to data URL
-    const dataUrl = await blobToDataURL(blob);
+    // Convert blob to data URL (or reuse pre-computed one)
+    const dataUrl = precomputedDataUrl || await blobToDataURL(blob);
 
     // Send to content script to copy to clipboard
     const response = await chrome.tabs.sendMessage(tab.id, {
@@ -802,12 +835,13 @@ async function copyImageToClipboard(blob) {
  * Service worker compatible - converts blob to data URL
  * @param {Blob} blob - Image blob
  * @param {string} filename - Download filename
+ * @param {string} [precomputedDataUrl] - Optional pre-computed dataURL to avoid re-encoding
  * @returns {Promise<void>}
  */
-async function downloadImage(blob, filename) {
+async function downloadImage(blob, filename, precomputedDataUrl) {
   try {
-    // Convert blob to data URL (service worker compatible)
-    const dataUrl = await blobToDataURL(blob);
+    // Convert blob to data URL (or reuse pre-computed one)
+    const dataUrl = precomputedDataUrl || await blobToDataURL(blob);
 
     // Start download using data URL
     return new Promise((resolve, reject) => {

@@ -262,6 +262,9 @@ class ElementSelector {
         if (response.action === 'download') {
           showNotification('Screenshot saved to downloads', 'success');
         }
+        if (response.previewDataUrl && window.elementSnapperPreview) {
+          window.elementSnapperPreview.show(response.previewDataUrl, { source: 'element' });
+        }
         chrome.runtime.sendMessage({ action: 'captureSuccess' });
       } else {
         chrome.runtime.sendMessage({

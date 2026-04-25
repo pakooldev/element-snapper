@@ -19,6 +19,7 @@ const delayValue = document.getElementById('delayValue');
 const fullCaptureCheckbox = document.getElementById('fullCaptureCheckbox');
 const debugModeCheckbox = document.getElementById('debugModeCheckbox');
 const clipboardCheckbox = document.getElementById('clipboardCheckbox');
+const showPreviewCheckbox = document.getElementById('showPreviewCheckbox');
 const formatRadios = document.querySelectorAll('input[name="format"]');
 
 // Current state
@@ -80,9 +81,16 @@ async function sendToContentScript(message) {
       // This uses the user's gesture (popup click) and the `activeTab` + `scripting` permission.
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        files: ['content/utils.js', 'content/element_selector.js', 'content/region_selector.js', 'content/content-main.js']
+        files: ['content/utils.js', 'content/element_selector.js', 'content/region_selector.js', 'content/content-main.js', 'content/preview.js']
       });
     }
+
+    // Ensure preview.js is loaded even on tabs where the other content scripts
+    // were injected before preview.js was added. The IIFE no-ops if already present.
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['content/preview.js']
+    });
 
     // Now send the original message
     return await chrome.tabs.sendMessage(tab.id, message);
@@ -96,7 +104,7 @@ async function sendToContentScript(message) {
  * Load saved settings from storage
  */
 async function loadSettings() {
-  const settings = await chrome.storage.local.get(['format', 'quality', 'delay', 'fullCapture', 'debugMode', 'copyToClipboard']);
+  const settings = await chrome.storage.local.get(['format', 'quality', 'delay', 'fullCapture', 'debugMode', 'copyToClipboard', 'showPreview']);
 
   // Format (Radio buttons)
   if (settings.format) {
@@ -126,6 +134,8 @@ async function loadSettings() {
   }
 
   clipboardCheckbox.checked = settings.copyToClipboard !== undefined ? settings.copyToClipboard : true;
+
+  showPreviewCheckbox.checked = settings.showPreview ?? false;
 }
 
 /**
@@ -179,7 +189,8 @@ async function saveSettings() {
     delay: parseInt(delayInput.value),
     fullCapture: fullCaptureCheckbox.checked,
     debugMode: debugModeCheckbox.checked,
-    copyToClipboard: clipboardCheckbox.checked
+    copyToClipboard: clipboardCheckbox.checked,
+    showPreview: showPreviewCheckbox.checked
   });
 }
 
@@ -252,6 +263,7 @@ delayInput.addEventListener('change', saveSettings);
 fullCaptureCheckbox.addEventListener('change', saveSettings);
 debugModeCheckbox.addEventListener('change', saveSettings);
 clipboardCheckbox.addEventListener('change', saveSettings);
+showPreviewCheckbox.addEventListener('change', saveSettings);
 
 // Action Buttons - Viewport Capture
 captureViewportBtn.addEventListener('click', async () => {

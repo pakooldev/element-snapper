@@ -361,6 +361,10 @@ body {
   border-color: var(--border-hover);
 }
 
+.switch-group .switch-row + .switch-row {
+  margin-top: 8px;
+}
+
 .switch-content {
   display: flex;
   flex-direction: column;

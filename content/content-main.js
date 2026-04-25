@@ -57,6 +57,9 @@ async function handleViewportCapture() {
       if (response.action === 'download') {
         showNotification('Screenshot saved to downloads', 'success');
       }
+      if (response.previewDataUrl && window.elementSnapperPreview) {
+        window.elementSnapperPreview.show(response.previewDataUrl, { source: 'viewport' });
+      }
       chrome.runtime.sendMessage({ action: 'captureSuccess' });
     } else {
       chrome.runtime.sendMessage({
@@ -120,6 +123,9 @@ async function handleRegionCaptureRequest(x, y, width, height) {
     if (response && response.success) {
       if (response.action === 'download') {
         showNotification('Screenshot saved to downloads', 'success');
+      }
+      if (response.previewDataUrl && window.elementSnapperPreview) {
+        window.elementSnapperPreview.show(response.previewDataUrl, { source: 'region' });
       }
       chrome.runtime.sendMessage({ action: 'captureSuccess' });
     } else {
@@ -226,6 +232,9 @@ async function handleFullPageCapture() {
     if (response.success) {
       if (response.action === 'download') {
         showNotification('Screenshot saved to downloads', 'success');
+      }
+      if (response.previewDataUrl && window.elementSnapperPreview) {
+        window.elementSnapperPreview.show(response.previewDataUrl, { source: 'fullpage' });
       }
       chrome.runtime.sendMessage({ action: 'captureSuccess' });
     } else {

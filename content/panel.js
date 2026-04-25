@@ -248,6 +248,7 @@
       transition: border-color 0.2s;
     }
     .switch-row:hover { border-color: var(--border-hover); }
+    .switch-group .switch-row + .switch-row { margin-top: 8px; }
 
     .switch-content { display: flex; flex-direction: column; gap: 4px; }
     .switch-label { font-size: 14px; font-weight: 500; }
@@ -571,6 +572,14 @@
                     <input type="checkbox" id="fullCaptureCheckbox" class="switch-input"/>
                     <div class="toggle-switch"></div>
                   </label>
+                  <label class="switch-row">
+                    <div class="switch-content">
+                      <span class="switch-label">Preview Captures</span>
+                      <span class="switch-desc">Show floating preview after capture</span>
+                    </div>
+                    <input type="checkbox" id="showPreviewCheckbox" class="switch-input"/>
+                    <div class="toggle-switch"></div>
+                  </label>
                   <input type="checkbox" id="debugModeCheckbox" class="switch-input" style="display:none"/>
                 </div>
 
@@ -667,6 +676,7 @@
   const fullCaptureCheckbox = $('fullCaptureCheckbox');
   const debugModeCheckbox = $('debugModeCheckbox');
   const clipboardCheckbox = $('clipboardCheckbox');
+  const showPreviewCheckbox = $('showPreviewCheckbox');
   const formatRadios      = $$('input[name="format"]');
   const viewsWrapper      = $('viewsWrapper');
   const settingsBtn       = $('settingsBtn');
@@ -747,7 +757,7 @@
   }
 
   async function loadSettings() {
-    const s = await chrome.storage.local.get(['format', 'quality', 'delay', 'fullCapture', 'debugMode', 'copyToClipboard']);
+    const s = await chrome.storage.local.get(['format', 'quality', 'delay', 'fullCapture', 'debugMode', 'copyToClipboard', 'showPreview']);
 
     if (s.format) {
       const radio = shadow.querySelector(`input[name="format"][value="${s.format}"]`);
@@ -764,6 +774,7 @@
     if (s.fullCapture !== undefined)  fullCaptureCheckbox.checked = s.fullCapture;
     if (s.debugMode   !== undefined)  debugModeCheckbox.checked   = s.debugMode;
     clipboardCheckbox.checked = s.copyToClipboard !== undefined ? s.copyToClipboard : true;
+    showPreviewCheckbox.checked = s.showPreview ?? false;
   }
 
   async function saveSettings() {
@@ -778,6 +789,7 @@
       fullCapture:     fullCaptureCheckbox.checked,
       debugMode:       debugModeCheckbox.checked,
       copyToClipboard: clipboardCheckbox.checked,
+      showPreview:     showPreviewCheckbox.checked,
     });
   }
 
@@ -1036,6 +1048,7 @@
   fullCaptureCheckbox.addEventListener('change', saveSettings);
   debugModeCheckbox.addEventListener('change', saveSettings);
   clipboardCheckbox.addEventListener('change', saveSettings);
+  showPreviewCheckbox.addEventListener('change', saveSettings);
 
   // ─── Chrome message listener ──────────────────────────────────────────────
   // Receives notifications relayed from the service worker and togglePanel from service worker.
