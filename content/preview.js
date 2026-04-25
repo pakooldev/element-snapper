@@ -256,7 +256,7 @@
   // <img src> and <a download> use. We do this because <a href="data:...">
   // and <img src="data:..."> on multi-MB data URLs block the main thread
   // while the browser parses the base64; blob: URLs are O(1) to attach.
-  let currentAsset = null; // { blob, objectUrl, mimeType }
+  let currentAsset = null; // { blob, objectUrl, mimeType, source }
   let currentThumb = null;
   let currentModal = null;
   let dismissTimer = null;
@@ -377,16 +377,20 @@
     if (!currentAsset) return;
     const a = document.createElement('a');
     a.href = currentAsset.objectUrl;
-    a.download = filenameForMime(currentAsset.mimeType);
+    a.download = makeFilename(currentAsset.mimeType, currentAsset.source);
     document.body.appendChild(a);
     a.click();
     a.remove();
   }
 
-  function filenameForMime(mimeType) {
+  // Mirrors service_worker.js generateViewportFilename naming so re-downloads
+  // from the preview match the on-capture download filenames.
+  const VALID_SOURCES = new Set(['element', 'region', 'viewport', 'fullpage']);
+  function makeFilename(mimeType, source) {
     const ext = mimeType === 'image/jpeg' ? 'jpg' : 'png';
     const ts = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').substring(0, 19);
-    return `screenshot_preview_${ts}.${ext}`;
+    const tag = VALID_SOURCES.has(source) ? source : 'preview';
+    return `screenshot_${tag}_${ts}.${ext}`;
   }
 
   // Toast rendered inside the shadow root so it stacks above the modal/thumb.
@@ -527,22 +531,22 @@
     });
   }
 
-  async function dataUrlToAsset(dataUrl) {
+  async function dataUrlToAsset(dataUrl, source) {
     // fetch() decodes base64 off the main thread — much smoother than
     // setting <a href> or <img src> to a multi-MB data URL.
     const blob = await (await fetch(dataUrl)).blob();
     const objectUrl = URL.createObjectURL(blob);
-    return { blob, objectUrl, mimeType: blob.type || 'image/png' };
+    return { blob, objectUrl, mimeType: blob.type || 'image/png', source };
   }
 
   // ─── Public API ───────────────────────────────────────────────────────────
   window.elementSnapperPreview = {
-    async show(dataUrl /* , meta */) {
+    async show(dataUrl, meta) {
       if (!dataUrl) return;
 
       let nextAsset;
       try {
-        nextAsset = await dataUrlToAsset(dataUrl);
+        nextAsset = await dataUrlToAsset(dataUrl, meta && meta.source);
       } catch (err) {
         console.error('Element Snapper: preview decode failed', err);
         return;
