@@ -346,8 +346,11 @@
   }
 
   async function copyAssetToClipboard() {
-    if (!currentAsset) return;
-    const blob = currentAsset.blob;
+    // Snapshot the asset so a concurrent show() swapping currentAsset
+    // (and revoking its objectUrl) can't desync mid-await.
+    const asset = currentAsset;
+    if (!asset) return;
+    const blob = asset.blob;
     const supported = typeof ClipboardItem !== 'undefined' && ClipboardItem.supports?.(blob.type);
     const mimeType = supported ? blob.type : 'image/png';
 
@@ -363,8 +366,10 @@
           canvas.getContext('2d').drawImage(img, 0, 0);
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('Canvas toBlob failed')), 'image/png');
         };
-        img.onerror = reject;
-        img.src = currentAsset.objectUrl;
+        // onerror fires with an Event, not an Error — wrap so the catch
+        // at the call site sees a meaningful .message.
+        img.onerror = () => reject(new Error('Image decode failed'));
+        img.src = asset.objectUrl;
       });
     }
 
