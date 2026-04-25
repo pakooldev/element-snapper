@@ -57,8 +57,8 @@ async function handleViewportCapture() {
       if (response.action === 'download') {
         showNotification('Screenshot saved to downloads', 'success');
       }
-      if (response.previewDataUrl && window.elementSnapperPreview) {
-        window.elementSnapperPreview.show(response.previewDataUrl, { source: 'viewport' });
+      if (response.captureId && window.elementSnapperPreview) {
+        window.elementSnapperPreview.show(response.captureId);
       }
       chrome.runtime.sendMessage({ action: 'captureSuccess' });
     } else {
@@ -124,8 +124,8 @@ async function handleRegionCaptureRequest(x, y, width, height) {
       if (response.action === 'download') {
         showNotification('Screenshot saved to downloads', 'success');
       }
-      if (response.previewDataUrl && window.elementSnapperPreview) {
-        window.elementSnapperPreview.show(response.previewDataUrl, { source: 'region' });
+      if (response.captureId && window.elementSnapperPreview) {
+        window.elementSnapperPreview.show(response.captureId);
       }
       chrome.runtime.sendMessage({ action: 'captureSuccess' });
     } else {
@@ -233,8 +233,8 @@ async function handleFullPageCapture() {
       if (response.action === 'download') {
         showNotification('Screenshot saved to downloads', 'success');
       }
-      if (response.previewDataUrl && window.elementSnapperPreview) {
-        window.elementSnapperPreview.show(response.previewDataUrl, { source: 'fullpage' });
+      if (response.captureId && window.elementSnapperPreview) {
+        window.elementSnapperPreview.show(response.captureId);
       }
       chrome.runtime.sendMessage({ action: 'captureSuccess' });
     } else {

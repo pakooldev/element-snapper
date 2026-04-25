@@ -1,9 +1,15 @@
 /**
  * Element Snapper - Preview Thumbnail
- * macOS-style floating preview after capture.
- * Shadow-DOM-isolated thumbnail (bottom-right) + click-through full image modal.
+ * macOS-style floating preview after capture, plus a history view of recent
+ * captures backed by chrome.storage.session.
  *
- * Public API: window.elementSnapperPreview.show(dataUrl, meta?)
+ * Public API: window.elementSnapperPreview.show(captureId)
+ *
+ * Data flow:
+ *   service worker captures → writes dataURL to chrome.storage.session as
+ *   `capture:{id}` and updates the `history` index → returns { captureId } to
+ *   the content script → preview.js reads the dataURL by id, decodes it into
+ *   a blob: URL once, and renders thumbnail + modal from that.
  */
 (function () {
   'use strict';
@@ -44,6 +50,18 @@
       font-size: 14px;
     }
 
+    /* Checkerboard pattern for transparent areas — reused across thumb/modal/grid. */
+    .checker {
+      background:
+        linear-gradient(45deg, #1e293b 25%, transparent 25%),
+        linear-gradient(-45deg, #1e293b 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #1e293b 75%),
+        linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+      background-color: #0f172a;
+    }
+
     /* ── Thumbnail ── */
     .thumb {
       position: fixed;
@@ -73,14 +91,6 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
-      background:
-        linear-gradient(45deg, #1e293b 25%, transparent 25%),
-        linear-gradient(-45deg, #1e293b 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, #1e293b 75%),
-        linear-gradient(-45deg, transparent 75%, #1e293b 75%);
-      background-size: 16px 16px;
-      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
-      background-color: #0f172a;
       display: block;
     }
 
@@ -138,21 +148,116 @@
     }
     .modal.visible { opacity: 1; }
 
-    .modal-img {
-      max-width: 90vw;
-      max-height: 80vh;
-      border-radius: var(--radius-md);
-      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
-      background:
-        linear-gradient(45deg, #1e293b 25%, transparent 25%),
-        linear-gradient(-45deg, #1e293b 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, #1e293b 75%),
-        linear-gradient(-45deg, transparent 75%, #1e293b 75%);
-      background-size: 20px 20px;
-      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
-      background-color: #0f172a;
+    .modal-stage {
+      flex: 1 1 auto;
+      width: 100%;
+      max-height: calc(100vh - 240px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
     }
 
+    .modal-img {
+      max-width: 90vw;
+      max-height: 100%;
+      border-radius: var(--radius-md);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    /* ── History strip (horizontal scroll of recent captures, below image) ──
+       The strip width follows the viewport so big screens show more tiles
+       without scrolling. The blurred backdrop is sourced from --strip-bg
+       (set in JS to the foreground image) so the strip visually echoes the
+       capture above it. */
+    .history-strip {
+      position: relative;
+      width: 100%;
+      max-width: 1600px;
+      flex-shrink: 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      overflow: hidden;
+    }
+    .history-strip::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: var(--strip-bg, none);
+      background-size: cover;
+      background-position: center;
+      /* Scale + blur creates a soft, edge-free wash of the image's colors. */
+      filter: blur(32px) saturate(1.4) brightness(0.55);
+      transform: scale(1.2);
+      opacity: 0.75;
+      pointer-events: none;
+      transition: opacity 0.25s var(--ease);
+    }
+    .history-strip:not([style*="--strip-bg"])::before { opacity: 0; }
+    .history-strip.empty { display: none; }
+
+    .strip-track {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      gap: 8px;
+      padding: 8px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: thin;
+      /* "safe" falls back to flex-start when content overflows so the user
+         can still scroll to the leftmost item. */
+      justify-content: safe center;
+    }
+    .strip-track::-webkit-scrollbar { height: 6px; }
+    .strip-track::-webkit-scrollbar-thumb {
+      background: var(--border-hover);
+      border-radius: 3px;
+    }
+
+    .history-tile {
+      position: relative;
+      flex: 0 0 auto;
+      width: 96px;
+      height: 72px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .history-tile:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-1px);
+    }
+    .history-tile.active {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 2px var(--accent-alpha);
+    }
+    .history-tile img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .history-tile .source-badge {
+      position: absolute;
+      left: 4px;
+      bottom: 4px;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.85);
+      color: var(--text-primary);
+      font-size: 10px;
+      font-weight: 500;
+      border-radius: 3px;
+      text-transform: capitalize;
+      pointer-events: none;
+    }
+
+    /* ── Toolbar ── */
     .modal-toolbar {
       display: flex;
       gap: 8px;
@@ -161,6 +266,7 @@
       border: 1px solid var(--border-light);
       border-radius: var(--radius-md);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      flex-shrink: 0;
     }
 
     .toolbar-btn {
@@ -192,6 +298,7 @@
       box-shadow: 0 4px 12px var(--accent-alpha);
     }
     .toolbar-btn:active { transform: scale(0.97); }
+    .toolbar-btn[hidden] { display: none; }
 
     /* ── In-shadow toast (renders above thumbnail/modal in stacking order) ── */
     .toast {
@@ -225,7 +332,7 @@
     .toast.error .dot { background: var(--error); }
   `;
 
-  // ─── Shadow DOM host (hidden until first show()) ──────────────────────────
+  // ─── Shadow DOM host ──────────────────────────────────────────────────────
   // Host is a 0×0 anchor; children use position: fixed with pointer-events: auto
   // so they escape the host box and stay interactive without blocking page clicks.
   const host = document.createElement('div');
@@ -252,24 +359,17 @@
   document.documentElement.appendChild(host);
 
   // ─── State ────────────────────────────────────────────────────────────────
-  // currentAsset holds the captured image as a Blob plus a blob: URL for fast
-  // <img src> and <a download> use. We do this because <a href="data:...">
-  // and <img src="data:..."> on multi-MB data URLs block the main thread
-  // while the browser parses the base64; blob: URLs are O(1) to attach.
-  let currentAsset = null; // { blob, objectUrl, mimeType, source }
+  // currentAsset is the *foreground* capture rendered in the thumb / modal
+  // image. tileAssets caches blob URLs for the history strip thumbnails so
+  // we don't re-fetch on every render.
+  let currentAsset = null;        // { id, blob, objectUrl, mimeType, source }
+  const tileAssets = new Map();   // id → { objectUrl }
   let currentThumb = null;
   let currentModal = null;
   let dismissTimer = null;
   let dismissDeadline = 0;
   let dismissRemaining = AUTO_DISMISS_MS;
   let escHandler = null;
-
-  function revokeAssetIfUnused() {
-    if (!currentAsset) return;
-    if (currentThumb || currentModal) return;
-    URL.revokeObjectURL(currentAsset.objectUrl);
-    currentAsset = null;
-  }
 
   function clearTimer() {
     if (dismissTimer) {
@@ -278,16 +378,55 @@
     }
   }
 
+  function revokeAllTileAssets() {
+    for (const v of tileAssets.values()) URL.revokeObjectURL(v.objectUrl);
+    tileAssets.clear();
+  }
+
+  // ─── Storage helpers ──────────────────────────────────────────────────────
+  async function readHistoryIndex() {
+    try {
+      const r = await chrome.storage.session.get('history');
+      return Array.isArray(r.history) ? r.history : [];
+    } catch (err) {
+      console.warn('Element Snapper: history index read failed', err);
+      return [];
+    }
+  }
+
+  async function readDataUrlById(id) {
+    const key = `capture:${id}`;
+    const r = await chrome.storage.session.get(key);
+    return r[key] || null;
+  }
+
+  async function loadAssetById(id) {
+    const dataUrl = await readDataUrlById(id);
+    if (!dataUrl) return null;
+    // fetch() decodes base64 off the main thread — avoids freezes on
+    // multi-MB strings and matches the rest of the asset model.
+    const blob = await (await fetch(dataUrl)).blob();
+    const objectUrl = URL.createObjectURL(blob);
+    return { id, blob, objectUrl, mimeType: blob.type || 'image/png' };
+  }
+
+  // ─── Thumbnail lifecycle ──────────────────────────────────────────────────
   function dismissThumb() {
     if (!currentThumb) return;
     clearTimer();
     const thumb = currentThumb;
     currentThumb = null;
     thumb.classList.add('leaving');
+    // Match the longest CSS exit transition on .thumb (transform 0.4s)
+    // so the node isn't yanked mid-animation.
     setTimeout(() => {
       thumb.remove();
-      revokeAssetIfUnused();
-    }, 350);
+      // If nothing else is using the foreground asset, free it.
+      if (!currentModal && currentAsset) {
+        URL.revokeObjectURL(currentAsset.objectUrl);
+        currentAsset = null;
+      }
+    }, 400);
   }
 
   function startTimer(durationMs) {
@@ -300,8 +439,7 @@
     if (progress) {
       progress.style.transition = 'none';
       progress.style.transform = 'scaleX(1)';
-      // Force reflow before applying transition so the animation actually runs.
-      void progress.offsetWidth;
+      void progress.offsetWidth;  // force reflow
       progress.style.transition = `transform ${durationMs}ms linear`;
       progress.style.transform = 'scaleX(0)';
     }
@@ -329,6 +467,50 @@
     startTimer(dismissRemaining > 0 ? dismissRemaining : AUTO_DISMISS_MS);
   }
 
+  function showThumb() {
+    if (!currentAsset) return;
+
+    if (currentThumb) {
+      clearTimer();
+      currentThumb.remove();
+      currentThumb = null;
+    }
+
+    const thumb = document.createElement('div');
+    thumb.className = 'thumb';
+    thumb.innerHTML = `
+      <img class="thumb-img checker" alt="Preview" />
+      <button class="thumb-close" aria-label="Dismiss preview">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div class="thumb-progress"></div>
+    `;
+
+    thumb.querySelector('.thumb-img').src = currentAsset.objectUrl;
+
+    thumb.addEventListener('click', (e) => {
+      if (e.target.closest('.thumb-close')) return;
+      openModal();
+      dismissThumb();
+    });
+    thumb.querySelector('.thumb-close').addEventListener('click', (e) => {
+      e.stopPropagation();
+      dismissThumb();
+    });
+    thumb.addEventListener('mouseenter', pauseTimer);
+    thumb.addEventListener('mouseleave', resumeTimer);
+
+    root.appendChild(thumb);
+    currentThumb = thumb;
+
+    requestAnimationFrame(() => {
+      thumb.classList.add('visible');
+      startTimer(AUTO_DISMISS_MS);
+    });
+  }
+
   // ─── Modal ────────────────────────────────────────────────────────────────
   function closeModal() {
     if (!currentModal) return;
@@ -341,13 +523,98 @@
     }
     setTimeout(() => {
       modal.remove();
-      revokeAssetIfUnused();
+      revokeAllTileAssets();
+      if (!currentThumb && currentAsset) {
+        URL.revokeObjectURL(currentAsset.objectUrl);
+        currentAsset = null;
+      }
     }, 250);
   }
 
+  // Updates the blurred backdrop on the history strip to match the currently
+  // foregrounded image, so the strip's coloring is always tied to the capture.
+  function applyStripBackdrop() {
+    if (!currentModal) return;
+    const strip = currentModal.querySelector('.history-strip');
+    if (!strip) return;
+    if (currentAsset) {
+      strip.style.setProperty('--strip-bg', `url("${currentAsset.objectUrl}")`);
+    } else {
+      strip.style.removeProperty('--strip-bg');
+    }
+  }
+
+  // Renders the horizontal history strip below the main image. Each tile is a
+  // recent capture; clicking it swaps the main image without leaving the modal.
+  async function renderHistoryStrip(stripEl) {
+    if (!stripEl) return;
+    const trackEl = stripEl.querySelector('.strip-track');
+    if (!trackEl) return;
+    trackEl.innerHTML = '';
+    const history = await readHistoryIndex();
+
+    // Hide the strip entirely when there's only the current capture (or none).
+    if (history.length <= 1) {
+      stripEl.classList.add('empty');
+      return;
+    }
+    stripEl.classList.remove('empty');
+
+    // Newest first — most recent captures are most likely to be re-opened.
+    const entries = [...history].reverse();
+    for (const entry of entries) {
+      const tile = document.createElement('div');
+      tile.className = 'history-tile checker';
+      if (currentAsset && entry.id === currentAsset.id) tile.classList.add('active');
+      tile.innerHTML = `
+        <img alt="Capture" />
+        <span class="source-badge">${entry.source || 'capture'}</span>
+      `;
+      const img = tile.querySelector('img');
+
+      const cached = tileAssets.get(entry.id);
+      if (cached) {
+        img.src = cached.objectUrl;
+      } else {
+        // Lazy-load: read the dataURL from session storage and convert once.
+        readDataUrlById(entry.id).then(async (dataUrl) => {
+          if (!dataUrl) return;
+          const blob = await (await fetch(dataUrl)).blob();
+          const objectUrl = URL.createObjectURL(blob);
+          tileAssets.set(entry.id, { objectUrl });
+          img.src = objectUrl;
+        }).catch(err => console.warn('Element Snapper: tile load failed', err));
+      }
+
+      tile.addEventListener('click', async () => {
+        if (currentAsset && entry.id === currentAsset.id) return;  // already showing
+        try {
+          const asset = await loadAssetById(entry.id);
+          if (!asset) {
+            showShadowToast('That capture is no longer in history', 'error');
+            return;
+          }
+          asset.source = entry.source;
+          if (currentAsset) URL.revokeObjectURL(currentAsset.objectUrl);
+          currentAsset = asset;
+          if (currentModal) {
+            const mainImg = currentModal.querySelector('.modal-img');
+            if (mainImg) mainImg.src = asset.objectUrl;
+            // Update active tile highlight.
+            trackEl.querySelectorAll('.history-tile.active').forEach(t => t.classList.remove('active'));
+            tile.classList.add('active');
+            applyStripBackdrop();
+          }
+        } catch (err) {
+          showShadowToast('Failed to open: ' + err.message, 'error');
+        }
+      });
+
+      trackEl.appendChild(tile);
+    }
+  }
+
   async function copyAssetToClipboard() {
-    // Snapshot the asset so a concurrent show() swapping currentAsset
-    // (and revoking its objectUrl) can't desync mid-await.
     const asset = currentAsset;
     if (!asset) return;
     const blob = asset.blob;
@@ -366,16 +633,12 @@
           canvas.getContext('2d').drawImage(img, 0, 0);
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('Canvas toBlob failed')), 'image/png');
         };
-        // onerror fires with an Event, not an Error — wrap so the catch
-        // at the call site sees a meaningful .message.
         img.onerror = () => reject(new Error('Image decode failed'));
         img.src = asset.objectUrl;
       });
     }
 
-    await navigator.clipboard.write([
-      new ClipboardItem({ [mimeType]: clipboardBlob })
-    ]);
+    await navigator.clipboard.write([new ClipboardItem({ [mimeType]: clipboardBlob })]);
   }
 
   function downloadAsset() {
@@ -383,22 +646,22 @@
     const a = document.createElement('a');
     a.href = currentAsset.objectUrl;
     a.download = makeFilename(currentAsset.mimeType, currentAsset.source);
-    document.body.appendChild(a);
+    // Append to documentElement (always present) instead of body — defends
+    // against edge cases where body isn't available yet.
+    document.documentElement.appendChild(a);
     a.click();
     a.remove();
   }
 
-  // Mirrors service_worker.js generateViewportFilename naming so re-downloads
-  // from the preview match the on-capture download filenames.
+  // Mirrors service_worker.js generateViewportFilename naming.
   const VALID_SOURCES = new Set(['element', 'region', 'viewport', 'fullpage']);
   function makeFilename(mimeType, source) {
     const ext = mimeType === 'image/jpeg' ? 'jpg' : 'png';
-    const ts = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').substring(0, 19);
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
     const tag = VALID_SOURCES.has(source) ? source : 'preview';
     return `screenshot_${tag}_${ts}.${ext}`;
   }
 
-  // Toast rendered inside the shadow root so it stacks above the modal/thumb.
   let toastTimer = null;
   function showShadowToast(message, type = 'success') {
     const existing = root.querySelector('.toast');
@@ -426,7 +689,12 @@
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.innerHTML = `
-      <img class="modal-img" alt="Preview" />
+      <div class="modal-stage">
+        <img class="modal-img checker" alt="Preview" />
+      </div>
+      <div class="history-strip">
+        <div class="strip-track" role="list"></div>
+      </div>
       <div class="modal-toolbar">
         <button class="toolbar-btn primary" data-act="download">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -451,10 +719,16 @@
     `;
 
     modal.querySelector('.modal-img').src = currentAsset.objectUrl;
+    renderHistoryStrip(modal.querySelector('.history-strip'));
+    // applyStripBackdrop reads currentModal, so attach the modal first.
+    root.appendChild(modal);
+    currentModal = modal;
+    applyStripBackdrop();
 
     modal.addEventListener('click', async (e) => {
       const btn = e.target.closest('[data-act]');
       if (!btn) {
+        // Backdrop click — close only when clicking the modal background itself.
         if (e.target === modal) closeModal();
         return;
       }
@@ -482,87 +756,64 @@
     };
     document.addEventListener('keydown', escHandler, true);
 
-    root.appendChild(modal);
-    currentModal = modal;
     requestAnimationFrame(() => modal.classList.add('visible'));
-  }
-
-  // ─── Thumbnail ────────────────────────────────────────────────────────────
-  function showThumb() {
-    if (!currentAsset) return;
-
-    // Replace any existing thumbnail cleanly.
-    if (currentThumb) {
-      clearTimer();
-      currentThumb.remove();
-      currentThumb = null;
-    }
-
-    const thumb = document.createElement('div');
-    thumb.className = 'thumb';
-    thumb.innerHTML = `
-      <img class="thumb-img" alt="Preview" />
-      <button class="thumb-close" aria-label="Dismiss preview">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-        </svg>
-      </button>
-      <div class="thumb-progress"></div>
-    `;
-
-    thumb.querySelector('.thumb-img').src = currentAsset.objectUrl;
-
-    thumb.addEventListener('click', (e) => {
-      if (e.target.closest('.thumb-close')) return;
-      openModal();
-      dismissThumb();
-    });
-
-    thumb.querySelector('.thumb-close').addEventListener('click', (e) => {
-      e.stopPropagation();
-      dismissThumb();
-    });
-
-    thumb.addEventListener('mouseenter', pauseTimer);
-    thumb.addEventListener('mouseleave', resumeTimer);
-
-    root.appendChild(thumb);
-    currentThumb = thumb;
-
-    requestAnimationFrame(() => {
-      thumb.classList.add('visible');
-      startTimer(AUTO_DISMISS_MS);
-    });
-  }
-
-  async function dataUrlToAsset(dataUrl, source) {
-    // fetch() decodes base64 off the main thread — much smoother than
-    // setting <a href> or <img src> to a multi-MB data URL.
-    const blob = await (await fetch(dataUrl)).blob();
-    const objectUrl = URL.createObjectURL(blob);
-    return { blob, objectUrl, mimeType: blob.type || 'image/png', source };
   }
 
   // ─── Public API ───────────────────────────────────────────────────────────
   window.elementSnapperPreview = {
-    async show(dataUrl, meta) {
-      if (!dataUrl) return;
-
-      let nextAsset;
+    async show(captureId) {
+      if (!captureId) return;
+      let asset;
       try {
-        nextAsset = await dataUrlToAsset(dataUrl, meta && meta.source);
+        asset = await loadAssetById(captureId);
       } catch (err) {
-        console.error('Element Snapper: preview decode failed', err);
+        console.error('Element Snapper: preview load failed', err);
+        return;
+      }
+      if (!asset) return;
+
+      // Look up source from the history index for filename + history label.
+      const history = await readHistoryIndex();
+      const entry = history.find(e => e.id === captureId);
+      asset.source = entry && entry.source;
+
+      // If a modal is already open, don't yank its foreground asset out from
+      // under the user — the modal-img <src> would dangle once the URL is
+      // revoked. Just refresh the strip so the newcomer is selectable.
+      if (currentModal) {
+        const strip = currentModal.querySelector('.history-strip');
+        if (strip) renderHistoryStrip(strip);
+        URL.revokeObjectURL(asset.objectUrl);  // we won't be using this one
         return;
       }
 
-      // Swap in the new asset, releasing any prior unreferenced one.
-      if (currentAsset) {
-        URL.revokeObjectURL(currentAsset.objectUrl);
-      }
-      currentAsset = nextAsset;
+      // No modal open — safe to replace the foreground asset and pop a
+      // new thumbnail. (showThumb removes any prior thumb DOM.)
+      if (currentAsset) URL.revokeObjectURL(currentAsset.objectUrl);
+      currentAsset = asset;
 
       showThumb();
+    },
+
+    // Allow other content scripts (e.g. the floating panel) to open the
+    // preview at the newest capture without taking a fresh one.
+    async openHistory() {
+      const history = await readHistoryIndex();
+      if (!history.length) {
+        showShadowToast('No captures in history yet', 'error');
+        return;
+      }
+      const newest = history[history.length - 1];
+      const asset = await loadAssetById(newest.id);
+      if (!asset) {
+        showShadowToast('History is empty', 'error');
+        return;
+      }
+      asset.source = newest.source;
+      if (currentAsset) URL.revokeObjectURL(currentAsset.objectUrl);
+      currentAsset = asset;
+
+      if (!currentModal) openModal();
     },
   };
 })();

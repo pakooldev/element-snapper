@@ -4,6 +4,52 @@
  * Uses capture+crop technique with DPR-aware math
  */
 
+// ─── Capture history (chrome.storage.session) ──────────────────────────────
+// Storage layout:
+//   history       : array of { id, timestamp, source, mimeType, size }
+//   capture:{id}  : the dataURL bytes for that entry
+// Entries are evicted oldest-first when total bytes exceed the budget so the
+// number of captures retained scales inversely with their size.
+const HISTORY_BYTE_BUDGET = 8 * 1024 * 1024;  // 8 MB — sized to fit under
+                                              // chrome.storage.session's 10 MB
+                                              // default with metadata headroom.
+const HISTORY_HARD_COUNT_CAP = 30;            // safety net independent of size
+
+// Allow content scripts to read session storage directly so they can render
+// history thumbnails without round-tripping multi-MB payloads through messaging.
+chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' })
+  .catch(err => console.warn('Element Snapper: session access level setup failed:', err));
+
+async function saveToHistory({ dataUrl, source, mimeType, byteSize }) {
+  const id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : `cap_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const entry = {
+    id,
+    timestamp: Date.now(),
+    source: source || 'capture',
+    mimeType: mimeType || 'image/png',
+    size: byteSize || 0,
+  };
+
+  const stored = await chrome.storage.session.get('history');
+  const next = Array.isArray(stored.history) ? [...stored.history, entry] : [entry];
+
+  const totalBytes = (list) => list.reduce((s, e) => s + (e.size || 0), 0);
+  const removedIds = [];
+  while (next.length > HISTORY_HARD_COUNT_CAP || totalBytes(next) > HISTORY_BYTE_BUDGET) {
+    const evicted = next.shift();
+    if (!evicted) break;
+    removedIds.push(`capture:${evicted.id}`);
+  }
+
+  if (removedIds.length) await chrome.storage.session.remove(removedIds);
+  await chrome.storage.session.set({
+    history: next,
+    [`capture:${id}`]: dataUrl,
+  });
+
+  return id;
+}
+
 /**
  * Message handler
  * Processes capture requests from content script
@@ -146,21 +192,33 @@ async function handleViewportOrPageCapture(data, tabId) {
       throw new Error('Invalid capture mode');
     }
 
-    // Pre-compute dataURL once if preview is enabled — clipboard/download paths reuse it.
-    const previewDataUrl = showPreview ? await blobToDataURL(captureBlob) : null;
+    // Pre-compute dataURL once if preview is enabled — clipboard/download
+    // paths and history all reuse the single encoding.
+    const dataUrl = showPreview ? await blobToDataURL(captureBlob) : null;
 
     // Save to downloads or copy to clipboard based on settings
     let action;
     if (copyToClipboard) {
-      await copyImageToClipboard(captureBlob, previewDataUrl);
+      await copyImageToClipboard(captureBlob, dataUrl);
       action = 'copy';
     } else {
-      await downloadImage(captureBlob, filename, previewDataUrl);
+      await downloadImage(captureBlob, filename, dataUrl);
       action = 'download';
     }
-    return previewDataUrl
-      ? { success: true, action, previewDataUrl }
-      : { success: true, action };
+
+    // Persist to history (and surface its id) only when preview is enabled —
+    // history is the data source for the preview UI's history view.
+    let captureId = null;
+    if (dataUrl) {
+      const source = data.captureMode === 'fullpage' ? 'fullpage' : 'viewport';
+      captureId = await saveToHistory({
+        dataUrl,
+        source,
+        mimeType: captureBlob.type,
+        byteSize: captureBlob.size,
+      });
+    }
+    return captureId ? { success: true, action, captureId } : { success: true, action };
   } catch (error) {
     console.error('Capture failed:', error);
     return { success: false, error: error.message };
@@ -370,22 +428,31 @@ async function handleElementCapture(data, tabId) {
       croppedBlob = await cropImageToElement(dataUrl, data, outputFormat, outputQuality);
     }
 
-    // Pre-compute dataURL once if preview is enabled — clipboard/download paths reuse it.
-    const previewDataUrl = showPreview ? await blobToDataURL(croppedBlob) : null;
+    // Pre-compute dataURL once if preview is enabled — clipboard/download
+    // paths and history all reuse the single encoding.
+    const dataUrl = showPreview ? await blobToDataURL(croppedBlob) : null;
 
     // Save to downloads or copy to clipboard based on settings
     let action;
     if (copyToClipboard) {
-      await copyImageToClipboard(croppedBlob, previewDataUrl);
+      await copyImageToClipboard(croppedBlob, dataUrl);
       action = 'copy';
     } else {
       const filename = generateFilename(data.elementInfo, outputFormat);
-      await downloadImage(croppedBlob, filename, previewDataUrl);
+      await downloadImage(croppedBlob, filename, dataUrl);
       action = 'download';
     }
-    return previewDataUrl
-      ? { success: true, action, previewDataUrl }
-      : { success: true, action };
+
+    let captureId = null;
+    if (dataUrl) {
+      captureId = await saveToHistory({
+        dataUrl,
+        source: 'element',
+        mimeType: croppedBlob.type,
+        byteSize: croppedBlob.size,
+      });
+    }
+    return captureId ? { success: true, action, captureId } : { success: true, action };
   } catch (error) {
     console.error('Capture failed:', error);
     return { success: false, error: error.message };
@@ -409,13 +476,14 @@ async function handleRegionCapture(data, tabId) {
     const showPreview = settings.showPreview ?? true;
 
     // Capture the visible tab
-    const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
+    const rawDataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
 
     // Reuse cropImageToElement — the region rect is viewport-relative,
     // which is the same coordinate space as a single-tile element capture
-    const croppedBlob = await cropImageToElement(dataUrl, data, outputFormat, outputQuality);
+    const croppedBlob = await cropImageToElement(rawDataUrl, data, outputFormat, outputQuality);
 
-    // Pre-compute dataURL once if preview is enabled — clipboard/download paths reuse it.
+    // Pre-compute dataURL once if preview is enabled — clipboard/download
+    // paths and history all reuse the single encoding.
     const previewDataUrl = showPreview ? await blobToDataURL(croppedBlob) : null;
 
     // Save to downloads or copy to clipboard based on settings
@@ -428,9 +496,17 @@ async function handleRegionCapture(data, tabId) {
       await downloadImage(croppedBlob, filename, previewDataUrl);
       action = 'download';
     }
-    return previewDataUrl
-      ? { success: true, action, previewDataUrl }
-      : { success: true, action };
+
+    let captureId = null;
+    if (previewDataUrl) {
+      captureId = await saveToHistory({
+        dataUrl: previewDataUrl,
+        source: 'region',
+        mimeType: croppedBlob.type,
+        byteSize: croppedBlob.size,
+      });
+    }
+    return captureId ? { success: true, action, captureId } : { success: true, action };
   } catch (error) {
     console.error('Region capture failed:', error);
     return { success: false, error: error.message };

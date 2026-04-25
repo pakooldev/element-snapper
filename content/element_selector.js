@@ -262,8 +262,8 @@ class ElementSelector {
         if (response.action === 'download') {
           showNotification('Screenshot saved to downloads', 'success');
         }
-        if (response.previewDataUrl && window.elementSnapperPreview) {
-          window.elementSnapperPreview.show(response.previewDataUrl, { source: 'element' });
+        if (response.captureId && window.elementSnapperPreview) {
+          window.elementSnapperPreview.show(response.captureId);
         }
         chrome.runtime.sendMessage({ action: 'captureSuccess' });
       } else {
