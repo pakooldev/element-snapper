@@ -74,23 +74,28 @@ async function sendToContentScript(message) {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   try {
     // Try to contact existing content script first
+    let alreadyInjected = true;
     try {
       await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
     } catch (e) {
-      // If no content script is present, inject the scripts into the active tab.
-      // This uses the user's gesture (popup click) and the `activeTab` + `scripting` permission.
+      alreadyInjected = false;
+    }
+
+    if (!alreadyInjected) {
+      // First-time injection on this tab. Uses the user's gesture (popup click)
+      // plus the `activeTab` + `scripting` permission.
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         files: ['content/utils.js', 'content/element_selector.js', 'content/region_selector.js', 'content/content-main.js', 'content/preview.js']
       });
+    } else {
+      // Backward-compat: tabs that were injected before preview.js existed
+      // still need it. The IIFE no-ops if already present.
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content/preview.js']
+      });
     }
-
-    // Ensure preview.js is loaded even on tabs where the other content scripts
-    // were injected before preview.js was added. The IIFE no-ops if already present.
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ['content/preview.js']
-    });
 
     // Now send the original message
     return await chrome.tabs.sendMessage(tab.id, message);
@@ -135,7 +140,7 @@ async function loadSettings() {
 
   clipboardCheckbox.checked = settings.copyToClipboard !== undefined ? settings.copyToClipboard : true;
 
-  showPreviewCheckbox.checked = settings.showPreview ?? false;
+  showPreviewCheckbox.checked = settings.showPreview ?? true;
 }
 
 /**

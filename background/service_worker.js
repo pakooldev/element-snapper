@@ -107,7 +107,7 @@ async function handleViewportOrPageCapture(data, tabId) {
     const outputFormat = settings.format || 'png';
     const outputQuality = settings.quality || 95;
     const copyToClipboard = settings.copyToClipboard ?? true;
-    const showPreview = settings.showPreview ?? false;
+    const showPreview = settings.showPreview ?? true;
 
     let captureBlob;
     let filename;
@@ -353,7 +353,7 @@ async function handleElementCapture(data, tabId) {
     const outputQuality = settings.quality || 95;
     const fullCapture = settings.fullCapture || false;
     const copyToClipboard = settings.copyToClipboard ?? true;
-    const showPreview = settings.showPreview ?? false;
+    const showPreview = settings.showPreview ?? true;
 
     // Determine if multi-capture is needed
     const needsMultiCapture = fullCapture && (
@@ -406,7 +406,7 @@ async function handleRegionCapture(data, tabId) {
     const outputFormat = settings.format || 'png';
     const outputQuality = settings.quality || 95;
     const copyToClipboard = settings.copyToClipboard ?? true;
-    const showPreview = settings.showPreview ?? false;
+    const showPreview = settings.showPreview ?? true;
 
     // Capture the visible tab
     const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });

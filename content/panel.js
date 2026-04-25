@@ -774,7 +774,7 @@
     if (s.fullCapture !== undefined)  fullCaptureCheckbox.checked = s.fullCapture;
     if (s.debugMode   !== undefined)  debugModeCheckbox.checked   = s.debugMode;
     clipboardCheckbox.checked = s.copyToClipboard !== undefined ? s.copyToClipboard : true;
-    showPreviewCheckbox.checked = s.showPreview ?? false;
+    showPreviewCheckbox.checked = s.showPreview ?? true;
   }
 
   async function saveSettings() {
