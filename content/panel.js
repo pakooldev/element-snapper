@@ -256,6 +256,32 @@
 
     .switch-input { display: none; }
 
+    /* ── Link-style button (subtle, footer-row affordance) ── */
+    .link-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      margin-top: 4px;
+      padding: 8px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      transition: color 0.2s, background 0.2s;
+    }
+    .link-btn:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .link-btn svg { opacity: 0.6; transition: opacity 0.2s; }
+    .link-btn:hover svg { opacity: 1; }
+
     .toggle-switch {
       width: 44px; height: 24px;
       background: var(--bg-dark);
@@ -510,6 +536,14 @@
                   <div class="toggle-switch"></div>
                 </label>
               </div>
+
+              <button class="link-btn" id="historyBtn" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+                  <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <span>View history</span>
+              </button>
             </main>
           </div>
 
@@ -676,6 +710,7 @@
   const fullCaptureCheckbox = $('fullCaptureCheckbox');
   const debugModeCheckbox = $('debugModeCheckbox');
   const clipboardCheckbox = $('clipboardCheckbox');
+  const historyBtn        = $('historyBtn');
   const showPreviewCheckbox = $('showPreviewCheckbox');
   const formatRadios      = $$('input[name="format"]');
   const viewsWrapper      = $('viewsWrapper');
@@ -1049,6 +1084,26 @@
   debugModeCheckbox.addEventListener('change', saveSettings);
   clipboardCheckbox.addEventListener('change', saveSettings);
   showPreviewCheckbox.addEventListener('change', saveSettings);
+
+  // History link — hide the panel while the modal is up so it doesn't sit on
+  // top of the image (both hosts are at z-index max int; later DOM order wins,
+  // and the panel host is later). preview.js dispatches modal-closed when the
+  // user dismisses it; we restore the panel only if we were the ones who hid it.
+  let panelHiddenForHistory = false;
+  historyBtn.addEventListener('click', () => {
+    if (typeof window.elementSnapperPreview === 'undefined') return;
+    if (host.style.display !== 'none') {
+      panelHiddenForHistory = true;
+      hidePanel();
+    }
+    window.elementSnapperPreview.openHistory();
+  });
+  document.addEventListener('element-snapper:modal-closed', () => {
+    if (panelHiddenForHistory) {
+      panelHiddenForHistory = false;
+      showPanel();
+    }
+  });
 
   // ─── Chrome message listener ──────────────────────────────────────────────
   // Receives notifications relayed from the service worker and togglePanel from service worker.

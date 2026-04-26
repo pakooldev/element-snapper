@@ -528,6 +528,9 @@
         URL.revokeObjectURL(currentAsset.objectUrl);
         currentAsset = null;
       }
+      // Notify other content scripts (e.g. the floating panel) that the
+      // modal is gone — they may have hidden themselves to avoid overlap.
+      document.dispatchEvent(new CustomEvent('element-snapper:modal-closed'));
     }, 250);
   }
 
