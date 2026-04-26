@@ -399,6 +399,7 @@
   let dismissDeadline = 0;
   let dismissRemaining = AUTO_DISMISS_MS;
   let escHandler = null;
+  let toolbarMode = 'default';    // 'default' | 'confirm' — kept in sync by setToolbarMode
 
   function clearTimer() {
     if (dismissTimer) {
@@ -545,6 +546,7 @@
     if (!currentModal) return;
     const modal = currentModal;
     currentModal = null;
+    toolbarMode = 'default';
     modal.classList.remove('visible');
     if (escHandler) {
       document.removeEventListener('keydown', escHandler, true);
@@ -626,9 +628,8 @@
             showShadowToast('That capture is no longer in history', 'error');
             return;
           }
-          asset.source = entry.source;
           if (currentAsset) URL.revokeObjectURL(currentAsset.objectUrl);
-          currentAsset = asset;
+          currentAsset = { ...asset, source: entry.source };
           if (currentModal) {
             const mainImg = currentModal.querySelector('.modal-img');
             if (mainImg) mainImg.src = asset.objectUrl;
@@ -802,11 +803,17 @@
       } else if (act === 'cancel-remove') {
         setToolbarMode('default');
       } else if (act === 'confirm-remove') {
+        btn.disabled = true;
         try {
           await removeCurrentFromHistory();
         } catch (err) {
           showShadowToast('Failed to remove: ' + err.message, 'error');
+          // If the asset was already nulled before the failure, the toolbar's
+          // default actions would target nothing — close the modal instead.
+          if (!currentAsset) { closeModal(); return; }
           setToolbarMode('default');
+        } finally {
+          btn.disabled = false;
         }
       }
     });
@@ -828,9 +835,7 @@
   }
 
   function getToolbarMode() {
-    if (!currentModal) return 'default';
-    const confirmSeg = currentModal.querySelector('.toolbar-segment[data-mode="confirm"]');
-    return confirmSeg && !confirmSeg.hidden ? 'confirm' : 'default';
+    return toolbarMode;
   }
 
   function setToolbarMode(mode) {
@@ -838,18 +843,18 @@
     const def = currentModal.querySelector('.toolbar-segment[data-mode="default"]');
     const cnf = currentModal.querySelector('.toolbar-segment[data-mode="confirm"]');
     if (!def || !cnf) return;
-    if (mode === 'confirm') {
-      def.hidden = true;
-      cnf.hidden = false;
-    } else {
-      def.hidden = false;
-      cnf.hidden = true;
-    }
+    const next = mode === 'confirm' ? 'confirm' : 'default';
+    def.hidden = next === 'confirm';
+    cnf.hidden = next !== 'confirm';
+    toolbarMode = next;
   }
 
   async function removeCurrentFromHistory() {
     if (!currentAsset) return;
     const removedId = currentAsset.id;
+    // Guard against an asset without an id — would otherwise produce
+    // `capture:undefined` and silently leave an orphaned blob in storage.
+    if (!removedId) throw new Error('Asset has no id');
 
     // Drop the entry from the index and the dataURL blob from session storage.
     const history = await readHistoryIndex();
@@ -882,8 +887,7 @@
       closeModal();
       return;
     }
-    replacement.source = newest.source;
-    currentAsset = replacement;
+    currentAsset = { ...replacement, source: newest.source };
 
     const mainImg = currentModal.querySelector('.modal-img');
     if (mainImg) mainImg.src = replacement.objectUrl;
@@ -909,7 +913,6 @@
       // Look up source from the history index for filename + history label.
       const history = await readHistoryIndex();
       const entry = history.find(e => e.id === captureId);
-      asset.source = entry && entry.source;
 
       // If a modal is already open, don't yank its foreground asset out from
       // under the user — the modal-img <src> would dangle once the URL is
@@ -924,7 +927,7 @@
       // No modal open — safe to replace the foreground asset and pop a
       // new thumbnail. (showThumb removes any prior thumb DOM.)
       if (currentAsset) URL.revokeObjectURL(currentAsset.objectUrl);
-      currentAsset = asset;
+      currentAsset = { ...asset, source: entry && entry.source };
 
       showThumb();
     },
@@ -943,9 +946,8 @@
         showShadowToast('History is empty', 'error');
         return;
       }
-      asset.source = newest.source;
       if (currentAsset) URL.revokeObjectURL(currentAsset.objectUrl);
-      currentAsset = asset;
+      currentAsset = { ...asset, source: newest.source };
 
       if (!currentModal) openModal();
     },
