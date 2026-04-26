@@ -300,6 +300,35 @@
     .toolbar-btn:active { transform: scale(0.97); }
     .toolbar-btn[hidden] { display: none; }
 
+    /* Remove (destructive) — quiet by default; hint at destructive on hover. */
+    .toolbar-btn.destructive:hover {
+      color: #fecaca;
+      border-color: var(--error);
+      background: rgba(239, 68, 68, 0.1);
+    }
+    .toolbar-btn.danger {
+      background: var(--error);
+      border-color: transparent;
+      color: white;
+    }
+    .toolbar-btn.danger:hover {
+      background: #dc2626;
+      border-color: transparent;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
+    /* Confirm strip — same toolbar shell, different children. */
+    .toolbar-segment { display: flex; gap: 8px; align-items: center; }
+    .toolbar-segment[hidden] { display: none; }
+
+    .toolbar-prompt {
+      padding: 0 8px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
     /* ── In-shadow toast (renders above thumbnail/modal in stacking order) ── */
     .toast {
       position: fixed;
@@ -699,25 +728,43 @@
         <div class="strip-track" role="list"></div>
       </div>
       <div class="modal-toolbar">
-        <button class="toolbar-btn primary" data-act="download">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Download
-        </button>
-        <button class="toolbar-btn" data-act="copy">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
-            <path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          Copy
-        </button>
-        <button class="toolbar-btn" data-act="close">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          Close
-        </button>
+        <div class="toolbar-segment" data-mode="default">
+          <button class="toolbar-btn primary" data-act="download">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Download
+          </button>
+          <button class="toolbar-btn" data-act="copy">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
+              <path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Copy
+          </button>
+          <button class="toolbar-btn destructive" data-act="remove">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Remove
+          </button>
+          <button class="toolbar-btn" data-act="close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Close
+          </button>
+        </div>
+        <div class="toolbar-segment" data-mode="confirm" hidden>
+          <span class="toolbar-prompt">Remove this capture from history?</span>
+          <button class="toolbar-btn danger" data-act="confirm-remove">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Remove
+          </button>
+          <button class="toolbar-btn" data-act="cancel-remove">Cancel</button>
+        </div>
       </div>
     `;
 
@@ -731,8 +778,10 @@
     modal.addEventListener('click', async (e) => {
       const btn = e.target.closest('[data-act]');
       if (!btn) {
-        // Backdrop click — close only when clicking the modal background itself.
-        if (e.target === modal) closeModal();
+        // Backdrop click — close only when clicking the modal background itself,
+        // and only while in default toolbar mode (don't lose an in-progress
+        // confirmation by accident).
+        if (e.target === modal && getToolbarMode() === 'default') closeModal();
         return;
       }
       const act = btn.getAttribute('data-act');
@@ -748,18 +797,100 @@
         } catch (err) {
           showShadowToast('Failed to copy: ' + err.message, 'error');
         }
+      } else if (act === 'remove') {
+        setToolbarMode('confirm');
+      } else if (act === 'cancel-remove') {
+        setToolbarMode('default');
+      } else if (act === 'confirm-remove') {
+        try {
+          await removeCurrentFromHistory();
+        } catch (err) {
+          showShadowToast('Failed to remove: ' + err.message, 'error');
+          setToolbarMode('default');
+        }
       }
     });
 
     escHandler = (e) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        closeModal();
+        // Escape during confirm mode cancels the prompt without closing.
+        if (getToolbarMode() === 'confirm') {
+          setToolbarMode('default');
+        } else {
+          closeModal();
+        }
       }
     };
     document.addEventListener('keydown', escHandler, true);
 
     requestAnimationFrame(() => modal.classList.add('visible'));
+  }
+
+  function getToolbarMode() {
+    if (!currentModal) return 'default';
+    const confirmSeg = currentModal.querySelector('.toolbar-segment[data-mode="confirm"]');
+    return confirmSeg && !confirmSeg.hidden ? 'confirm' : 'default';
+  }
+
+  function setToolbarMode(mode) {
+    if (!currentModal) return;
+    const def = currentModal.querySelector('.toolbar-segment[data-mode="default"]');
+    const cnf = currentModal.querySelector('.toolbar-segment[data-mode="confirm"]');
+    if (!def || !cnf) return;
+    if (mode === 'confirm') {
+      def.hidden = true;
+      cnf.hidden = false;
+    } else {
+      def.hidden = false;
+      cnf.hidden = true;
+    }
+  }
+
+  async function removeCurrentFromHistory() {
+    if (!currentAsset) return;
+    const removedId = currentAsset.id;
+
+    // Drop the entry from the index and the dataURL blob from session storage.
+    const history = await readHistoryIndex();
+    const next = history.filter(e => e.id !== removedId);
+    await chrome.storage.session.set({ history: next });
+    await chrome.storage.session.remove(`capture:${removedId}`);
+
+    // Free any cached blob URLs that referenced the removed entry.
+    const cachedTile = tileAssets.get(removedId);
+    if (cachedTile) {
+      URL.revokeObjectURL(cachedTile.objectUrl);
+      tileAssets.delete(removedId);
+    }
+    URL.revokeObjectURL(currentAsset.objectUrl);
+    currentAsset = null;
+
+    // No history left — close the modal entirely.
+    if (!next.length) {
+      showShadowToast('Capture removed', 'success');
+      closeModal();
+      return;
+    }
+
+    // Promote the newest remaining entry to the foreground. Predictable for
+    // the user — easier than guessing a "next/prev neighbor" rule.
+    const newest = next[next.length - 1];
+    const replacement = await loadAssetById(newest.id);
+    if (!replacement) {
+      // Storage entry vanished out from under us — fall back to closing.
+      closeModal();
+      return;
+    }
+    replacement.source = newest.source;
+    currentAsset = replacement;
+
+    const mainImg = currentModal.querySelector('.modal-img');
+    if (mainImg) mainImg.src = replacement.objectUrl;
+    applyStripBackdrop();
+    renderHistoryStrip(currentModal.querySelector('.history-strip'));
+    setToolbarMode('default');
+    showShadowToast('Capture removed', 'success');
   }
 
   // ─── Public API ───────────────────────────────────────────────────────────
