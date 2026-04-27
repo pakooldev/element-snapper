@@ -277,7 +277,9 @@ async function captureFullPage(data, tabId, format, quality) {
   console.log(`Full page capture: ${documentDimensions.width}×${documentDimensions.height}px → ${finalWidth}×${finalHeight}px physical`);
 
   let debuggerAttached = false;
+  let screenshotBase64 = null;
 
+  // Phase 1: attach debugger, capture raw data, detach immediately.
   try {
     await chrome.tabs.sendMessage(tabId, { action: 'hideScrollbars' });
 
@@ -310,15 +312,10 @@ async function captureFullPage(data, tabId, format, quality) {
       quality: format === 'jpg' ? quality : undefined,
       captureBeyondViewport: true,
     });
-
-    const binaryString = atob(result.data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return new Blob([bytes.buffer], { type: format === 'jpg' ? 'image/jpeg' : 'image/png' });
+    screenshotBase64 = result.data;
 
   } finally {
+    // Detach as soon as raw data is in hand — before blob conversion or preview.
     if (debuggerAttached) {
       await sendDebugCommand(tabId, 'Emulation.clearDeviceMetricsOverride').catch(() => {});
       await detachDebugger(tabId).catch(e => console.warn('Failed to detach debugger:', e));
@@ -330,6 +327,14 @@ async function captureFullPage(data, tabId, format, quality) {
       console.warn('Failed to restore page state:', e);
     }
   }
+
+  // Phase 2: convert base64 → Blob. Debugger is already detached at this point.
+  const binaryString = atob(screenshotBase64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return new Blob([bytes.buffer], { type: format === 'jpg' ? 'image/jpeg' : 'image/png' });
 }
 
 /**
