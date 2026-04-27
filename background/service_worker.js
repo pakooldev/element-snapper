@@ -264,7 +264,7 @@ function sendDebugCommand(tabId, method, params = {}) {
  * @returns {Promise<Blob>} Full page image
  */
 async function captureFullPage(data, tabId, format, quality) {
-  const { documentDimensions, viewport, devicePixelRatio: dpr } = data;
+  const { documentDimensions, devicePixelRatio: dpr } = data;
 
   const finalWidth = Math.round(documentDimensions.width * dpr);
   const finalHeight = Math.round(documentDimensions.height * dpr);
