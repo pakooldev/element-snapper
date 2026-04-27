@@ -276,12 +276,25 @@ async function captureFullPage(data, tabId, format, quality) {
 
   console.log(`Full page capture: ${documentDimensions.width}×${documentDimensions.height}px → ${finalWidth}×${finalHeight}px physical`);
 
+  let debuggerAttached = false;
+
   try {
     await chrome.tabs.sendMessage(tabId, { action: 'hideScrollbars' });
-    await attachDebugger(tabId);
+
+    try {
+      await attachDebugger(tabId);
+      debuggerAttached = true;
+    } catch (e) {
+      if (e.message && e.message.includes('Another debugger')) {
+        throw new Error('Cannot capture: DevTools is open on this tab. Close DevTools and try again.');
+      }
+      throw e;
+    }
 
     // Expand the emulated viewport to the full page height so the browser
     // reflows and renders all content in one pass before capture.
+    // captureBeyondViewport ensures off-screen content is included even if
+    // the resize alone doesn't fully extend the rendering surface.
     await sendDebugCommand(tabId, 'Emulation.setDeviceMetricsOverride', {
       width: Math.ceil(documentDimensions.width),
       height: Math.ceil(documentDimensions.height),
@@ -295,6 +308,7 @@ async function captureFullPage(data, tabId, format, quality) {
     const result = await sendDebugCommand(tabId, 'Page.captureScreenshot', {
       format: format === 'jpg' ? 'jpeg' : 'png',
       quality: format === 'jpg' ? quality : undefined,
+      captureBeyondViewport: true,
     });
 
     const binaryString = atob(result.data);
@@ -305,12 +319,15 @@ async function captureFullPage(data, tabId, format, quality) {
     return new Blob([bytes.buffer], { type: format === 'jpg' ? 'image/jpeg' : 'image/png' });
 
   } finally {
-    await sendDebugCommand(tabId, 'Emulation.clearDeviceMetricsOverride').catch(() => {});
-    await detachDebugger(tabId).catch(e => console.warn('Failed to detach debugger:', e));
+    if (debuggerAttached) {
+      await sendDebugCommand(tabId, 'Emulation.clearDeviceMetricsOverride').catch(() => {});
+      await detachDebugger(tabId).catch(e => console.warn('Failed to detach debugger:', e));
+    }
     try {
       await chrome.tabs.sendMessage(tabId, { action: 'showScrollbars' });
+      await chrome.tabs.sendMessage(tabId, { action: 'scrollToPosition', x: 0, y: 0 });
     } catch (e) {
-      console.warn('Failed to restore scrollbars:', e);
+      console.warn('Failed to restore page state:', e);
     }
   }
 }
