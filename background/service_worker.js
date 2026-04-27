@@ -225,24 +225,47 @@ async function handleViewportOrPageCapture(data, tabId) {
   }
 }
 
+// ─── Chrome DevTools Protocol helpers ────────────────────────────────────────
+function attachDebugger(tabId) {
+  return new Promise((resolve, reject) => {
+    chrome.debugger.attach({ tabId }, '1.3', () => {
+      if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+      else resolve();
+    });
+  });
+}
+
+function detachDebugger(tabId) {
+  return new Promise((resolve, reject) => {
+    chrome.debugger.detach({ tabId }, () => {
+      if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+      else resolve();
+    });
+  });
+}
+
+function sendDebugCommand(tabId, method, params = {}) {
+  return new Promise((resolve, reject) => {
+    chrome.debugger.sendCommand({ tabId }, method, params, result => {
+      if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+      else resolve(result);
+    });
+  });
+}
+
 /**
- * Capture full page using multi-capture stitching
+ * Capture full page in a single shot using the Chrome DevTools Protocol.
+ * Attaches the debugger, calls Page.captureScreenshot with captureBeyondViewport,
+ * then detaches — no scrolling or tile stitching required.
  * @param {object} data - Capture data from content script
  * @param {number} tabId - Tab ID for capturing
  * @param {string} format - Output format (png/jpg)
  * @param {number} quality - Output quality (1-100)
- * @returns {Promise<Blob>} Stitched full page image
+ * @returns {Promise<Blob>} Full page image
  */
 async function captureFullPage(data, tabId, format, quality) {
   const { documentDimensions, viewport, devicePixelRatio: dpr } = data;
 
-  // Calculate tile grid for entire document
-  const tilesX = Math.ceil(documentDimensions.width / viewport.width);
-  const tilesY = Math.ceil(documentDimensions.height / viewport.height);
-
-  console.log(`Full page capture: ${tilesX}×${tilesY} tiles for ${documentDimensions.width}×${documentDimensions.height}px page`);
-
-  // Validate final canvas size
   const finalWidth = Math.round(documentDimensions.width * dpr);
   const finalHeight = Math.round(documentDimensions.height * dpr);
   const MAX_DIMENSION = 16384;
@@ -251,128 +274,41 @@ async function captureFullPage(data, tabId, format, quality) {
     throw new Error(`Page too large: ${finalWidth}×${finalHeight}px exceeds max ${MAX_DIMENSION}px`);
   }
 
-  // Create final canvas for stitching
-  const finalCanvas = new OffscreenCanvas(finalWidth, finalHeight);
-  const finalCtx = finalCanvas.getContext('2d');
+  console.log(`Full page capture: ${documentDimensions.width}×${documentDimensions.height}px → ${finalWidth}×${finalHeight}px physical`);
 
   try {
-    // Hide scrollbars before capturing tiles
     await chrome.tabs.sendMessage(tabId, { action: 'hideScrollbars' });
+    await attachDebugger(tabId);
 
-    // Track cumulative Y position to avoid rounding gaps
-    let cumulativeY = 0;
-
-    // Capture each tile
-    for (let tileY = 0; tileY < tilesY; tileY++) {
-      // Calculate row height for this row
-      const rowHeight = Math.min(viewport.height, documentDimensions.height - (tileY * viewport.height));
-      const rowHeightPhysical = Math.ceil(rowHeight * dpr);
-
-      for (let tileX = 0; tileX < tilesX; tileX++) {
-        // Calculate scroll position for this tile
-        const targetScrollX = tileX * viewport.width;
-        const targetScrollY = tileY * viewport.height;
-
-        console.log(`Capturing tile (${tileX},${tileY}): scrolling to (${targetScrollX}, ${targetScrollY})`);
-
-        // Request content script to scroll
-        const scrollResponse = await chrome.tabs.sendMessage(tabId, {
-          action: 'scrollToPosition',
-          x: targetScrollX,
-          y: targetScrollY
-        });
-
-        const actualScrollX = scrollResponse.scroll.x;
-        const actualScrollY = scrollResponse.scroll.y;
-
-        // Calculate visible size in this tile
-        const visibleWidth = Math.min(
-          viewport.width,
-          documentDimensions.width - (tileX * viewport.width)
-        );
-        const visibleHeight = Math.min(
-          viewport.height,
-          documentDimensions.height - (tileY * viewport.height)
-        );
-
-        // Wait for dynamic content and Chrome's capture rate limit
-        await new Promise(resolve => setTimeout(resolve, 600));
-
-        // Capture visible tab at this scroll position
-        const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
-        const blob = await fetch(dataUrl).then(r => r.blob());
-        const imageBitmap = await createImageBitmap(blob);
-
-        // Calculate where this region appears in the captured viewport
-        const viewportOffsetX = (tileX * viewport.width) - actualScrollX;
-        const viewportOffsetY = (tileY * viewport.height) - actualScrollY;
-
-        // Source region (physical pixels)
-        const sx = Math.floor(viewportOffsetX * dpr);
-        const sy = Math.floor(viewportOffsetY * dpr);
-        const sWidth = Math.ceil(visibleWidth * dpr);
-        const sHeight = Math.ceil(visibleHeight * dpr);
-
-        // Destination position on final canvas
-        const dx = Math.floor(tileX * viewport.width * dpr);
-        const dy = cumulativeY;
-
-        // Destination size
-        const dWidth = Math.ceil(visibleWidth * dpr);
-        const dHeight = Math.ceil(visibleHeight * dpr);
-
-        // Validate and draw
-        if (sx >= 0 && sy >= 0 && sx + sWidth <= imageBitmap.width && sy + sHeight <= imageBitmap.height) {
-          finalCtx.drawImage(
-            imageBitmap,
-            sx, sy, sWidth, sHeight,
-            dx, dy, dWidth, dHeight
-          );
-        } else {
-          // Clamp to valid region
-          const clampedSX = Math.max(0, Math.min(sx, imageBitmap.width - 1));
-          const clampedSY = Math.max(0, Math.min(sy, imageBitmap.height - 1));
-          const clampedWidth = Math.min(sWidth, imageBitmap.width - clampedSX);
-          const clampedHeight = Math.min(sHeight, imageBitmap.height - clampedSY);
-
-          if (clampedWidth > 0 && clampedHeight > 0) {
-            finalCtx.drawImage(
-              imageBitmap,
-              clampedSX, clampedSY, clampedWidth, clampedHeight,
-              dx, dy, dWidth, dHeight
-            );
-          }
-        }
-
-        imageBitmap.close();
-      }
-
-      cumulativeY += rowHeightPhysical;
-    }
-
-    // Convert final canvas to blob
-    const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/png';
-    const qualityParam = format === 'jpg' ? quality / 100 : undefined;
-
-    const stitchedBlob = await finalCanvas.convertToBlob({
-      type: mimeType,
-      quality: qualityParam
+    // Expand the emulated viewport to the full page height so the browser
+    // reflows and renders all content in one pass before capture.
+    await sendDebugCommand(tabId, 'Emulation.setDeviceMetricsOverride', {
+      width: Math.ceil(documentDimensions.width),
+      height: Math.ceil(documentDimensions.height),
+      deviceScaleFactor: dpr,
+      mobile: false,
     });
 
-    // Cleanup
-    finalCanvas.width = 0;
-    finalCanvas.height = 0;
+    // Allow the page to reflow after the viewport resize.
+    await new Promise(resolve => setTimeout(resolve, 200));
 
-    console.log(`Full page capture complete: ${finalWidth}×${finalHeight}px`);
+    const result = await sendDebugCommand(tabId, 'Page.captureScreenshot', {
+      format: format === 'jpg' ? 'jpeg' : 'png',
+      quality: format === 'jpg' ? quality : undefined,
+    });
 
-    return stitchedBlob;
+    const binaryString = atob(result.data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return new Blob([bytes.buffer], { type: format === 'jpg' ? 'image/jpeg' : 'image/png' });
 
   } finally {
-    // Always restore scrollbars
+    await sendDebugCommand(tabId, 'Emulation.clearDeviceMetricsOverride').catch(() => {});
+    await detachDebugger(tabId).catch(e => console.warn('Failed to detach debugger:', e));
     try {
       await chrome.tabs.sendMessage(tabId, { action: 'showScrollbars' });
-      // Scroll back to top
-      await chrome.tabs.sendMessage(tabId, { action: 'scrollToPosition', x: 0, y: 0 });
     } catch (e) {
       console.warn('Failed to restore scrollbars:', e);
     }

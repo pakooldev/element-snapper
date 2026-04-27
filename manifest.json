@@ -9,7 +9,8 @@
     "scripting",
     "downloads",
     "storage",
-    "clipboardWrite"
+    "clipboardWrite",
+    "debugger"
   ],
 
   "action": {
