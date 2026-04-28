@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Element Snapper",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Capture pixel-perfect screenshots of elements, viewport, or full pages with clipboard support and delayed capture",
 
   "permissions": [

@@ -1,5 +1,16 @@
 [
   {
+    "version": "v1.4.0",
+    "date": "2026-04-27",
+    "summary": "Capture previews and a session history browser let you review, re-download, or copy recent screenshots without recapturing — plus a new CDP-based full-page engine that's dramatically faster with no stitching artifacts.",
+    "highlights": [
+      "macOS-style capture preview thumbnail",
+      "Session-scoped capture history browser",
+      "Remove individual captures from history",
+      "Single-shot CDP full-page capture"
+    ]
+  },
+  {
     "version": "v1.3.0",
     "date": "2026-04-05",
     "summary": "Major update introducing a persistent floating panel, configurable keyboard shortcuts, and click-and-drag area capture for a more flexible and powerful screenshot workflow.",
