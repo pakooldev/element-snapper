@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Element Snapper | Playground</title>
+    <meta
+      name="description"
+      content="A live test page for trying out Element Snapper's capture modes: single element, scrollable element, full page, region, and viewport."
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="playground.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+  </head>
+  <body>
+    <!-- Background Effects -->
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+      <div class="container nav-container">
+        <a href="index.html" class="logo" style="text-decoration: none">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 28 28"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            class="animated-logo"
+          >
+            <rect x="3" y="3" width="22" height="22" rx="4" stroke="currentColor" stroke-width="2" stroke-dasharray="4 2" class="logo-dash" />
+            <path d="M3 9V7C3 4.79086 4.79086 3 7 3H9" stroke="var(--accent-primary)" stroke-width="2" stroke-linecap="round" />
+            <path d="M25 9V7C25 4.79086 23.2091 3 21 3H19" stroke="var(--accent-primary)" stroke-width="2" stroke-linecap="round" />
+            <path d="M3 19V21C3 23.2091 4.79086 25 7 25H9" stroke="var(--accent-primary)" stroke-width="2" stroke-linecap="round" />
+            <path d="M25 19V21C25 23.2091 23.2091 25 21 25H19" stroke="var(--accent-primary)" stroke-width="2" stroke-linecap="round" />
+            <circle cx="14" cy="14" r="5" fill="var(--accent-primary)" />
+            <circle cx="14" cy="14" r="2" fill="var(--bg-dark)" />
+          </svg>
+          <span>Element Snapper</span>
+        </a>
+        <div class="nav-links">
+          <a href="index.html#how-it-works">How it Works</a>
+          <a href="index.html#features">Features</a>
+          <a href="manual.html">Manual</a>
+          <a href="playground.html" class="active" style="color: var(--text-primary)">Playground</a>
+          <a href="releases.html">Releases</a>
+          <a
+            href="https://chromewebstore.google.com/detail/lemgfajngedincmoifojlnendglikdpj"
+            target="_blank"
+            class="btn btn-outline"
+            >Download</a
+          >
+        </div>
+      </div>
+    </nav>
+
+    <!-- Playground Content -->
+    <section class="manual-section">
+      <div class="container">
+        <div class="manual-header">
+          <h1 class="manual-title">Test <span class="text-gradient">Playground</span></h1>
+        </div>
+
+        <div class="manual-step glass-panel">
+          <h2 class="step-title" style="margin-top:0;">How to use this page</h2>
+          <p class="step-desc">
+            Open the popup (or the in-page panel via the toolbar icon) and try each mode against the
+            boxes below. <strong>Element</strong> — click "Select Element" and hover any box.
+            <strong>Area</strong> — drag a rectangle anywhere on the page. <strong>Screen</strong> —
+            captures just what's visible right now. <strong>Page</strong> — captures this entire
+            scrollable page, stitched together.
+          </p>
+        </div>
+
+        <div class="test-section">
+          <h2 class="test-heading">1. Small Element <span class="test-tag">control</span></h2>
+          <p class="step-desc">Fits entirely in the viewport — should always be a single capture, no stitching.</p>
+          <div class="pg-box pg-small">Small Element<br />300 × 200</div>
+        </div>
+
+        <div class="test-section">
+          <h2 class="test-heading">2. Tall Element <span class="test-tag">vertical stitch</span></h2>
+          <p class="step-desc">
+            Taller than the viewport. With "Scroll Element" enabled in Settings, capture should scroll
+            down and stitch tiles so every marker below appears in the result.
+          </p>
+          <div class="pg-box pg-tall">
+            <h3>600 × 2000</h3>
+            <div class="pg-marker">Marker · 100px</div>
+            <div class="pg-marker">Marker · 500px</div>
+            <div class="pg-marker">Marker · 900px</div>
+            <div class="pg-marker">Marker · 1300px</div>
+            <div class="pg-marker">Marker · 1700px</div>
+            <div class="pg-marker">Bottom marker · 1900px</div>
+          </div>
+        </div>
+
+        <div class="test-section">
+          <h2 class="test-heading">3. Wide Element <span class="test-tag">horizontal stitch</span></h2>
+          <p class="step-desc">Wider than the viewport — exercises horizontal scroll + stitch.</p>
+          <div class="pg-box pg-wide">
+            <h3>2000 × 400</h3>
+            <div class="pg-marker pg-marker-h" style="left:20px">Start</div>
+            <div class="pg-marker pg-marker-h" style="left:620px">600px</div>
+            <div class="pg-marker pg-marker-h" style="left:1220px">1200px</div>
+            <div class="pg-marker pg-marker-h" style="left:1820px">End</div>
+          </div>
+        </div>
+
+        <div class="test-section">
+          <h2 class="test-heading">4. Large 2D Element <span class="test-tag">grid stitch</span></h2>
+          <p class="step-desc">Exceeds the viewport in both directions — verify all four corners and the center land in the final image.</p>
+          <div class="pg-box pg-grid">
+            <h3>1800 × 1500</h3>
+            <span class="pg-corner pg-tl">Top Left</span>
+            <span class="pg-corner pg-tr">Top Right</span>
+            <span class="pg-corner pg-bl">Bottom Left</span>
+            <span class="pg-corner pg-br">Bottom Right</span>
+            <span class="pg-corner pg-center">Center</span>
+          </div>
+        </div>
+
+        <div class="test-section">
+          <h2 class="test-heading">5. Internally Scrollable Element <span class="test-tag">own scroll container</span></h2>
+          <p class="step-desc">
+            This box has its own <code>overflow: auto</code> — its content is taller than the box
+            itself, separate from the page's scroll.
+          </p>
+          <div class="pg-box pg-scroll">
+            <div class="pg-scroll-inner">
+              <div class="pg-marker">Inner marker · top</div>
+              <div class="pg-marker">Inner marker · 400px</div>
+              <div class="pg-marker">Inner marker · 800px</div>
+              <div class="pg-marker">Inner marker · bottom</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tips Section -->
+        <div class="manual-tips">
+          <h2 class="section-title" style="font-size: 1.8rem;">Checklist</h2>
+          <div class="tips-grid">
+            <div class="tip-card glass-panel">
+              <div class="tip-icon">🖱️</div>
+              <h3>Element Mode</h3>
+              <p>Hover each box above — the highlight should turn indigo/dashed when it exceeds the viewport.</p>
+            </div>
+            <div class="tip-card glass-panel">
+              <div class="tip-icon">▭</div>
+              <h3>Area Mode</h3>
+              <p>Drag a rectangle spanning two boxes and confirm the crop lines up pixel-for-pixel.</p>
+            </div>
+            <div class="tip-card glass-panel">
+              <div class="tip-icon">🖥️</div>
+              <h3>Screen Mode</h3>
+              <p>Scroll partway down the page first — only the visible viewport should be captured.</p>
+            </div>
+            <div class="tip-card glass-panel">
+              <div class="tip-icon">📜</div>
+              <h3>Page Mode</h3>
+              <p>Captures top to bottom of this whole page — check every marker above appears once, undistorted.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-bottom">
+          <p>&copy; <span id="current-year">2026</span> Element Snapper.</p>
+          <script>
+            document.getElementById("current-year").textContent =
+              new Date().getFullYear();
+          </script>
+          <div class="footer-links">
+            <a href="privacy.html">Privacy Policy</a>
+            <a
+              href="https://chromewebstore.google.com/detail/lemgfajngedincmoifojlnendglikdpj"
+              >Chrome Web Store</a
+            >
+          </div>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,138 @@
+/* Playground page — test boxes for exercising capture modes */
+
+/* html stays the scrolling element (overflow-x: auto); body must NOT
+   clip on its own or the wide test box never reaches html's scrollWidth */
+html {
+  overflow-x: auto;
+}
+
+body {
+  overflow-x: visible;
+}
+
+.test-section {
+  margin-bottom: 56px;
+}
+
+.test-heading {
+  font-size: 1.4rem;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.test-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-primary);
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.pg-box {
+  border-radius: var(--radius-md, 12px);
+  color: white;
+  box-shadow: 0 10px 25px -8px rgba(0, 0, 0, 0.5);
+  margin-top: 16px;
+  position: relative;
+}
+
+.pg-box h3 {
+  margin: 0 0 12px;
+}
+
+.pg-small {
+  width: 300px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  text-align: center;
+  background: linear-gradient(135deg, var(--accent-primary) 0%, #6d28d9 100%);
+}
+
+.pg-tall {
+  width: 600px;
+  max-width: 100%;
+  height: 2000px;
+  padding: 20px;
+  background: linear-gradient(180deg, #f093fb 0%, #f5576c 100%);
+}
+
+.pg-wide {
+  width: 2000px;
+  height: 400px;
+  padding: 20px;
+  background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.pg-grid {
+  width: 1800px;
+  height: 1500px;
+  padding: 20px;
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+.pg-marker {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.25);
+  padding: 8px 16px;
+  border-radius: 4px;
+  margin: 24px 0;
+  font-size: 14px;
+}
+
+.pg-marker-h {
+  position: absolute;
+  top: 100px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.pg-corner {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.25);
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.pg-tl { top: 20px; left: 20px; }
+.pg-tr { top: 20px; right: 20px; }
+.pg-bl { bottom: 20px; left: 20px; }
+.pg-br { bottom: 20px; right: 20px; }
+.pg-center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.pg-scroll {
+  width: 500px;
+  max-width: 100%;
+  height: 260px;
+  overflow: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+}
+
+.pg-scroll-inner {
+  height: 900px;
+  padding: 20px;
+}
+
+@media (max-width: 640px) {
+  .pg-tall,
+  .pg-wide,
+  .pg-grid {
+    width: 100%;
+  }
+}
