@@ -201,8 +201,16 @@ async function handleViewportOrPageCapture(data, tabId) {
 
       filename = generateViewportFilename('viewport', outputFormat);
     } else if (data.captureMode === 'fullpage') {
-      // Full page capture - use multi-tile capture
-      captureBlob = await captureFullPage(data, tabId, outputFormat, outputQuality);
+      // Full page capture - scroll + captureVisibleTab + stitch, same
+      // technique (and function) as a multi-tile element capture, just
+      // with a rect spanning the whole document.
+      try {
+        captureBlob = await captureTiledRegion(data, tabId, outputFormat, outputQuality);
+      } finally {
+        // Tiling leaves the tab scrolled wherever the last tile was — a full
+        // page capture should hand the page back at the top either way.
+        await chrome.tabs.sendMessage(tabId, { action: 'scrollToPosition', x: 0, y: 0 }).catch(() => {});
+      }
       filename = generateViewportFilename('fullpage', outputFormat);
     } else {
       throw new Error('Invalid capture mode');
@@ -239,118 +247,6 @@ async function handleViewportOrPageCapture(data, tabId) {
     console.error('Capture failed:', error);
     return { success: false, error: error.message };
   }
-}
-
-// ─── Chrome DevTools Protocol helpers ────────────────────────────────────────
-function attachDebugger(tabId) {
-  return new Promise((resolve, reject) => {
-    chrome.debugger.attach({ tabId }, '1.3', () => {
-      if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
-      else resolve();
-    });
-  });
-}
-
-function detachDebugger(tabId) {
-  return new Promise((resolve, reject) => {
-    chrome.debugger.detach({ tabId }, () => {
-      if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
-      else resolve();
-    });
-  });
-}
-
-function sendDebugCommand(tabId, method, params = {}) {
-  return new Promise((resolve, reject) => {
-    chrome.debugger.sendCommand({ tabId }, method, params, result => {
-      if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
-      else resolve(result);
-    });
-  });
-}
-
-/**
- * Capture full page in a single shot using the Chrome DevTools Protocol.
- * Attaches the debugger, calls Page.captureScreenshot with captureBeyondViewport,
- * then detaches — no scrolling or tile stitching required.
- * @param {object} data - Capture data from content script
- * @param {number} tabId - Tab ID for capturing
- * @param {string} format - Output format (png/jpg)
- * @param {number} quality - Output quality (1-100)
- * @returns {Promise<Blob>} Full page image
- */
-async function captureFullPage(data, tabId, format, quality) {
-  const { documentDimensions, devicePixelRatio: dpr } = data;
-
-  const finalWidth = Math.round(documentDimensions.width * dpr);
-  const finalHeight = Math.round(documentDimensions.height * dpr);
-  const MAX_DIMENSION = 16384;
-
-  if (finalWidth > MAX_DIMENSION || finalHeight > MAX_DIMENSION) {
-    throw new Error(`Page too large: ${finalWidth}×${finalHeight}px exceeds max ${MAX_DIMENSION}px`);
-  }
-
-  console.log(`Full page capture: ${documentDimensions.width}×${documentDimensions.height}px → ${finalWidth}×${finalHeight}px physical`);
-
-  let debuggerAttached = false;
-  let screenshotBase64 = null;
-
-  // Phase 1: attach debugger, capture raw data, detach immediately.
-  try {
-    await chrome.tabs.sendMessage(tabId, { action: 'hideScrollbars' });
-
-    try {
-      await attachDebugger(tabId);
-      debuggerAttached = true;
-    } catch (e) {
-      if (e.message && e.message.includes('Another debugger')) {
-        throw new Error('Cannot capture: DevTools is open on this tab. Close DevTools and try again.');
-      }
-      throw e;
-    }
-
-    // Expand the emulated viewport to the full page height so the browser
-    // reflows and renders all content in one pass before capture.
-    // captureBeyondViewport ensures off-screen content is included even if
-    // the resize alone doesn't fully extend the rendering surface.
-    await sendDebugCommand(tabId, 'Emulation.setDeviceMetricsOverride', {
-      width: Math.ceil(documentDimensions.width),
-      height: Math.ceil(documentDimensions.height),
-      deviceScaleFactor: dpr,
-      mobile: false,
-    });
-
-    // Allow the page to reflow after the viewport resize.
-    await new Promise(resolve => setTimeout(resolve, 200));
-
-    const result = await sendDebugCommand(tabId, 'Page.captureScreenshot', {
-      format: format === 'jpg' ? 'jpeg' : 'png',
-      quality: format === 'jpg' ? quality : undefined,
-      captureBeyondViewport: true,
-    });
-    screenshotBase64 = result.data;
-
-  } finally {
-    // Detach as soon as raw data is in hand — before blob conversion or preview.
-    if (debuggerAttached) {
-      await sendDebugCommand(tabId, 'Emulation.clearDeviceMetricsOverride').catch(() => {});
-      await detachDebugger(tabId).catch(e => console.warn('Failed to detach debugger:', e));
-    }
-    try {
-      await chrome.tabs.sendMessage(tabId, { action: 'showScrollbars' });
-      await chrome.tabs.sendMessage(tabId, { action: 'scrollToPosition', x: 0, y: 0 });
-    } catch (e) {
-      console.warn('Failed to restore page state:', e);
-    }
-  }
-
-  // Phase 2: convert base64 → Blob. Debugger is already detached at this point.
-  const binaryString = atob(screenshotBase64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return new Blob([bytes.buffer], { type: format === 'jpg' ? 'image/jpeg' : 'image/png' });
 }
 
 /**
@@ -395,7 +291,7 @@ async function handleElementCapture(data, tabId) {
 
     let croppedBlob;
     if (needsMultiCapture) {
-      croppedBlob = await captureFullElement(data, tabId, outputFormat, outputQuality);
+      croppedBlob = await captureTiledRegion(data, tabId, outputFormat, outputQuality);
     } else {
       // Use existing single-capture logic
       await waitForNextFrame(tabId);
@@ -490,18 +386,21 @@ async function handleRegionCapture(data, tabId) {
 }
 
 /**
- * Capture full element using multi-capture stitching
- * Tiles viewport captures to cover entire element
+ * Capture a rect larger than the viewport by scrolling, capturing each tile
+ * with chrome.tabs.captureVisibleTab(), and stitching them onto one canvas.
+ * Used for both a multi-tile element capture (rect = the element's bounds)
+ * and a full-page capture (rect = the whole document) — same technique,
+ * same tiling math either way.
  * @param {object} data - Capture data from content script
  * @param {number} tabId - Tab ID for capturing
  * @param {string} format - Output format (png/jpg)
  * @param {number} quality - Output quality (1-100)
- * @returns {Promise<Blob>} Stitched element image
+ * @returns {Promise<Blob>} Stitched image
  */
-async function captureFullElement(data, tabId, format, quality) {
+async function captureTiledRegion(data, tabId, format, quality) {
   const { rect, scroll, viewport, devicePixelRatio: dpr, debugMode } = data;
 
-  // Element absolute position on page
+  // Region's absolute position on the page
   const elementAbsX = scroll.x + rect.x;
   const elementAbsY = scroll.y + rect.y;
 
@@ -509,14 +408,14 @@ async function captureFullElement(data, tabId, format, quality) {
   const tilesX = Math.ceil(rect.width / viewport.width);
   const tilesY = Math.ceil(rect.height / viewport.height);
 
-  console.log(`Multi-capture: ${tilesX}×${tilesY} tiles for ${rect.width}×${rect.height}px element`);
+  console.log(`Multi-capture: ${tilesX}×${tilesY} tiles for ${rect.width}×${rect.height}px region`);
 
   // Validate final canvas size
   const finalWidth = Math.round(rect.width * dpr);
   const finalHeight = Math.round(rect.height * dpr);
   const MAX_DIMENSION = 16384;
   if (finalWidth > MAX_DIMENSION || finalHeight > MAX_DIMENSION) {
-    throw new Error(`Element too large: ${finalWidth}×${finalHeight}px exceeds max ${MAX_DIMENSION}px`);
+    throw new Error(`Capture too large: ${finalWidth}×${finalHeight}px exceeds max ${MAX_DIMENSION}px`);
   }
 
   // Create final canvas for stitching
@@ -535,6 +434,10 @@ async function captureFullElement(data, tabId, format, quality) {
       // Calculate row height for this row (needed for cumulative positioning)
       const rowHeight = Math.min(viewport.height, rect.height - (tileY * viewport.height));
       const rowHeightPhysical = Math.ceil(rowHeight * dpr);
+
+      // Track cumulative X position to avoid rounding gaps between columns —
+      // same reasoning as cumulativeY, reset at the start of each row.
+      let cumulativeX = 0;
 
       for (let tileX = 0; tileX < tilesX; tileX++) {
         // Calculate scroll position for this tile
@@ -608,8 +511,8 @@ async function captureFullElement(data, tabId, format, quality) {
         const sHeight = Math.ceil(visibleHeight * dpr);
 
         // Destination position on final canvas (physical pixels)
-        // Use cumulative Y to avoid rounding gaps between rows
-        const dx = Math.floor(tileX * viewport.width * dpr);
+        // Use cumulative X/Y to avoid rounding gaps between columns/rows
+        const dx = cumulativeX;
         const dy = cumulativeY;
 
         // Destination size - use exact tile size to avoid gaps
@@ -645,6 +548,9 @@ async function captureFullElement(data, tabId, format, quality) {
         imageBitmap.close();
 
         console.log(`Tile (${tileX},${tileY}): extracted (${sx},${sy},${sWidth}×${sHeight}) → canvas (${dx},${dy})`);
+
+        // After completing a column, update cumulative X position
+        cumulativeX += dWidth;
       }
 
       // After completing a row, update cumulative Y position

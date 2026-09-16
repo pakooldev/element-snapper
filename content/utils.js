@@ -337,23 +337,23 @@ function removeCaptureOverlay(overlay) {
 }
 
 /**
- * Hide scrollbars temporarily (for clean multi-capture screenshots)
+ * Hide scrollbars temporarily (for clean multi-capture screenshots).
+ * Hides the visual scrollbar chrome only — must NOT touch `overflow`
+ * (setting it to 'hidden' doesn't just hide the scrollbar, it disables
+ * scrolling itself on some pages, which breaks the very scrolling the
+ * multi-tile capture caller needs to do next).
  * @returns {object} Object with restore function
  */
 function hideScrollbars() {
-  // Store original styles
-  const originalHtmlOverflow = document.documentElement.style.overflow;
-  const originalBodyOverflow = document.body.style.overflow;
-
-  // Hide scrollbars
-  document.documentElement.style.overflow = 'hidden';
-  document.body.style.overflow = 'hidden';
+  const style = document.createElement('style');
+  style.textContent = `
+    html, body { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+    html::-webkit-scrollbar, body::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+  `;
+  document.head.appendChild(style);
 
   return {
-    restore: () => {
-      document.documentElement.style.overflow = originalHtmlOverflow;
-      document.body.style.overflow = originalBodyOverflow;
-    }
+    restore: () => style.remove()
   };
 }
 

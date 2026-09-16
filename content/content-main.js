@@ -188,9 +188,10 @@ async function handleClipboardCopy(dataUrl) {
  */
 async function handleFullPageCapture() {
   try {
-    // Load delay setting
-    const settings = await chrome.storage.local.get(['delay']);
+    // Load delay + debugMode settings
+    const settings = await chrome.storage.local.get(['delay', 'debugMode']);
     const delay = settings.delay || 0;
+    const debugMode = settings.debugMode || false;
 
     // Show countdown if delay is enabled
     if (delay > 0) {
@@ -210,9 +211,12 @@ async function handleFullPageCapture() {
     const docDims = getDocumentDimensions();
     const dpr = window.devicePixelRatio || 1;
 
-    // Prepare capture data for full page
+    // Prepare capture data for full page — same shape captureTiledRegion()
+    // uses for a multi-tile element capture, just with a rect spanning the
+    // whole document instead of one element.
     const captureData = {
       captureMode: 'fullpage',
+      rect: { x: 0, y: 0, width: docDims.width, height: docDims.height },
       scroll: scroll,
       documentDimensions: docDims,
       devicePixelRatio: dpr,
@@ -220,6 +224,7 @@ async function handleFullPageCapture() {
         width: window.innerWidth,
         height: window.innerHeight
       },
+      debugMode: debugMode,
       timestamp: Date.now()
     };
 
