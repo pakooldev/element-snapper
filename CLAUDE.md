@@ -8,6 +8,8 @@ Element Snapper is a **Chrome browser extension** (Manifest V3) that captures pi
 
 Current version: v1.3.0. Published on Chrome Web Store.
 
+Visual design (colors, typography, components) across the popup, in-page runtime UI, and website is documented in [`DESIGN.md`](DESIGN.md) — read it before touching any CSS/styling or adding a new UI surface.
+
 ## Development
 
 No build step required for the core extension. Load directly in Chrome:
