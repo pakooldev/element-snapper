@@ -141,6 +141,21 @@ chrome.action.onClicked.addListener(async (tab) => {
 });
 
 /**
+ * Block until the tab has actually produced a new compositor frame, so a
+ * capture right after this is guaranteed to reflect any DOM change made just
+ * before calling it (e.g. panel.js's hidePanel()/hideForCapture()) — no
+ * fixed delay to guess at, and no race under load since it's driven by the
+ * tab's real render loop rather than a timer running in the service worker.
+ * @param {number} tabId
+ */
+async function waitForNextFrame(tabId) {
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  });
+}
+
+/**
  * Handle viewport or full page capture
  * @param {object} data - Capture data from content script
  * @param {number} tabId - Tab ID for capturing
@@ -160,6 +175,7 @@ async function handleViewportOrPageCapture(data, tabId) {
 
     if (data.captureMode === 'viewport') {
       // Viewport capture - just capture visible area
+      await waitForNextFrame(tabId);
       const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
 
       // Convert to blob with desired format/quality
@@ -382,6 +398,7 @@ async function handleElementCapture(data, tabId) {
       croppedBlob = await captureFullElement(data, tabId, outputFormat, outputQuality);
     } else {
       // Use existing single-capture logic
+      await waitForNextFrame(tabId);
       const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
       croppedBlob = await cropImageToElement(dataUrl, data, outputFormat, outputQuality);
     }
@@ -434,6 +451,7 @@ async function handleRegionCapture(data, tabId) {
     const showPreview = settings.showPreview ?? true;
 
     // Capture the visible tab
+    await waitForNextFrame(tabId);
     const rawDataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
 
     // Reuse cropImageToElement — the region rect is viewport-relative,

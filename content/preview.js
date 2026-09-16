@@ -749,6 +749,12 @@
             </svg>
             Remove
           </button>
+          <button class="toolbar-btn destructive" data-act="remove-all">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Remove All
+          </button>
           <button class="toolbar-btn" data-act="close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -765,6 +771,16 @@
             Remove
           </button>
           <button class="toolbar-btn" data-act="cancel-remove">Cancel</button>
+        </div>
+        <div class="toolbar-segment" data-mode="confirm-all" hidden>
+          <span class="toolbar-prompt">Clear all capture history? This can't be undone.</span>
+          <button class="toolbar-btn danger" data-act="confirm-remove-all">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Remove All
+          </button>
+          <button class="toolbar-btn" data-act="cancel-remove-all">Cancel</button>
         </div>
       </div>
     `;
@@ -815,14 +831,29 @@
         } finally {
           btn.disabled = false;
         }
+      } else if (act === 'remove-all') {
+        setToolbarMode('confirm-all');
+      } else if (act === 'cancel-remove-all') {
+        setToolbarMode('default');
+      } else if (act === 'confirm-remove-all') {
+        btn.disabled = true;
+        try {
+          await clearAllHistory();
+        } catch (err) {
+          showShadowToast('Failed to remove all: ' + err.message, 'error');
+          setToolbarMode('default');
+        } finally {
+          btn.disabled = false;
+        }
       }
     });
 
     escHandler = (e) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        // Escape during confirm mode cancels the prompt without closing.
-        if (getToolbarMode() === 'confirm') {
+        // Escape during a confirm mode cancels the prompt without closing.
+        const mode = getToolbarMode();
+        if (mode === 'confirm' || mode === 'confirm-all') {
           setToolbarMode('default');
         } else {
           closeModal();
@@ -842,10 +873,12 @@
     if (!currentModal) return;
     const def = currentModal.querySelector('.toolbar-segment[data-mode="default"]');
     const cnf = currentModal.querySelector('.toolbar-segment[data-mode="confirm"]');
-    if (!def || !cnf) return;
-    const next = mode === 'confirm' ? 'confirm' : 'default';
-    def.hidden = next === 'confirm';
+    const cnfAll = currentModal.querySelector('.toolbar-segment[data-mode="confirm-all"]');
+    if (!def || !cnf || !cnfAll) return;
+    const next = mode === 'confirm' || mode === 'confirm-all' ? mode : 'default';
+    def.hidden = next !== 'default';
     cnf.hidden = next !== 'confirm';
+    cnfAll.hidden = next !== 'confirm-all';
     toolbarMode = next;
   }
 
@@ -897,10 +930,45 @@
     showShadowToast('Capture removed', 'success');
   }
 
+  async function clearAllHistory() {
+    const history = await readHistoryIndex();
+    const keys = history.map(e => `capture:${e.id}`);
+    // Delete the blobs before dropping the index that references them — if
+    // the remove() throws partway, the index still lists everything, so
+    // nothing is orphaned and a retry just picks up where it left off.
+    if (keys.length) await chrome.storage.session.remove(keys);
+    await chrome.storage.session.set({ history: [] });
+
+    if (currentAsset) {
+      URL.revokeObjectURL(currentAsset.objectUrl);
+      currentAsset = null;
+    }
+    showShadowToast('All captures removed', 'success');
+    // closeModal() also revokes any cached tileAssets thumbnails.
+    closeModal();
+  }
+
   // ─── Public API ───────────────────────────────────────────────────────────
   window.elementSnapperPreview = {
+    // Instantly hide any leftover preview UI (thumbnail, modal, toast) so a
+    // capture in progress never grabs a stale frame of it. Called by panel.js
+    // on every 'captureStarted' broadcast, regardless of which flow (element,
+    // region, viewport, full page) triggered the capture.
+    hideForCapture() {
+      host.style.display = 'none';
+    },
+
+    // Counterpart to hideForCapture(), for paths that don't call show() to
+    // make the host visible again on their own (error / cancelled).
+    restoreAfterCapture() {
+      host.style.display = '';
+    },
+
     async show(captureId) {
       if (!captureId) return;
+      // Always visible for a freshly-succeeded capture — don't rely on the
+      // 'captureSuccess' broadcast (handled separately, may race this call).
+      host.style.display = '';
       let asset;
       try {
         asset = await loadAssetById(captureId);

@@ -1116,12 +1116,23 @@
 
       case 'captureStarted':
         updateUI('capturing');
+        // Every capture path (element/region/viewport/full page) broadcasts
+        // this before it shoots — clear anything left over from a previous
+        // capture (stale toast, stale preview thumbnail/modal) so it can't
+        // leak into the new screenshot.
+        document.getElementById('element-screenshot-notification')?.remove();
+        window.elementSnapperPreview?.hideForCapture();
         break;
 
       case 'captureSuccess':
         if (restorePanelAfterCapture) showPanel();
         restorePanelAfterCapture = false;
         updateUI('success');
+        // preview.show() also restores this, but only runs when a captureId
+        // came back (showPreview setting on) — restore unconditionally here
+        // too, or a success with showPreview off leaves the host (and its
+        // own toast/modal) hidden for the rest of the tab's lifetime.
+        window.elementSnapperPreview?.restoreAfterCapture();
         if (typeof showNotification === 'function') {
           showNotification('Screenshot captured successfully', 'success');
         }
@@ -1131,6 +1142,7 @@
         if (restorePanelAfterCapture) showPanel();
         restorePanelAfterCapture = false;
         updateUI('error', message.error);
+        window.elementSnapperPreview?.restoreAfterCapture();
         if (typeof showNotification === 'function') {
           showNotification(message.error || 'Capture failed', 'error');
         }
@@ -1139,6 +1151,7 @@
       case 'selectionCancelled':
         showPanel();
         updateUI('idle');
+        window.elementSnapperPreview?.restoreAfterCapture();
         break;
     }
   });
