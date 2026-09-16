@@ -835,13 +835,13 @@
     panel:   'Shift+Cmd+E',
     element: 'Shift+Cmd+Y',
     area:    'Shift+Cmd+U',
-    screen:  'Shift+Cmd+I',
+    screen:  'Shift+Cmd+S',
     page:    'Shift+Cmd+O',
   } : {
     panel:   'Alt+Shift+E',
     element: 'Alt+Shift+Y',
     area:    'Alt+Shift+U',
-    screen:  'Alt+Shift+I',
+    screen:  'Alt+Shift+S',
     page:    'Alt+Shift+O',
   };
   let isRecordingShortcut = false;
