@@ -377,142 +377,6 @@ body {
   }
 }
 
-.ext-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-
-.ext-header h2 {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.ext-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  padding: 4px 10px;
-  border: 1px solid var(--border-light);
-  border-radius: 20px;
-  font-weight: 500;
-}
-
-.ext-status .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent-primary);
-  box-shadow: 0 0 8px var(--accent-glow);
-}
-
-.ext-btn-primary {
-  width: 100%;
-  height: 54px;
-  background: linear-gradient(
-    135deg,
-    var(--accent-primary),
-    var(--accent-hover)
-  );
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-  margin-bottom: 16px;
-  transition: transform 0.1s;
-}
-
-.ext-btn-primary:hover {
-  transform: scale(0.98);
-}
-
-.ext-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.ext-btn-secondary {
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  padding: 14px;
-  border-radius: 12px;
-  color: white;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.ext-switch-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: var(--bg-card);
-  padding: 16px;
-  border-radius: 12px;
-  border: 1px solid var(--border-light);
-  cursor: pointer;
-}
-
-.ext-switch-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.ext-switch-title {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.ext-switch-desc {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.ext-checkbox {
-  display: none;
-}
-
-.ext-toggle {
-  width: 44px;
-  height: 24px;
-  background: var(--bg-dark);
-  border: 1px solid var(--border-light);
-  border-radius: 20px;
-  position: relative;
-  transition: background 0.3s;
-}
-
-.ext-toggle::after {
-  content: "";
-  position: absolute;
-  width: 18px;
-  height: 18px;
-  background: var(--text-secondary);
-  border-radius: 50%;
-  top: 2px;
-  left: 2px;
-  transition: transform 0.3s;
-}
-
-.ext-checkbox:checked + .ext-toggle {
-  background: var(--accent-primary);
-  border-color: var(--accent-primary);
-}
-
-.ext-checkbox:checked + .ext-toggle::after {
-  transform: translateX(20px);
-  background: white;
-}
-
 /* Background mock page content for visual appeal */
 .mock-page-content {
   padding: 40px;
@@ -886,11 +750,11 @@ body {
     padding: 16px;
   }
 
-  .ext-btn-primary {
+  .mp-main-btn {
     font-size: 14px;
   }
 
-  .ext-actions {
+  .mp-actions {
     flex-direction: column;
     display: flex;
   }
@@ -1292,6 +1156,7 @@ body {
   border-radius: 50%;
   background: var(--accent-primary);
   box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+  transition: background 0.3s;
 }
 
 /* Status states legend row */
@@ -1504,18 +1369,39 @@ body {
 
 .mp-setting-label {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--text-secondary);
   display: block;
   margin-bottom: 6px;
 }
 
+.mp-link-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: default;
+}
+
+.mp-link-btn svg { opacity: 0.6; }
+
 .mp-toggle-group {
   display: flex;
   gap: 0;
+  padding: 4px;
   border: 1px solid var(--border-light);
   border-radius: 8px;
-  overflow: hidden;
 }
 
 .mp-toggle-opt {
@@ -1525,13 +1411,25 @@ body {
   font-size: 12px;
   font-weight: 500;
   color: var(--text-secondary);
-  background: var(--bg-card);
+  border-radius: 4px;
   cursor: default;
 }
 
 .mp-toggle-opt.active {
   background: var(--accent-primary);
   color: white;
+}
+
+/* Hero mockup is a live, clickable showcase — the manual.html diagram isn't */
+.hero-visual .mp-main-btn,
+.hero-visual .mp-action-btn {
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.hero-visual .mp-toggle-opt {
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
 }
 
 /* 3-way variant (Output mode) — longer labels need tighter sizing to fit

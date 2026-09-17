@@ -24,33 +24,46 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Interactive Extension Buttons logic inside mockup
-    const extBtnPrimary = document.querySelector('.ext-btn-primary');
+    // Playable extension showcase — clicking the mock popup's buttons/toggles
+    // actually reacts, so the hero looks/feels like the real panel.
+    const heroPopup = document.querySelector('.hero-visual .extension-popup');
     const highlightBox = document.querySelector('.mock-highlight-box');
 
-    if (extBtnPrimary && highlightBox) {
-        extBtnPrimary.addEventListener('click', () => {
-            // Simulate button click
-            extBtnPrimary.style.transform = 'scale(0.95)';
-            setTimeout(() => extBtnPrimary.style.transform = 'scale(1)', 100);
+    if (heroPopup) {
+        const statusDot = heroPopup.querySelector('.mp-status .mp-dot');
+        const captureButtons = heroPopup.querySelectorAll('.mp-main-btn, .mp-action-btn');
 
-            // Change status text
-            const statusText = document.querySelector('.ext-status');
-            if (statusText) {
-                statusText.innerHTML = '<span class="dot" style="background:var(--success)"></span>Selecting';
+        function simulateCapture() {
+            if (statusDot) statusDot.style.background = 'var(--success)';
+            if (highlightBox) {
+                highlightBox.style.borderColor = 'var(--success)';
+                highlightBox.style.background = 'rgba(16, 185, 129, 0.1)';
             }
-
-            // Trigger animation on highlight box
-            highlightBox.style.borderColor = 'var(--success)';
-            highlightBox.style.background = 'rgba(16, 185, 129, 0.1)';
-
             setTimeout(() => {
-                if (statusText) {
-                    statusText.innerHTML = '<span class="dot"></span>Ready';
+                if (statusDot) statusDot.style.background = '';
+                if (highlightBox) {
+                    highlightBox.style.borderColor = 'var(--accent-primary)';
+                    highlightBox.style.background = 'rgba(59, 130, 246, 0.05)';
                 }
-                highlightBox.style.borderColor = 'var(--accent-primary)';
-                highlightBox.style.background = 'rgba(59, 130, 246, 0.05)';
-            }, 3000);
+            }, 1200);
+        }
+
+        captureButtons.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                btn.style.transform = 'scale(0.95)';
+                setTimeout(() => (btn.style.transform = ''), 100);
+                simulateCapture();
+            });
+        });
+
+        heroPopup.querySelectorAll('.mp-toggle-group').forEach((group) => {
+            const opts = group.querySelectorAll('.mp-toggle-opt');
+            opts.forEach((opt) => {
+                opt.addEventListener('click', () => {
+                    opts.forEach((o) => o.classList.remove('active'));
+                    opt.classList.add('active');
+                });
+            });
         });
     }
 

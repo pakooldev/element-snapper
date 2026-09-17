@@ -1,5 +1,16 @@
 [
   {
+    "version": "v1.5.0",
+    "date": "2026-09-17",
+    "summary": "A new \"Copy as Prompt\" output mode lets you copy an element's context straight to your clipboard for AI coding tools, full-page capture is back to a debugger-free engine, and the floating panel gets animated toggles and more reliable capture hygiene.",
+    "highlights": [
+      "Copy as Prompt output mode",
+      "Debugger-free full-page capture",
+      "Remove All from capture history",
+      "Interactive playground page"
+    ]
+  },
+  {
     "version": "v1.4.0",
     "date": "2026-04-27",
     "summary": "Capture previews and a session history browser let you review, re-download, or copy recent screenshots without recapturing — plus a new CDP-based full-page engine that's dramatically faster with no stitching artifacts.",

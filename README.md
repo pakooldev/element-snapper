@@ -2,16 +2,17 @@
 
 🌐 **Website:** [element-snapper.pakool.com](https://element-snapper.pakool.com/)
 
-**v1.4.0** — A professional Chrome extension that captures pixel-perfect screenshots of any webpage element, the visible viewport, or an entire scrollable page — with capture previews, session history browser, floating panel, configurable keyboard shortcuts, clipboard support, delayed capture, and smart element highlighting.
+**v1.5.0** — A professional Chrome extension that captures pixel-perfect screenshots of any webpage element, the visible viewport, or an entire scrollable page — with capture previews, session history browser, floating panel, configurable keyboard shortcuts, clipboard support, delayed capture, and smart element highlighting.
 
 ## Features
 
 - **Pixel-Perfect Capture**: DPR-aware cropping for crisp screenshots on Retina and HiDPI displays
 - **Smart Element Highlight**: Fixed-position overlay shows exactly what will be captured — dashed blue for normal captures, dashed indigo when the element extends beyond the viewport
 - **Viewport-Clip**: When _Scroll Element_ is disabled, captures only the visible portion of any element — no black/empty areas
-- **Full Element Capture**: CDP-powered single-shot full-page capture — no tile stitching, no delay, no seam artifacts
+- **Full Element Capture**: Scroll-and-stitch full-page capture — no debugger permission or "is debugging this browser" banner
+- **Copy as Prompt**: Skip the screenshot and copy a structured, Cursor-style text description of an element (tag, role, selector, dimensions, styles) to your clipboard for AI coding tools
 - **Capture Preview**: macOS-style thumbnail slides in after every capture; click to expand into a full modal with Download, Copy, and Close
-- **Capture History Browser**: Session-scoped history of recent captures accessible via a thumbnail strip in the preview modal; remove individual captures with an inline confirm flow
+- **Capture History Browser**: Session-scoped history of recent captures accessible via a thumbnail strip in the preview modal; remove individual captures or clear all history with an inline confirm flow
 - **Floating In-Page Panel**: Persistent, draggable panel injected via Shadow DOM — stays open across captures without reloading the popup
 - **Configurable Keyboard Shortcuts**: Per-OS safe defaults for each capture mode, with an enable toggle and one-click reset
 - **Area Capture**: Click-and-drag region selection with live pixel-dimension label

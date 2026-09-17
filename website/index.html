@@ -101,7 +101,7 @@
     <header class="hero">
       <div class="container hero-container">
         <div class="hero-content">
-          <div class="badge">Version 1.4.0 is out! ✨</div>
+          <div class="badge">Version 1.5.0 is out! ✨</div>
           <h1 class="hero-title">
             Pixel-Perfect <br /><span class="text-gradient"
               >Element Capture</span
@@ -110,7 +110,8 @@
           <p class="hero-subtitle">
             A professional Chrome extension that captures flawless, high-DPR
             screenshots of any webpage element. No blur. Perfect crops. Even
-            handles scrollable elements and cross-origin iframes.
+            handles scrollable elements and full-page captures via seamless
+            tile stitching.
           </p>
           <div class="hero-actions">
             <a
@@ -173,38 +174,60 @@
             <div class="browser-body">
               <!-- Embedded extension popup UI -->
               <div class="extension-popup glass-panel">
-                <header class="ext-header">
-                  <h2>Element Snapper</h2>
-                  <div class="ext-status idle">
-                    <span class="dot"></span>Ready
-                  </div>
-                </header>
-                <main class="ext-main">
-                  <button class="ext-btn-primary">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M4 4H10V6H6V10H4V4ZM20 4V10H18V6H14V4H20ZM4 20V14H6V18H10V20H4ZM20 20H14V18H18V14H20V20ZM12 8C14.2 8 16 9.8 16 12C16 14.2 14.2 16 12 16C9.8 16 8 14.2 8 12C8 9.8 9.8 8 12 8Z"
-                        fill="currentColor"
-                      />
+                <div class="mp-header">
+                  <div class="mp-brand">
+                    <svg width="18" height="18" viewBox="0 0 28 28" fill="none">
+                      <rect x="3" y="3" width="22" height="22" rx="4" stroke="currentColor" stroke-width="2" stroke-dasharray="4 2" opacity="0.4" />
+                      <path d="M3 9V7C3 4.79086 4.79086 3 7 3H9" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" />
+                      <path d="M25 9V7C25 4.79086 23.2091 3 21 3H19" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" />
+                      <path d="M3 19V21C3 23.2091 4.79086 25 7 25H9" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" />
+                      <path d="M25 19V21C25 23.2091 23.2091 25 21 25H19" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" />
+                      <circle cx="14" cy="14" r="5" fill="#3b82f6" />
+                      <circle cx="14" cy="14" r="2" fill="#0f172a" />
                     </svg>
-                    Select Element
-                  </button>
-                  <div class="ext-actions">
-                    <button class="ext-btn-secondary">Area</button>
-                    <button class="ext-btn-secondary">Screen</button>
-                    <button class="ext-btn-secondary">Page</button>
+                    <span class="mp-title">Element Snapper</span>
                   </div>
-                  <label class="ext-switch-row">
-                    <div class="ext-switch-info">
-                      <span class="ext-switch-title">Clipboard</span>
-                      <span class="ext-switch-desc"
-                        >Copy instead of download</span
-                      >
+                  <div class="mp-header-right">
+                    <div class="mp-status"><span class="mp-dot"></span></div>
+                    <div class="mp-settings-btn">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M10.3246 4.31731C10.751 2.5609 13.249 2.5609 13.6754 4.31731C13.9508 5.45193 15.2507 5.99038 16.2478 5.38228C17.7913 4.44105 19.5589 6.2087 18.6177 7.75218C18.0096 8.74925 18.5481 10.0492 19.6827 10.3246C21.4391 10.751 21.4391 13.249 19.6827 13.6754C18.5481 13.9508 18.0096 15.2507 18.6177 16.2478C19.5589 17.7913 17.7913 19.5589 16.2478 18.6177C15.2507 18.0096 13.9508 18.5481 13.6754 19.6827C13.249 21.4391 10.751 21.4391 10.3246 19.6827C10.0492 18.5481 8.74926 18.0096 7.75219 18.6177C6.2087 19.5589 4.44105 17.7913 5.38228 16.2478C5.99038 15.2507 5.45193 13.9508 4.31731 13.6754C2.5609 13.249 2.5609 10.751 4.31731 10.3246C5.45193 10.0492 5.99038 8.74926 5.38228 7.75219C4.44105 6.2087 6.2087 4.44105 7.75219 5.38228C8.74926 5.99038 10.0492 5.45193 10.3246 4.31731Z" stroke="currentColor" stroke-width="2" />
+                        <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" />
+                      </svg>
                     </div>
-                    <input type="checkbox" class="ext-checkbox" />
-                    <div class="ext-toggle"></div>
-                  </label>
-                </main>
+                    <div class="mp-close-btn">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <div class="mp-main-btn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M4 4H10V6H6V10H4V4ZM20 4V10H18V6H14V4H20ZM4 20V14H6V18H10V20H4ZM20 20H14V18H18V14H20V20ZM12 8C14.2 8 16 9.8 16 12C16 14.2 14.2 16 12 16C9.8 16 8 14.2 8 12C8 9.8 9.8 8 12 8Z" fill="currentColor" />
+                  </svg>
+                  <span>Select Element</span>
+                </div>
+                <div class="mp-actions">
+                  <div class="mp-action-btn">Area</div>
+                  <div class="mp-action-btn">Screen</div>
+                  <div class="mp-action-btn">Page</div>
+                </div>
+                <div class="mp-setting-group">
+                  <label class="mp-setting-label">Output</label>
+                  <div class="mp-toggle-group mp-toggle-group-3">
+                    <span class="mp-toggle-opt">Download</span>
+                    <span class="mp-toggle-opt active">Copy Image</span>
+                    <span class="mp-toggle-opt">Copy as Prompt</span>
+                  </div>
+                </div>
+                <div class="mp-link-btn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" />
+                    <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  </svg>
+                  <span>View history</span>
+                </div>
               </div>
 
               <!-- Page content mock background -->

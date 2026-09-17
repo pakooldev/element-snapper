@@ -201,6 +201,14 @@
                   </div>
                   <span class="num-badge" style="position: absolute; top: -8px; right: -8px;">H</span>
                 </div>
+                <div class="mp-link-btn" style="position: relative;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" />
+                    <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  </svg>
+                  <span>View history</span>
+                  <span class="num-badge" style="position: absolute; top: -8px; right: -8px;">I</span>
+                </div>
               </div>
             </div>
 
@@ -266,6 +274,13 @@
                 <div class="legend-text">
                   <strong>Output Mode</strong>
                   <span><strong>Download</strong> saves a file, <strong>Copy Image</strong> copies the screenshot to your clipboard, and <strong>Copy as Prompt</strong> (element capture only) skips the screenshot entirely and copies a text description of the selected element instead — tag, selector, dimensions, text content, key styles, HTML, and DOM path.</span>
+                </div>
+              </div>
+              <div class="legend-item" style="grid-column: 1 / -1;">
+                <span class="legend-badge">I</span>
+                <div class="legend-text">
+                  <strong>View History</strong>
+                  <span>Below the Output setting, click <strong>View history</strong> to reopen the preview for any capture made this browsing session — redownload or re-copy it, remove a single capture, or use <strong>Remove All</strong> to clear the whole list.</span>
                 </div>
               </div>
             </div>
@@ -342,6 +357,18 @@
                   <span class="num-badge">E</span>
                 </div>
 
+                <!-- Preview Captures -->
+                <div class="mp-switch-row" style="margin-top:8px;">
+                  <div class="mp-switch-info">
+                    <span class="mp-switch-title">Preview Captures</span>
+                    <span class="mp-switch-desc">Show floating preview after capture</span>
+                  </div>
+                  <div class="mp-toggle on">
+                    <div class="mp-toggle-knob"></div>
+                  </div>
+                  <span class="num-badge">F</span>
+                </div>
+
                 <!-- Shortcuts section -->
                 <div class="mp-setting-group mp-shortcuts-group" style="margin-top:12px;">
                   <div class="mp-shortcuts-header">
@@ -352,7 +379,7 @@
                         <div class="mp-toggle on">
                           <div class="mp-toggle-knob"></div>
                         </div>
-                        <span class="num-badge" style="position:absolute; top:-8px; right:-8px;">F</span>
+                        <span class="num-badge" style="position:absolute; top:-8px; right:-8px;">G</span>
                       </div>
                     </div>
                   </div>
@@ -422,6 +449,13 @@
               </div>
               <div class="legend-item">
                 <span class="legend-badge">F</span>
+                <div class="legend-text">
+                  <strong>Preview Captures</strong>
+                  <span>When ON (default), shows a floating thumbnail preview after each capture, with quick access to the capture history.</span>
+                </div>
+              </div>
+              <div class="legend-item">
+                <span class="legend-badge">G</span>
                 <div class="legend-text">
                   <strong>Shortcuts</strong>
                   <span>Built-in hotkeys for every capture action. Toggle them on/off, hit Reset to restore defaults, or click any key to re-record it.</span>
