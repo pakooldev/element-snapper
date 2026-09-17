@@ -16,9 +16,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # wrangler pages deploy errors if the project doesn't exist yet — it
+      # does not auto-create one. This is a no-op (continue-on-error) once
+      # the project exists from the first run.
+      - name: Ensure Cloudflare Pages project exists
+        uses: cloudflare/wrangler-action@v3
+        continue-on-error: true
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages project create element-snapper --production-branch=main
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy website --project-name=element-snapper
+          command: pages deploy website --project-name=element-snapper --commit-dirty=true
