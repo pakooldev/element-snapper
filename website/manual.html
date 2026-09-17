@@ -192,15 +192,14 @@
                   <div class="mp-action-btn">Screen<span class="num-badge">F</span></div>
                   <div class="mp-action-btn">Page<span class="num-badge">G</span></div>
                 </div>
-                <div class="mp-switch-row">
-                  <div class="mp-switch-info">
-                    <span class="mp-switch-title">Clipboard</span>
-                    <span class="mp-switch-desc">Copy instead of download</span>
+                <div class="mp-setting-group" style="position: relative;">
+                  <label class="mp-setting-label">Output</label>
+                  <div class="mp-toggle-group mp-toggle-group-3">
+                    <span class="mp-toggle-opt">Download</span>
+                    <span class="mp-toggle-opt active">Copy Image</span>
+                    <span class="mp-toggle-opt">Copy as Prompt</span>
                   </div>
-                  <div class="mp-toggle on">
-                    <div class="mp-toggle-knob"></div>
-                  </div>
-                  <span class="num-badge">H</span>
+                  <span class="num-badge" style="position: absolute; top: -8px; right: -8px;">H</span>
                 </div>
               </div>
             </div>
@@ -265,8 +264,8 @@
               <div class="legend-item">
                 <span class="legend-badge">H</span>
                 <div class="legend-text">
-                  <strong>Clipboard Toggle</strong>
-                  <span>When ON, the screenshot is copied to your clipboard. When OFF, it downloads as a file.</span>
+                  <strong>Output Mode</strong>
+                  <span><strong>Download</strong> saves a file, <strong>Copy Image</strong> copies the screenshot to your clipboard, and <strong>Copy as Prompt</strong> (element capture only) skips the screenshot entirely and copies a text description of the selected element instead — tag, selector, dimensions, text content, key styles, HTML, and DOM path.</span>
                 </div>
               </div>
             </div>

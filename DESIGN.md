@@ -96,7 +96,7 @@ This ordering is why `panel.js` explicitly hides itself before capture and befor
 │  │   Area   ││  Screen  ││ Page │  │  ← Secondary actions (3-col grid)
 │  └──────────┘└──────────┘└──────┘  │
 │  ┌──────────────────────────────┐  │
-│  │ Clipboard  Copy not download │○│  ← Toggle row
+│  │ Output │Download│Image│Prompt│  │  ← 3-way segmented control
 │  └──────────────────────────────┘  │
 └────────────────────────────────────┘
 ```
@@ -107,7 +107,7 @@ This ordering is why `panel.js` explicitly hides itself before capture and befor
 - **Status Pill** — rounded badge in the header, colored 6px dot only (no text): `idle`/`selecting` → blue (pulsing when selecting), `capturing` → amber, `success` → green, `error` → red.
 - **Primary Capture Button** — 54px tall, full-width, blue gradient, lifts on hover, scales to 98% on active. Drives its look off `data-state` (`idle`/`selecting`/`capturing`/`success`/`error`), each with its own label and style (e.g. `selecting` swaps to outlined card style + "Cancel Selection"). Spinner is an SVG `stroke-dasharray` draw/undraw animation.
 - **Secondary Action Buttons** — Area / Screen / Page, equal-width 3-col grid, card background, blue border + tint on hover.
-- **Toggle Switch** (Clipboard) — label + description left, custom 44×24px pill switch right, backed by a real hidden checkbox.
+- **Output Mode** (Download / Copy Image / Copy as Prompt) — segmented control from radio inputs, same `.toggle-group`/`.toggle-option` component the Settings Format control uses, just with 3 options and tighter sizing (`.toggle-group-3`) to fit the longer labels. "Copy as Prompt" only applies to element capture — selecting an element skips the screenshot entirely and copies a text description of it (tag, selector, dimensions, text content, a curated style allowlist, capped outerHTML, ancestor/DOM path) to the clipboard. Its hover highlight uses a distinct purple (`mode-prompt`) instead of the normal blue, since the click won't produce an image.
 - **Settings: Format Toggle** — segmented PNG/JPG control from radio inputs.
 - **Settings: Sliders** (Quality 1–100, Delay 0–10s) — `<input type="range">` with a custom white-circle thumb and a JS-driven filled track (`background-size` set on `input` events). Quality slider hides when PNG is selected.
 - **Buy Me a Coffee Button** — card styled in BMC's yellow, at the bottom of Settings.
@@ -144,13 +144,14 @@ Nearly a 1:1 port of the popup (same Home/Settings sliding-view pattern, same co
 
 ### Element Selector Overlay (`content/element_selector.js`)
 
-A single fixed-position `div` (`#element-screenshot-highlight-overlay`) is moved/resized on every `mousemove`, rather than re-styling the hovered element in place — avoids layout thrash and works on elements with `overflow:hidden` ancestors. Three visual modes via class:
+A single fixed-position `div` (`#element-screenshot-highlight-overlay`) is moved/resized on every `mousemove`, rather than re-styling the hovered element in place — avoids layout thrash and works on elements with `overflow:hidden` ancestors. The border color is driven by two independent things — the selected **output mode**, and whether the hovered element **extends beyond the viewport** (which always wins, since "this will trigger multi-tile stitching" is a more operationally important signal than which output mode is active):
 
 | Class | Meaning | Style |
 |---|---|---|
-| `mode-normal` | Regular capture (viewport-clipped) | Dashed blue, 7% blue fill |
-| `mode-full-fits` | "Scroll Element" on, element fits in viewport | Same as normal |
-| `mode-full-extends` | "Scroll Element" on, element exceeds viewport | Dashed **indigo**, badge with `↕`/`↔` arrows + "Full Element" label |
+| `mode-download` | Output mode is "Download" | Dashed **green**, 7% green fill |
+| `mode-image` | Output mode is "Copy Image" | Dashed **blue**, 7% blue fill |
+| `mode-full-extends` | "Scroll Element" on AND element exceeds viewport | Dashed **indigo**, badge with `↕`/`↔` arrows + "Full Element" label — overrides `mode-download`/`mode-image` regardless of which is selected |
+| `mode-prompt` | Output mode is "Copy as Prompt" | Dashed **purple**, badge always reads "Copy as Prompt" — overrides everything else since scroll/full-capture is meaningless when nothing is screenshotted |
 
 A dimension label (`123 × 456`) follows the bottom-right of the hovered element, flipping above when it would clip off the bottom edge.
 

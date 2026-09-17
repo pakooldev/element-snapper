@@ -336,6 +336,14 @@
     }
     .toggle-group input:checked + .toggle-option { background: var(--accent-primary); color: white; font-weight: 500; }
 
+    /* 3-way variant (Output mode) — longer labels need tighter sizing to
+       fit the popup's fixed 340px width without wrapping */
+    .toggle-group-3 .toggle-option {
+      padding: 8px 4px;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
     .setting-row { display: flex; align-items: center; gap: 16px; margin-top: 12px; }
     .setting-row .setting-label { margin-bottom: 0; width: 60px; flex-shrink: 0; }
 
@@ -526,15 +534,16 @@
                 <button class="action-btn" id="captureFullPageBtn"><span>Page</span></button>
               </div>
 
-              <div class="switch-group">
-                <label class="switch-row">
-                  <div class="switch-content">
-                    <span class="switch-label">Clipboard</span>
-                    <span class="switch-desc">Copy instead of download</span>
-                  </div>
-                  <input type="checkbox" id="clipboardCheckbox" class="switch-input"/>
-                  <div class="toggle-switch"></div>
-                </label>
+              <div class="setting-group">
+                <label class="setting-label">Output</label>
+                <div class="toggle-group toggle-group-3">
+                  <input type="radio" name="outputMode" id="om-download" value="download"/>
+                  <label for="om-download" class="toggle-option">Download</label>
+                  <input type="radio" name="outputMode" id="om-copyImage" value="copyImage" checked/>
+                  <label for="om-copyImage" class="toggle-option">Copy Image</label>
+                  <input type="radio" name="outputMode" id="om-copyPrompt" value="copyPrompt"/>
+                  <label for="om-copyPrompt" class="toggle-option">Copy as Prompt</label>
+                </div>
               </div>
 
               <button class="link-btn" id="historyBtn" type="button">
@@ -709,7 +718,7 @@
   const delayValue        = $('delayValue');
   const fullCaptureCheckbox = $('fullCaptureCheckbox');
   const debugModeCheckbox = $('debugModeCheckbox');
-  const clipboardCheckbox = $('clipboardCheckbox');
+  const outputModeRadios  = $$('input[name="outputMode"]');
   const historyBtn        = $('historyBtn');
   const showPreviewCheckbox = $('showPreviewCheckbox');
   const formatRadios      = $$('input[name="format"]');
@@ -792,7 +801,7 @@
   }
 
   async function loadSettings() {
-    const s = await chrome.storage.local.get(['format', 'quality', 'delay', 'fullCapture', 'debugMode', 'copyToClipboard', 'showPreview']);
+    const s = await chrome.storage.local.get(['format', 'quality', 'delay', 'fullCapture', 'debugMode', 'outputMode', 'copyToClipboard', 'showPreview']);
 
     if (s.format) {
       const radio = shadow.querySelector(`input[name="format"][value="${s.format}"]`);
@@ -808,12 +817,20 @@
     }
     if (s.fullCapture !== undefined)  fullCaptureCheckbox.checked = s.fullCapture;
     if (s.debugMode   !== undefined)  debugModeCheckbox.checked   = s.debugMode;
-    clipboardCheckbox.checked = s.copyToClipboard !== undefined ? s.copyToClipboard : true;
+
+    // outputMode is the source of truth once set; migrate from the old
+    // copyToClipboard boolean for installs that predate the 3-way mode.
+    // "Copy as Prompt" is opt-in only — never auto-selected on migration.
+    const outputMode = s.outputMode || (s.copyToClipboard === false ? 'download' : 'copyImage');
+    const modeRadio = shadow.querySelector(`input[name="outputMode"][value="${outputMode}"]`);
+    if (modeRadio) modeRadio.checked = true;
+
     showPreviewCheckbox.checked = s.showPreview ?? true;
   }
 
   async function saveSettings() {
     const selected = shadow.querySelector('input[name="format"]:checked').value;
+    const outputMode = shadow.querySelector('input[name="outputMode"]:checked').value;
     updateQualityState();
     if (viewsWrapper.classList.contains('settings-open')) resizeToView(settingsView);
 
@@ -823,7 +840,7 @@
       delay:           parseInt(delayInput.value),
       fullCapture:     fullCaptureCheckbox.checked,
       debugMode:       debugModeCheckbox.checked,
-      copyToClipboard: clipboardCheckbox.checked,
+      outputMode:      outputMode,
       showPreview:     showPreviewCheckbox.checked,
     });
   }
@@ -1082,7 +1099,7 @@
   // Checkboxes
   fullCaptureCheckbox.addEventListener('change', saveSettings);
   debugModeCheckbox.addEventListener('change', saveSettings);
-  clipboardCheckbox.addEventListener('change', saveSettings);
+  outputModeRadios.forEach(r => r.addEventListener('change', saveSettings));
   showPreviewCheckbox.addEventListener('change', saveSettings);
 
   // History link — hide the panel while the modal is up so it doesn't sit on
@@ -1134,7 +1151,7 @@
         // own toast/modal) hidden for the rest of the tab's lifetime.
         window.elementSnapperPreview?.restoreAfterCapture();
         if (typeof showNotification === 'function') {
-          showNotification('Screenshot captured successfully', 'success');
+          showNotification(message.message || 'Screenshot captured successfully', 'success');
         }
         break;
 

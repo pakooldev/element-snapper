@@ -9,6 +9,8 @@ class ElementSelector {
     this.currentElement = null;
     this.highlightOverlay = null;
     this.fullCapture = false;        // cached setting, updated on start()
+    this.isPromptMode = false;       // cached setting, updated on start()
+    this.outputMode = 'copyImage';   // cached setting, updated on start()
     this.boundMouseMove = this.handleMouseMove.bind(this);
     this.boundClick = this.handleClick.bind(this);
     this.boundKeyDown = this.handleKeyDown.bind(this);
@@ -23,9 +25,14 @@ class ElementSelector {
 
     this.isActive = true;
 
-    // Cache the fullCapture setting — ready well before first user hover
-    chrome.storage.local.get(['fullCapture']).then(settings => {
+    // Cache settings that affect hover appearance — ready well before first
+    // user hover
+    chrome.storage.local.get(['fullCapture', 'outputMode', 'copyToClipboard']).then(settings => {
       this.fullCapture = settings.fullCapture || false;
+      // Same migration fallback as panel.js — outputMode wins once set.
+      this.outputMode = settings.outputMode ||
+        (settings.copyToClipboard === false ? 'download' : 'copyImage');
+      this.isPromptMode = this.outputMode === 'copyPrompt';
     });
 
     injectHighlightStyles();
@@ -97,7 +104,7 @@ class ElementSelector {
 
     // Update fixed-position highlight overlay
     if (this.highlightOverlay) {
-      updateHighlightOverlay(this.highlightOverlay, element, this.fullCapture);
+      updateHighlightOverlay(this.highlightOverlay, element, this.fullCapture, this.isPromptMode, this.outputMode);
     }
 
     // Update dimensions label
@@ -106,9 +113,11 @@ class ElementSelector {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
 
-      // Show full element size when full-capture; otherwise show clipped size
+      // Show full element size when full-capture or prompt mode (prompt mode
+      // always describes the whole element, viewport-clipping is irrelevant
+      // since nothing is screenshotted); otherwise show clipped size
       let labelW, labelH;
-      if (this.fullCapture) {
+      if (this.fullCapture || this.isPromptMode) {
         labelW = Math.round(rect.width);
         labelH = Math.round(rect.height);
       } else {
@@ -183,7 +192,13 @@ class ElementSelector {
     this.stop();
 
     // Load settings
-    const settings = await chrome.storage.local.get(['fullCapture', 'debugMode', 'delay']);
+    const settings = await chrome.storage.local.get(['fullCapture', 'debugMode', 'delay', 'outputMode']);
+
+    if (settings.outputMode === 'copyPrompt') {
+      await this.handlePromptCapture(element);
+      return;
+    }
+
     const fullCapture = settings.fullCapture || false;
     const debugMode = settings.debugMode || false;
     const delay = settings.delay || 0;
@@ -274,6 +289,32 @@ class ElementSelector {
       }
     } catch (error) {
       console.error('Capture failed:', error);
+      chrome.runtime.sendMessage({
+        action: 'captureError',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * "Copy as Prompt" output mode: extract the clicked element's context as
+   * plain text and write it to the clipboard. No screenshot, no delay, no
+   * download/history — pure DOM read, entirely local to this content script.
+   * @param {HTMLElement} element - Selected element
+   */
+  async handlePromptCapture(element) {
+    try {
+      chrome.runtime.sendMessage({ action: 'captureStarted' });
+
+      const text = buildElementPromptText(element);
+      await navigator.clipboard.writeText(text);
+
+      chrome.runtime.sendMessage({
+        action: 'captureSuccess',
+        message: 'Copied element context to clipboard'
+      });
+    } catch (error) {
+      console.error('Copy as Prompt failed:', error);
       chrome.runtime.sendMessage({
         action: 'captureError',
         error: error.message

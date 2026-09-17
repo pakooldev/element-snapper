@@ -110,7 +110,7 @@ Handles `captureElement`, `captureViewportOrPage`, and `captureRegion` messages.
 | `quality` | 1–100 | `95` | JPEG quality (ignored for PNG) |
 | `delay` | 0–10 | `0` | Capture delay in seconds |
 | `fullCapture` | boolean | `false` | Scroll element to capture beyond viewport |
-| `copyToClipboard` | boolean | `true` | Copy to clipboard instead of download |
+| `outputMode` | `'download'`\|`'copyImage'`\|`'copyPrompt'` | `'copyImage'` | Download the image, copy it to clipboard, or (element capture only) skip the screenshot and copy a text description of the element instead. Migrated from the old `copyToClipboard` boolean if unset. |
 | `debugMode` | boolean | `false` | Hidden dev flag, not shown in settings UI |
 
 ## Website (`website/`)

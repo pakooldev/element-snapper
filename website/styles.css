@@ -1534,6 +1534,14 @@ body {
   color: white;
 }
 
+/* 3-way variant (Output mode) — longer labels need tighter sizing to fit
+   the popup's fixed 340px width without wrapping */
+.mp-toggle-group-3 .mp-toggle-opt {
+  padding: 8px 4px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .mp-setting-row {
   display: flex;
   align-items: center;

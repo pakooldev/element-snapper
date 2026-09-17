@@ -161,13 +161,34 @@ async function waitForNextFrame(tabId) {
  * @param {number} tabId - Tab ID for capturing
  * @returns {Promise<object>} Result object with success status
  */
+/**
+ * Resolve whether a capture should copy to clipboard (true) or download
+ * (false). outputMode is the source of truth once set; copyToClipboard is
+ * only consulted for installs that haven't saved a settings change since the
+ * 3-way mode shipped.
+ *
+ * "Copy as Prompt" only makes sense for a single element and is handled
+ * entirely client-side in element_selector.js, which never sends a capture
+ * request to this file when that mode is active — but Area/Screen/Page
+ * (content-main.js) have no such guard and always request a capture
+ * regardless of outputMode. So this can legitimately be called with
+ * outputMode === 'copyPrompt'; treat that the same as 'copyImage' (copy to
+ * clipboard) rather than falling into the download branch nobody asked for.
+ * @param {object} settings - chrome.storage.local settings
+ * @returns {boolean}
+ */
+function resolveCopyToClipboard(settings) {
+  if (!settings.outputMode) return settings.copyToClipboard ?? true;
+  return settings.outputMode !== 'download';
+}
+
 async function handleViewportOrPageCapture(data, tabId) {
   try {
     // Load settings
-    const settings = await chrome.storage.local.get(['format', 'quality', 'copyToClipboard', 'showPreview']);
+    const settings = await chrome.storage.local.get(['format', 'quality', 'outputMode', 'copyToClipboard', 'showPreview']);
     const outputFormat = settings.format || 'png';
     const outputQuality = settings.quality || 95;
-    const copyToClipboard = settings.copyToClipboard ?? true;
+    const copyToClipboard = resolveCopyToClipboard(settings);
     const showPreview = settings.showPreview ?? true;
 
     let captureBlob;
@@ -276,11 +297,11 @@ function generateViewportFilename(mode, format) {
 async function handleElementCapture(data, tabId) {
   try {
     // Load settings
-    const settings = await chrome.storage.local.get(['format', 'quality', 'fullCapture', 'copyToClipboard', 'showPreview']);
+    const settings = await chrome.storage.local.get(['format', 'quality', 'fullCapture', 'outputMode', 'copyToClipboard', 'showPreview']);
     const outputFormat = settings.format || 'png';
     const outputQuality = settings.quality || 95;
     const fullCapture = settings.fullCapture || false;
-    const copyToClipboard = settings.copyToClipboard ?? true;
+    const copyToClipboard = resolveCopyToClipboard(settings);
     const showPreview = settings.showPreview ?? true;
 
     // Determine if multi-capture is needed
@@ -340,10 +361,10 @@ async function handleElementCapture(data, tabId) {
 async function handleRegionCapture(data, tabId) {
   try {
     // Load settings
-    const settings = await chrome.storage.local.get(['format', 'quality', 'copyToClipboard', 'showPreview']);
+    const settings = await chrome.storage.local.get(['format', 'quality', 'outputMode', 'copyToClipboard', 'showPreview']);
     const outputFormat = settings.format || 'png';
     const outputQuality = settings.quality || 95;
-    const copyToClipboard = settings.copyToClipboard ?? true;
+    const copyToClipboard = resolveCopyToClipboard(settings);
     const showPreview = settings.showPreview ?? true;
 
     // Capture the visible tab

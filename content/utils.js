@@ -47,6 +47,125 @@ function getDocumentDimensions() {
 }
 
 /**
+ * Generate a CSS selector for an element: id, else tag+first-class if that
+ * uniquely matches, else a full :nth-child() path (never ambiguous).
+ * @param {HTMLElement} element - Target element
+ * @returns {string} CSS selector
+ */
+function generateElementSelector(element) {
+  if (element.id) return `#${CSS.escape(element.id)}`;
+
+  const tag = element.tagName.toLowerCase();
+  if (element.classList.length) {
+    const simple = `${tag}.${CSS.escape(element.classList[0])}`;
+    try {
+      if (document.querySelectorAll(simple).length === 1) return simple;
+    } catch (e) {
+      // Invalid/unsupported selector syntax — fall through to nth-child path.
+    }
+  }
+
+  const parts = [];
+  let node = element;
+  while (node && node !== document.documentElement) {
+    let part = node.tagName.toLowerCase();
+    const parent = node.parentElement;
+    if (parent) {
+      const index = Array.from(parent.children).indexOf(node) + 1;
+      part += `:nth-child(${index})`;
+    }
+    parts.unshift(part);
+    node = parent;
+  }
+  return parts.join(' > ');
+}
+
+/**
+ * Tag-only ancestor chain, closest to farthest, not including the element
+ * itself or <html>. e.g. "div > div > section > body"
+ * @param {HTMLElement} element - Target element
+ * @returns {string}
+ */
+function buildAncestorPath(element) {
+  const tags = [];
+  let node = element.parentElement;
+  while (node && node !== document.documentElement) {
+    tags.push(node.tagName.toLowerCase());
+    node = node.parentElement;
+  }
+  return tags.join(' > ');
+}
+
+/**
+ * Root-to-element DOM path with each node's first class, including the
+ * element itself but not <html>. e.g. "body > section.foo > h1.bar"
+ * @param {HTMLElement} element - Target element
+ * @returns {string}
+ */
+function buildFullDomPath(element) {
+  const parts = [];
+  let node = element;
+  while (node && node !== document.documentElement) {
+    let part = node.tagName.toLowerCase();
+    if (node.classList && node.classList.length) {
+      part += `.${CSS.escape(node.classList[0])}`;
+    }
+    parts.unshift(part);
+    node = node.parentElement;
+  }
+  return parts.join(' > ');
+}
+
+// Curated allowlist for the "Copy as Prompt" computed-styles section — the
+// handful most useful for "what does this look like" at a glance, not the
+// hundreds of properties getComputedStyle() actually exposes.
+const PROMPT_STYLE_ALLOWLIST = ['display', 'font-size', 'color', 'background-color'];
+const PROMPT_HTML_CAP = 1500;
+
+/**
+ * Build the Cursor-style "attached browser context" text block for an
+ * element, for the "Copy as Prompt" output mode.
+ * @param {HTMLElement} element - Selected element
+ * @returns {string} Plain-text context block
+ */
+function buildElementPromptText(element) {
+  const rect = element.getBoundingClientRect();
+  const computed = getComputedStyle(element);
+  const tag = element.tagName.toLowerCase();
+
+  const styleLines = PROMPT_STYLE_ALLOWLIST
+    .map(prop => `  ${prop}: ${computed.getPropertyValue(prop)}`)
+    .join('\n');
+
+  const text = (element.textContent || '').trim().replace(/\s+/g, ' ');
+
+  let html = element.outerHTML;
+  if (html.length > PROMPT_HTML_CAP) html = html.slice(0, PROMPT_HTML_CAP) + '...';
+
+  return [
+    `Attached browser context from ${window.location.href}`,
+    '',
+    'Selected element:',
+    tag,
+    `Role: ${element.getAttribute('role') || tag}`,
+    `Selector: ${generateElementSelector(element)}`,
+    `Dimensions: ${Math.round(rect.width)}x${Math.round(rect.height)}`,
+    '',
+    'Text content:',
+    text,
+    '',
+    'Computed styles:',
+    styleLines,
+    '',
+    'HTML:',
+    html,
+    '',
+    `Ancestor path: ${buildAncestorPath(element)}`,
+    `Full DOM path: ${buildFullDomPath(element)}`,
+  ].join('\n');
+}
+
+/**
  * Scroll element into view smoothly
  * @param {HTMLElement} element - Element to scroll into view
  * @returns {Promise<void>} Resolves when scroll is complete
@@ -169,25 +288,40 @@ function injectHighlightStyles() {
       overflow: visible;
     }
 
-    /* Normal capture: dashed blue — captures only the visible portion */
-    #element-screenshot-highlight-overlay.mode-normal {
+    /* Output mode "Download": dashed green, distinct from Copy Image so the
+       border alone tells you what a click will do */
+    #element-screenshot-highlight-overlay.mode-download {
+      border: 2px dashed #10b981;
+      background: rgba(16, 185, 129, 0.07);
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+    }
+
+    /* Output mode "Copy Image": dashed blue */
+    #element-screenshot-highlight-overlay.mode-image {
       border: 2px dashed #3b82f6;
       background: rgba(59, 130, 246, 0.07);
       box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
     }
 
-    /* Full capture: element fits entirely in viewport — dashed blue */
-    #element-screenshot-highlight-overlay.mode-full-fits {
-      border: 2px dashed #3b82f6;
-      background: rgba(59, 130, 246, 0.07);
-      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
-    }
-
-    /* Full capture: element extends beyond viewport — dashed indigo */
+    /* Full capture: element extends beyond viewport — dashed indigo,
+       regardless of Download/Copy Image. This signals "will trigger
+       multi-tile stitching", a different axis from output mode, so it
+       always overrides the mode color rather than being tinted per-mode. */
     #element-screenshot-highlight-overlay.mode-full-extends {
       border: 2px dashed #818cf8;
       background: rgba(129, 140, 248, 0.07);
       box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.15);
+    }
+
+    /* Copy as Prompt: no screenshot taken — dashed purple, distinct from
+       every image-capture mode so it's clear this click won't produce one */
+    #element-screenshot-highlight-overlay.mode-prompt {
+      border: 2px dashed #a855f7;
+      background: rgba(168, 85, 247, 0.07);
+      box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.15);
+    }
+    #element-screenshot-highlight-overlay.mode-prompt #element-screenshot-extend-badge {
+      background: #a855f7;
     }
 
     /* Badge shown at the clipped edge for extended full-capture elements */
@@ -243,8 +377,10 @@ function createHighlightOverlay() {
  * @param {HTMLElement} overlay - The overlay element returned by createHighlightOverlay
  * @param {HTMLElement} element - The hovered DOM element
  * @param {boolean} fullCapture - Whether "Scroll Element" (full capture) is enabled
+ * @param {boolean} [isPromptMode] - Whether output mode is "Copy as Prompt" (no screenshot taken)
+ * @param {string} [outputMode] - 'download' | 'copyImage' | 'copyPrompt' — picks the border color
  */
-function updateHighlightOverlay(overlay, element, fullCapture) {
+function updateHighlightOverlay(overlay, element, fullCapture, isPromptMode, outputMode) {
   const rect = element.getBoundingClientRect();
   const vw = window.innerWidth;
   const vh = window.innerHeight;
@@ -273,10 +409,27 @@ function updateHighlightOverlay(overlay, element, fullCapture) {
 
   const badge = overlay.querySelector('#element-screenshot-extend-badge');
 
-  if (!fullCapture) {
-    overlay.className = 'mode-normal';
-    if (badge) badge.style.display = 'none';
-  } else if (extendsBeyond) {
+  if (isPromptMode) {
+    // Full-capture concept (scroll/stitch) is meaningless when nothing is
+    // screenshotted — always show the same distinct "text copy" treatment.
+    overlay.className = 'mode-prompt';
+    if (badge) {
+      badge.textContent = 'Copy as Prompt';
+      badge.style.bottom = '-1px';
+      badge.style.top = 'auto';
+      badge.style.transform = 'translateX(-50%) translateY(100%)';
+      badge.style.display = 'block';
+
+      const badgeH = badge.offsetHeight;
+      if (visBottom + badgeH + 4 > vh) {
+        badge.style.bottom = '4px';
+        badge.style.transform = 'translateX(-50%)';
+      }
+    }
+  } else if (fullCapture && extendsBeyond) {
+    // Extends beyond the viewport — always indigo regardless of output
+    // mode; this signals "will trigger multi-tile stitching", a different
+    // axis from what happens to the result.
     overlay.className = 'mode-full-extends';
     if (badge) {
       const arrows = [];
@@ -299,7 +452,7 @@ function updateHighlightOverlay(overlay, element, fullCapture) {
       }
     }
   } else {
-    overlay.className = 'mode-full-fits';
+    overlay.className = outputMode === 'download' ? 'mode-download' : 'mode-image';
     if (badge) badge.style.display = 'none';
   }
 }
