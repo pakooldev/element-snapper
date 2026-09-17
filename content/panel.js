@@ -318,13 +318,31 @@
 
     .toggle-group {
       display: flex;
+      position: relative;
       background: var(--bg-card);
       padding: 4px;
       border-radius: var(--radius-sm);
       border: 1px solid var(--border-light);
+      --count: 2;
     }
+    .toggle-group::before {
+      content: '';
+      position: absolute;
+      top: 4px;
+      bottom: 4px;
+      left: 4px;
+      width: calc((100% - 8px) / var(--count));
+      background: var(--accent-primary);
+      border-radius: 4px;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 0;
+    }
+    .toggle-group:has(input:nth-of-type(2):checked)::before { transform: translateX(100%); }
+    .toggle-group:has(input:nth-of-type(3):checked)::before { transform: translateX(200%); }
     .toggle-group input { display: none; }
     .toggle-option {
+      position: relative;
+      z-index: 1;
       flex: 1;
       text-align: center;
       padding: 8px;
@@ -332,12 +350,15 @@
       color: var(--text-secondary);
       cursor: pointer;
       border-radius: 4px;
-      transition: all 0.2s;
+      transition: color 0.25s ease;
     }
-    .toggle-group input:checked + .toggle-option { background: var(--accent-primary); color: white; font-weight: 500; }
+    .toggle-group input:checked + .toggle-option { color: white; font-weight: 500; }
 
     /* 3-way variant (Output mode) — longer labels need tighter sizing to
        fit the popup's fixed 340px width without wrapping */
+    .toggle-group-3 {
+      --count: 3;
+    }
     .toggle-group-3 .toggle-option {
       padding: 8px 4px;
       font-size: 11px;
