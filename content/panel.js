@@ -319,7 +319,6 @@
     .toggle-group {
       display: flex;
       position: relative;
-      background: var(--bg-card);
       padding: 4px;
       border-radius: var(--radius-sm);
       border: 1px solid var(--border-light);
