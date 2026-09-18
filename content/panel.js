@@ -232,6 +232,8 @@
       font-family: inherit;
     }
     .action-btn:hover { border-color: var(--accent-primary); background: rgba(59, 130, 246, 0.05); }
+    .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .action-btn:disabled:hover { border-color: var(--border-light); background: var(--bg-card); }
 
     /* ── Switches ── */
     .switch-group, .setting-group { margin-top: 4px; }
@@ -820,6 +822,21 @@
     $('qualityGroup').style.display = selected === 'png' ? 'none' : 'flex';
   }
 
+  // "Copy as Prompt" only makes sense for a specific selected element — Area/
+  // Screen/Page always capture an image, so disable them rather than let the
+  // user hit the silent copyImage fallback. Hover title explains why, so we
+  // don't need extra always-visible UI copy for it.
+  function updateActionButtonsState() {
+    const outputMode = shadow.querySelector('input[name="outputMode"]:checked')?.value;
+    const isPromptMode = outputMode === 'copyPrompt';
+    const title = isPromptMode ? 'Copy as Prompt only works with Select Element' : '';
+
+    for (const btn of [captureViewportBtn, captureFullPageBtn, captureRegionBtn]) {
+      btn.disabled = isPromptMode;
+      btn.title = title;
+    }
+  }
+
   async function loadSettings() {
     const s = await chrome.storage.local.get(['format', 'quality', 'delay', 'fullCapture', 'debugMode', 'outputMode', 'copyToClipboard', 'showPreview']);
 
@@ -844,6 +861,7 @@
     const outputMode = s.outputMode || (s.copyToClipboard === false ? 'download' : 'copyImage');
     const modeRadio = shadow.querySelector(`input[name="outputMode"][value="${outputMode}"]`);
     if (modeRadio) modeRadio.checked = true;
+    updateActionButtonsState();
 
     showPreviewCheckbox.checked = s.showPreview ?? true;
   }
@@ -852,6 +870,7 @@
     const selected = shadow.querySelector('input[name="format"]:checked').value;
     const outputMode = shadow.querySelector('input[name="outputMode"]:checked').value;
     updateQualityState();
+    updateActionButtonsState();
     if (viewsWrapper.classList.contains('settings-open')) resizeToView(settingsView);
 
     await chrome.storage.local.set({
