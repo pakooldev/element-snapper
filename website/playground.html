@@ -24,6 +24,13 @@
     <div class="glow glow-1"></div>
     <div class="glow glow-2"></div>
 
+    <!-- Floating ad — position: fixed, stays put across scroll -->
+    <div class="pg-floating-ad" id="pgFloatingAd">
+      <button class="pg-floating-ad-close" id="pgFloatingAdClose" aria-label="Close ad">×</button>
+      <div class="pg-floating-ad-label">Advertisement</div>
+      <div class="pg-floating-ad-body">Limited offer — try selecting me!</div>
+    </div>
+
     <!-- Navigation -->
     <nav class="navbar">
       <div class="container nav-container">
@@ -144,6 +151,15 @@
           </div>
         </div>
 
+        <div class="test-section">
+          <h2 class="test-heading">6. Floating Ad <span class="test-tag">fixed position</span></h2>
+          <p class="step-desc">
+            Stays pinned to the corner of the viewport while you scroll — like a real ad, cookie
+            banner, or chat widget. Try selecting it at different scroll positions, and confirm
+            Page capture doesn't pick up a duplicate of it on every stitched tile.
+          </p>
+        </div>
+
         <!-- Tips Section -->
         <div class="manual-tips">
           <h2 class="section-title" style="font-size: 1.8rem;">Checklist</h2>
@@ -192,5 +208,13 @@
         </div>
       </div>
     </footer>
+
+    <script>
+      document
+        .getElementById("pgFloatingAdClose")
+        .addEventListener("click", () => {
+          document.getElementById("pgFloatingAd").remove();
+        });
+    </script>
   </body>
 </html>
