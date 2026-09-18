@@ -9,6 +9,7 @@ console.log('Element Snapper: Content script loaded');
 
 // Store scrollbar state for multi-capture
 let scrollbarState = null;
+let fixedElementsState = null;
 
 /**
  * Handle viewport capture
@@ -295,6 +296,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Restore scrollbars after multi-capture (called after last tile)
         showScrollbars(scrollbarState);
         scrollbarState = null;
+        sendResponse({ success: true });
+        break;
+
+      case 'hideFixedElements':
+        // Hide fixed/sticky page elements after the first tile is captured,
+        // so they appear once (in tile 0,0) instead of duplicated everywhere
+        fixedElementsState = hideFixedElements();
+        sendResponse({ success: true });
+        break;
+
+      case 'showFixedElements':
+        // Restore fixed/sticky page elements after multi-capture (called after last tile)
+        showFixedElements(fixedElementsState);
+        fixedElementsState = null;
         sendResponse({ success: true });
         break;
 

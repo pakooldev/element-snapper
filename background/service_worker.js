@@ -517,6 +517,15 @@ async function captureTiledRegion(data, tabId, format, quality) {
 
         // Capture visible tab at this scroll position
         const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
+
+        // Fixed/sticky elements (floating ads, sticky headers) stay pinned to
+        // the viewport across every tile. Let the very first tile capture them
+        // naturally, then hide them for the rest so they appear once in the
+        // stitched image instead of duplicated at every tile.
+        if (tileX === 0 && tileY === 0) {
+          await chrome.tabs.sendMessage(tabId, { action: 'hideFixedElements' }).catch(() => {});
+        }
+
         const blob = await fetch(dataUrl).then(r => r.blob());
         const imageBitmap = await createImageBitmap(blob);
 
@@ -596,11 +605,17 @@ async function captureTiledRegion(data, tabId, format, quality) {
     return stitchedBlob;
 
   } finally {
-    // Always restore scrollbars and hide debug border, even if capture fails
+    // Always restore scrollbars, fixed elements, and hide debug border, even if capture fails
     try {
       await chrome.tabs.sendMessage(tabId, { action: 'showScrollbars' });
     } catch (e) {
       console.warn('Failed to restore scrollbars:', e);
+    }
+
+    try {
+      await chrome.tabs.sendMessage(tabId, { action: 'showFixedElements' });
+    } catch (e) {
+      console.warn('Failed to restore fixed elements:', e);
     }
 
     if (debugMode) {

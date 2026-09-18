@@ -520,6 +520,56 @@ function showScrollbars(scrollbarState) {
   }
 }
 
+// IDs of this extension's own on-page overlays (light-DOM, position: fixed) —
+// never hide these as part of hiding the page's own fixed/sticky elements.
+const OWN_FIXED_ELEMENT_ID_PREFIXES = ['element-screenshot-', 'region-selector-'];
+
+/**
+ * Hide the page's own fixed/sticky-positioned elements temporarily (for
+ * multi-tile capture, after the first tile). A fixed element (floating ad,
+ * sticky header, cookie banner) stays pinned to the viewport across every
+ * tile — captured once in the first tile, it must be hidden for the rest or
+ * it ends up duplicated at the same spot in every tile of the stitched image.
+ * Uses visibility (not display) so layout/scroll position is undisturbed.
+ * @returns {object} Object with restore function
+ */
+function hideFixedElements() {
+  const changed = [];
+  const all = document.body ? document.body.querySelectorAll('*') : [];
+
+  for (const el of all) {
+    if (el.id && OWN_FIXED_ELEMENT_ID_PREFIXES.some((p) => el.id.startsWith(p))) continue;
+
+    const position = getComputedStyle(el).position;
+    if (position === 'fixed' || position === 'sticky') {
+      changed.push({ el, prevVisibility: el.style.visibility });
+      el.style.setProperty('visibility', 'hidden', 'important');
+    }
+  }
+
+  return {
+    restore: () => {
+      for (const { el, prevVisibility } of changed) {
+        if (prevVisibility) {
+          el.style.setProperty('visibility', prevVisibility);
+        } else {
+          el.style.removeProperty('visibility');
+        }
+      }
+    }
+  };
+}
+
+/**
+ * Show fixed/sticky elements again (restore after hiding)
+ * @param {object} fixedElementsState - State object returned from hideFixedElements
+ */
+function showFixedElements(fixedElementsState) {
+  if (fixedElementsState && fixedElementsState.restore) {
+    fixedElementsState.restore();
+  }
+}
+
 /**
  * Show debug border overlay for tile capture
  * @param {number} x - X position in viewport (CSS pixels)
