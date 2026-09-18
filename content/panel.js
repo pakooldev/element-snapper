@@ -1127,13 +1127,15 @@
   // and the panel host is later). preview.js dispatches modal-closed when the
   // user dismisses it; we restore the panel only if we were the ones who hid it.
   let panelHiddenForHistory = false;
-  historyBtn.addEventListener('click', () => {
+  historyBtn.addEventListener('click', async () => {
     if (typeof window.elementSnapperPreview === 'undefined') return;
-    if (host.style.display !== 'none') {
+    const opened = await window.elementSnapperPreview.openHistory();
+    // Empty history just shows a toast and no modal — nothing would ever
+    // fire 'modal-closed' to bring the panel back, so don't hide it at all.
+    if (opened && host.style.display !== 'none') {
       panelHiddenForHistory = true;
       hidePanel();
     }
-    window.elementSnapperPreview.openHistory();
   });
   document.addEventListener('element-snapper:modal-closed', () => {
     if (panelHiddenForHistory) {

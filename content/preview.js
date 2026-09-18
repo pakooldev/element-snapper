@@ -1002,22 +1002,26 @@
 
     // Allow other content scripts (e.g. the floating panel) to open the
     // preview at the newest capture without taking a fresh one.
+    // Returns true if the modal actually opened, false if it just showed a
+    // toast (empty history) — callers use this to decide whether to hide
+    // themselves for the modal, since no 'modal-closed' event will follow.
     async openHistory() {
       const history = await readHistoryIndex();
       if (!history.length) {
         showShadowToast('No captures in history yet', 'error');
-        return;
+        return false;
       }
       const newest = history[history.length - 1];
       const asset = await loadAssetById(newest.id);
       if (!asset) {
         showShadowToast('History is empty', 'error');
-        return;
+        return false;
       }
       if (currentAsset) URL.revokeObjectURL(currentAsset.objectUrl);
       currentAsset = { ...asset, source: newest.source };
 
       if (!currentModal) openModal();
+      return true;
     },
   };
 })();
