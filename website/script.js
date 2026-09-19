@@ -1,5 +1,23 @@
 // Interactive elements for the showcase
 document.addEventListener('DOMContentLoaded', () => {
+    // Mobile nav — hamburger toggle for the floating header
+    const navToggle = document.getElementById('navToggle');
+    const navLinks = document.querySelector('.nav-links');
+
+    if (navToggle && navLinks) {
+        navToggle.addEventListener('click', () => {
+            const isOpen = navLinks.classList.toggle('is-open');
+            navToggle.setAttribute('aria-expanded', String(isOpen));
+        });
+
+        navLinks.querySelectorAll('a').forEach((link) => {
+            link.addEventListener('click', () => {
+                navLinks.classList.remove('is-open');
+                navToggle.setAttribute('aria-expanded', 'false');
+            });
+        });
+    }
+
     // Add small parallax effect to the mockup browser on mouse move to make it dynamic
     const heroVisual = document.querySelector('.hero-visual');
     const mockupBrowser = document.querySelector('.mockup-browser');

@@ -20,8 +20,10 @@
   </head>
   <body>
     <!-- Background Effects -->
-    <div class="glow glow-1"></div>
-    <div class="glow glow-2"></div>
+    <div class="bg-glow">
+      <div class="glow glow-1"></div>
+      <div class="glow glow-2"></div>
+    </div>
 
     <!-- Navigation -->
     <nav class="navbar">
@@ -45,18 +47,25 @@
           </svg>
           <span>Element Snapper</span>
         </a>
-        <div class="nav-links">
-          <a href="index.html#how-it-works">How it Works</a>
-          <a href="index.html#features">Features</a>
-          <a href="manual.html" class="active" style="color: var(--text-primary)">Manual</a>
-          <a href="playground.html">Playground</a>
-          <a href="releases.html">Releases</a>
-          <a
-            href="https://chromewebstore.google.com/detail/lemgfajngedincmoifojlnendglikdpj"
-            target="_blank"
-            class="btn btn-outline"
-            >Download</a
-          >
+        <div class="nav-right">
+          <div class="nav-links">
+            <a href="index.html#how-it-works">How it Works</a>
+            <a href="index.html#features">Features</a>
+            <a href="manual.html" class="active" style="color: var(--text-primary)">Manual</a>
+            <a href="playground.html">Playground</a>
+            <a href="releases.html">Releases</a>
+            <a
+              href="https://chromewebstore.google.com/detail/lemgfajngedincmoifojlnendglikdpj"
+              target="_blank"
+              class="btn btn-outline"
+              >Add to Chrome</a
+            >
+          </div>
+          <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </button>
         </div>
       </div>
     </nav>
@@ -514,5 +523,7 @@
         </div>
       </div>
     </footer>
+
+    <script src="script.js"></script>
   </body>
 </html>
