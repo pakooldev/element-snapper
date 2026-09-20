@@ -33,7 +33,9 @@ npm run build              # Render promo video → out/video.mp4
 npm run build:screenshots  # Render all 5 store screenshots
 ```
 
-Compositions defined in `src/Root.tsx`: one `1920×1080` promo video (`ElementSnapperPromo`, ~24s at 30fps) and five `1280×800` static screenshots (`Screenshot1Hero`, `Screenshot2Scroll`, `Screenshot3Settings`, `Screenshot4Clipboard`, `StorePromoTile` at `440×280`).
+Compositions defined in `src/Root.tsx`: one `1920×1080` promo video (`ElementSnapperPromo`, 877 frames ≈ 29s at 30fps) and eight static stills — `Screenshot1Hero`, `Screenshot2Scroll`, `Screenshot3Settings`, `Screenshot4Clipboard` (feature shots, `src/StoreScreenshots.tsx`), `ScreenshotDownload`, `ScreenshotCopyImage`, `ScreenshotCopyPrompt` (one per output mode, `src/OutputScreenshots.tsx`) at `1280×800`, and `StorePromoTile` at `440×280`. The Chrome Web Store accepts at most 5 screenshots, so pick which to upload.
+
+The three v1.5.0 output modes (Download / Copy Image / Copy as Prompt) are the through-line: `src/Outputs.tsx` holds the shared pieces (mode colors matching the hover highlights — green/blue/purple, the Output segmented control, the prompt text mirroring `buildElementPromptText` in `content/utils.js`). The video's scene 3 is `src/OutputsScene.tsx`, which also exports the page/result components; the three per-output stills reuse them frozen at their finished state. If the prompt format or output UI changes in the extension, update `Outputs.tsx`.
 
 ## Architecture
 

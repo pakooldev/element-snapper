@@ -1,5 +1,6 @@
 import React from "react";
 import { AbsoluteFill } from "remotion";
+import { ModeControl } from "./Outputs";
 
 // Wrapper for all screenshots to maintain consistent layout
 const ScreenshotLayout: React.FC<{
@@ -503,51 +504,21 @@ export const Screenshot1Hero: React.FC = () => {
               ))}
             </div>
 
-            {/* Switch Row */}
-            <div
-              style={{
-                marginTop: "4px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "16px",
-                background: "#1e293b",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: "12px",
-              }}
-            >
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: "4px" }}
-              >
-                <span style={{ fontSize: "14px", fontWeight: 500 }}>
-                  Clipboard
-                </span>
-                <span style={{ fontSize: "12px", color: "#94a3b8" }}>
-                  Copy instead of download
-                </span>
-              </div>
+            {/* Output (v1.5.0: replaced the old Clipboard toggle) */}
+            <div style={{ marginTop: "4px" }}>
               <div
                 style={{
-                  width: "44px",
-                  height: "24px",
-                  background: "#0f172a",
-                  borderRadius: "20px",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  position: "relative",
+                  fontSize: "12px",
+                  textTransform: "uppercase",
+                  color: "#94a3b8",
+                  fontWeight: 600,
+                  letterSpacing: "0.05em",
+                  marginBottom: "8px",
                 }}
               >
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "1px",
-                    left: "1px",
-                    width: "18px",
-                    height: "18px",
-                    background: "#94a3b8",
-                    borderRadius: "50%",
-                  }}
-                />
+                Output
               </div>
+              <ModeControl width={290} pos={1} />
             </div>
           </div>
         </div>

@@ -5,12 +5,15 @@
   "scripts": {
     "start": "remotion studio",
     "build": "remotion render src/index.ts ElementSnapperPromo out/video.mp4 --codec=h264 --crf=12",
-    "build:screenshots": "npm run build:screenshot1 && npm run build:screenshot2 && npm run build:screenshot3 && npm run build:screenshot4 && npm run build:promotile",
+    "build:screenshots": "npm run build:screenshot1 && npm run build:screenshot2 && npm run build:screenshot3 && npm run build:screenshot4 && npm run build:output-download && npm run build:output-image && npm run build:output-prompt && npm run build:promotile",
     "build:screenshot1": "remotion still src/index.ts Screenshot1Hero out/Screenshot1Hero.png --image-format=png",
     "build:screenshot2": "remotion still src/index.ts Screenshot2Scroll out/Screenshot2Scroll.png --image-format=png",
     "build:screenshot3": "remotion still src/index.ts Screenshot3Settings out/Screenshot3Settings.png --image-format=png",
     "build:screenshot4": "remotion still src/index.ts Screenshot4Clipboard out/Screenshot4Clipboard.png --image-format=png",
-    "build:promotile": "remotion still src/index.ts StorePromoTile out/StorePromoTile.png --image-format=png"
+    "build:promotile": "remotion still src/index.ts StorePromoTile out/StorePromoTile.png --image-format=png",
+    "build:output-download": "remotion still src/index.ts ScreenshotDownload out/ScreenshotDownload.png --image-format=png",
+    "build:output-image": "remotion still src/index.ts ScreenshotCopyImage out/ScreenshotCopyImage.png --image-format=png",
+    "build:output-prompt": "remotion still src/index.ts ScreenshotCopyPrompt out/ScreenshotCopyPrompt.png --image-format=png"
   },
   "dependencies": {
     "react": "^18.2.0",

@@ -1,5 +1,5 @@
 import { Composition } from "remotion";
-import { PromoComposition } from "./PromoComposition";
+import { PromoComposition, TOTAL_FRAMES } from "./PromoComposition";
 import {
   Screenshot1Hero,
   Screenshot2Scroll,
@@ -7,6 +7,11 @@ import {
   Screenshot4Clipboard,
   StorePromoTile,
 } from "./StoreScreenshots";
+import {
+  ScreenshotCopyImage,
+  ScreenshotCopyPrompt,
+  ScreenshotDownload,
+} from "./OutputScreenshots";
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -14,7 +19,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="ElementSnapperPromo"
         component={PromoComposition}
-        durationInFrames={727} // ~24 seconds at 30fps
+        durationInFrames={TOTAL_FRAMES} // 877 frames, ~29 seconds at 30fps
         fps={30}
         width={1920}
         height={1080}
@@ -46,6 +51,30 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="Screenshot4Clipboard"
         component={Screenshot4Clipboard}
+        durationInFrames={1}
+        fps={30}
+        width={1280}
+        height={800}
+      />
+      <Composition
+        id="ScreenshotDownload"
+        component={ScreenshotDownload}
+        durationInFrames={1}
+        fps={30}
+        width={1280}
+        height={800}
+      />
+      <Composition
+        id="ScreenshotCopyImage"
+        component={ScreenshotCopyImage}
+        durationInFrames={1}
+        fps={30}
+        width={1280}
+        height={800}
+      />
+      <Composition
+        id="ScreenshotCopyPrompt"
+        component={ScreenshotCopyPrompt}
         durationInFrames={1}
         fps={30}
         width={1280}
