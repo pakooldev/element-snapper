@@ -19,8 +19,12 @@
   --border-light: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.15);
 
-  /* --font-inter is injected by next/font in app/layout.tsx */
-  --font-sans: var(--font-inter), "Inter", system-ui, -apple-system, sans-serif;
+  /* --font-inter is injected by next/font in app/layout.tsx. The fallback
+     inside var() matters: outside a Next render (the design-system bundle)
+     that variable doesn't exist, and an unresolved var() invalidates this
+     whole declaration rather than falling through to the next font in the
+     list — which would drop every component to a serif default. */
+  --font-sans: var(--font-inter, "Inter"), system-ui, -apple-system, sans-serif;
 }
 
 * {

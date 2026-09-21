@@ -1,0 +1,47 @@
+{
+  "projectId": "203af32d-a972-46d3-8cf8-50703e655f16",
+  "shape": "package",
+  "pkg": "element-snapper-website",
+  "globalName": "ElementSnapper",
+  "srcDir": "components",
+  "tsconfig": "tsconfig.json",
+  "cssEntry": ".design-sync/.cache/ds-styles.css",
+  "extraFonts": [
+    ".design-sync/fonts/inter.css"
+  ],
+  "componentSrcMap": {
+    "Navbar": "components/navbar.tsx",
+    "Footer": "components/footer.tsx",
+    "HeroMockup": "components/hero-mockup.tsx",
+    "DemoVideo": "components/demo-video.tsx",
+    "FloatingAd": "components/floating-ad.tsx",
+    "GlowCursor": "components/glow-cursor.tsx"
+  },
+  "provider": {
+    "component": "DsBackdrop"
+  },
+  "buildCmd": "mkdir -p .design-sync/.cache && cat app/globals.css app/playground/playground.css > .design-sync/.cache/ds-styles.css",
+  "overrides": {
+    "Navbar": {
+      "cardMode": "column"
+    },
+    "Footer": {
+      "cardMode": "column"
+    },
+    "HeroMockup": {
+      "cardMode": "column"
+    },
+    "DemoVideo": {
+      "cardMode": "column"
+    },
+    "FloatingAd": {
+      "cardMode": "single",
+      "primaryStory": "OverPageContent"
+    },
+    "GlowCursor": {
+      "cardMode": "single",
+      "primaryStory": "BehaviourOnly"
+    }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}
