@@ -94,7 +94,7 @@ Prepend a new entry at the **top** of the array (newest first). Keep it concise 
 
 The summary should be written for end users, not developers — focus on what they get, not how it works. Highlights should be short noun phrases (e.g., "Configurable keyboard shortcuts" not "Added ability to configure keyboard shortcuts").
 
-## Step 6 — Update `website/index.html`
+## Step 6 — Update `website/app/page.tsx`
 
 Update the hero release badge text so it announces the new version:
 

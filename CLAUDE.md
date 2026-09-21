@@ -117,4 +117,19 @@ Handles `captureElement`, `captureViewportOrPage`, and `captureRegion` messages.
 
 ## Website (`website/`)
 
-Static site at https://element-snapper.pakool.com/ — no build step. Pages: `index.html` (landing), `manual.html` (user guide), `releases.html` (changelog), `privacy.html`. The changelog is data-driven: `releases.js` fetches `data/releases.json` and renders cards at runtime. To add a release, append an entry to `data/releases.json`.
+Next.js 16 (App Router) at https://element-snapper.pakool.com/, built as a **static export** (`output: "export"` → `out/`) and deployed to Cloudflare Pages by `.github/workflows/deploy-website.yml` on every push to `main`.
+
+```bash
+cd website
+npm install
+npm run dev     # http://localhost:3000
+npm run build   # static export → out/
+```
+
+- Routes: `app/page.tsx` (landing), `app/manual`, `app/playground`, `app/releases`, `app/privacy`
+- `app/globals.css` holds the whole design system (the old `styles.css`); `app/playground/playground.css` is imported by that route only
+- Everything is a Server Component except four small client islands: `components/navbar.tsx` (mobile menu), `hero-mockup.tsx` (parallax + playable popup), `demo-video.tsx` (loader fade), `floating-ad.tsx`, `glow-cursor.tsx`
+- The changelog is `import`ed from `data/releases.json` at build time and pre-rendered — no runtime fetch. To add a release, append an entry to `data/releases.json`
+- `public/` holds `demo.mp4` and `favicon.png`; Inter is self-hosted via `next/font`
+
+Cloudflare Pages serves `out/manual.html` at `/manual` and redirects the old `/manual.html` URLs automatically, so pre-existing inbound links keep working.

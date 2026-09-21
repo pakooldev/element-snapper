@@ -14,6 +14,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Build static site
+        working-directory: website
+        run: |
+          npm ci
+          npm run build
+
       # wrangler pages deploy errors if the project doesn't exist yet — it
       # does not auto-create one. This is a no-op (continue-on-error) once
       # the project exists from the first run.
@@ -30,4 +42,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy website --project-name=element-snapper --commit-dirty=true
+          command: pages deploy website/out --project-name=element-snapper --commit-dirty=true

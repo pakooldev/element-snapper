@@ -19,7 +19,8 @@
   --border-light: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.15);
 
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  /* --font-inter is injected by next/font in app/layout.tsx */
+  --font-sans: var(--font-inter), "Inter", system-ui, -apple-system, sans-serif;
 }
 
 * {
@@ -588,6 +589,14 @@ body {
   border-radius: 8px;
   gap: 16px;
   color: var(--text-secondary);
+  transition: opacity 0.5s ease;
+}
+
+/* Kept mounted so the fade-out can play; hidden from a11y + hit-testing once
+   the video is up. */
+.video-loader.is-hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .spinner {
@@ -1475,11 +1484,27 @@ body {
   color: white;
 }
 
-/* Hero mockup is a live, clickable showcase — the manual.html diagram isn't */
+/* Hero mockup is a live, clickable showcase — the manual diagram isn't */
 .hero-visual .mp-main-btn,
 .hero-visual .mp-action-btn {
   cursor: pointer;
   transition: transform 0.1s;
+}
+
+/* Press feedback: CSS :active instead of a JS transform + setTimeout */
+.hero-visual .mp-main-btn:active,
+.hero-visual .mp-action-btn:active {
+  transform: scale(0.95);
+}
+
+/* Simulated "capture succeeded" state, toggled by a single class */
+.hero-visual .mp-dot.is-success {
+  background: var(--success);
+}
+
+.hero-visual .mock-highlight-box.is-success {
+  border-color: var(--success);
+  background: rgba(16, 185, 129, 0.1);
 }
 
 .hero-visual .mp-toggle-opt {
