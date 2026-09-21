@@ -1,6 +1,8 @@
 # Deploying a static site to Cloudflare Pages via GitHub Actions
 
-How to wire up a GitHub repo so pushing to `main` (or pushing a release tag) deploys a static site to Cloudflare Pages — no build step required, no Cloudflare git integration required. This is the setup used by this repo's `website/` (see `.github/workflows/deploy-website.yml`); use it as a template for other projects.
+How to wire up a GitHub repo so pushing to `main` (or pushing a release tag) deploys a static site to Cloudflare Pages — no Cloudflare git integration required. This is the setup used by this repo's `website/` (see `.github/workflows/deploy-website.yml`); use it as a template for other projects.
+
+The site itself can be plain HTML or a framework's static output — the only difference is whether the workflow builds first (see step 4). This repo's `website/` is a Next.js static export, so it does.
 
 This approach deploys via the Cloudflare API (through `wrangler`) instead of Cloudflare's own "connect to GitHub" integration. The two are independent — you never need to connect the repo to Cloudflare in the dashboard for this to work.
 
@@ -68,7 +70,8 @@ Notes on the triggers and flags:
 - `tags: ["v*"]` alongside `branches: [main]` means a release tag redeploys the site even if that exact tagged commit didn't touch the site's files — useful when a release process touches multiple things and you want the deploy to happen unconditionally on release.
 - Add a `paths:` filter under `push` if the repo has other unrelated content (e.g. extension source code) you don't want triggering a deploy on every commit. Skip it if the deploy is cheap (no build/test steps), since keeping the site in sync is usually worth the extra runs.
 - `--commit-dirty=true` silences a spurious "working directory has uncommitted changes" warning that `wrangler pages deploy` prints even against a clean CI checkout.
-- If the repo has a build step (a framework, not a plain static site), add the install/build steps before the deploy step and point `pages deploy` at the build output directory instead of the source directory.
+- If the repo has a build step (a framework, not a plain static site), add the install/build steps before the deploy step and point `pages deploy` at the build output directory instead of the source directory. That's what this repo does — `actions/setup-node` with `cache: npm`, then `npm ci && npm run build` in `website/`, then `pages deploy website/out`.
+- Pages serves `out/manual.html` at `/manual` and redirects `/manual.html` → `/manual` on its own, so a framework's static export keeps working with links written against the old flat-HTML URLs. No `_redirects` file needed for that case.
 
 ## 5. First run creates the project
 

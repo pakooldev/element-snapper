@@ -6,7 +6,7 @@ Element Snapper renders UI across three products — the extension popup, the in
 
 ## Shared Design Tokens
 
-Every surface below re-declares these as CSS custom properties (`popup.css`, `panel.js`, `preview.js`, `website/styles.css` each have their own copy — see [Known Duplication](#known-duplication)). Values must stay in sync.
+Every surface below re-declares these as CSS custom properties (`popup.css`, `panel.js`, `preview.js`, `website/app/globals.css` each have their own copy — see [Known Duplication](#known-duplication)). Values must stay in sync.
 
 ### Colors
 
@@ -34,7 +34,7 @@ Every surface below re-declares these as CSS custom properties (`popup.css`, `pa
 
 | Token | Value |
 |---|---|
-| Font | `"Inter", -apple-system, sans-serif` (popup, website); `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif` (panel/preview); `ui-sans-serif, system-ui, ...` (on-page overlays/toast) — three near-identical stacks, worth unifying |
+| Font | `"Inter", -apple-system, sans-serif` (popup; the website is the same Inter, self-hosted by `next/font` and injected as `--font-inter`); `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif` (panel/preview); `ui-sans-serif, system-ui, ...` (on-page overlays/toast) — three near-identical stacks, worth unifying |
 | Base size | `14px` (extension UI) |
 | `--radius-sm` | `6px` |
 | `--radius-md` | `12px` |
@@ -66,7 +66,7 @@ This ordering is why `panel.js` explicitly hides itself before capture and befor
 | Countdown | `content/utils.js` (`showCountdownOverlay`) | Any capture with `delay > 0` | Circular countdown badge, top-right |
 | Toast | `content/utils.js` (`showNotification`) | Any capture result outside the preview flow | Top-center status pill |
 | Preview (thumb + modal + history) | `content/preview.js` | After every successful capture | macOS-style thumbnail → full preview → history strip |
-| Website | `website/*.html`, `styles.css` | Static site at element-snapper.pakool.com | Landing, releases, privacy pages |
+| Website | `website/app/**/page.tsx`, `app/globals.css` | Next.js static export served at element-snapper.pakool.com | Landing, manual, playground, releases, privacy pages |
 
 ---
 
@@ -180,7 +180,9 @@ Uses a shared `.checker` background (CSS `linear-gradient` checkerboard) for tra
 
 ## Website (`website/`)
 
-Static, no-build landing site (`index.html`, `releases.html`, `privacy.html` + one shared `styles.css`). Shares the extension's color tokens and logo SVG to present a unified brand.
+Next.js (App Router) site built as a static export — one route folder per page under `app/`, all sharing `app/globals.css`. Shares the extension's color tokens and logo SVG to present a unified brand.
+
+Every page is a Server Component; the only client islands are the ones that need an event handler: `components/navbar.tsx` (mobile menu), `hero-mockup.tsx` (parallax + playable popup replica), `demo-video.tsx` (loader fade), `floating-ad.tsx`, `glow-cursor.tsx`. Anything new that is purely presentational should stay a Server Component.
 
 **Design goals:** match the popup's identity, "show don't tell" (a live, interactive popup replica embedded in a browser mockup), dark glassmorphism, responsive down to a single-column mobile layout.
 
@@ -201,20 +203,26 @@ box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 
 ### Shared Components
 
-- **Navbar** — sticky, `z-index: 100`. Logo (same marching-ants SVG + hover animation as popup/panel) left; text nav links + outlined Download button right. Active page indicated via `color: var(--text-primary)` on its nav link.
-- **Footer** — single row (`space-between`), copyright + Privacy/Chrome Web Store links; stacks centered at `≤768px`.
+Both live in `components/` and are rendered once by `app/layout.tsx`, so every route gets them automatically — pages don't re-declare the nav, footer or background glows.
 
-### Landing Page (`index.html`)
+- **Navbar** (`components/navbar.tsx`) — sticky, `z-index: 100`. Logo (same marching-ants SVG + hover animation as popup/panel) left; text nav links + outlined Download button right. Active page indicated via `color: var(--text-primary)` on its nav link, derived from `usePathname()`.
+- **Footer** (`components/footer.tsx`) — single row (`space-between`), copyright + Privacy/Chrome Web Store links; stacks centered at `≤768px`.
+
+### Landing Page (`app/page.tsx`)
 
 - **Hero** — two-column grid. Left: version badge pill, `4rem/800` H1 with a `.text-gradient` (`#60a5fa → #3b82f6`) highlighted word, subtitle, CTA row (Add to Chrome + BMC), stats row. Right: a 3D-tilted (`perspective`, mouse-parallax ±10°) browser-chrome mockup containing a **functional pixel-for-pixel popup replica** — clicking "Select Element" in it runs a real 3-second demo (status pill → green, highlight box → green dashed, mock page content behind it with a breathing `selectPulse` animation).
 - **Demo Video** (`#how-it-works`) — `autoplay loop muted` video inside a `.glass-panel` frame, with a spinner overlay until `loadeddata` fires.
 - **Features** (`#features`) — 3-column grid of `.feature-card.glass-panel` (DPR-Aware Cropping / blue, Multi-Tile Stitching / green, Capture Delay / yellow), lift `5px` on hover.
 
-### Releases Page (`releases.html`)
+### Releases Page (`app/releases/page.tsx`)
 
-Data-driven — `releases.js` fetches `data/releases.json` and renders `.release-card.glass-panel` cards (4px blue left border, version + date pill header, summary, `✨`-bulleted highlights list). To add a release, append an entry to `data/releases.json`.
+Data-driven — `data/releases.json` is `import`ed and pre-rendered at build time into `.release-card.glass-panel` cards (4px blue left border, version + date pill header, summary, `✨`-bulleted highlights list). No runtime fetch, so there's no loading state to design. To add a release, append an entry to `data/releases.json`.
 
-### Privacy Page (`privacy.html`)
+### Manual (`app/manual/page.tsx`) and Playground (`app/playground/page.tsx`)
+
+The manual is the lettered `.manual-popup` diagram + `.legend-grid` walkthrough (kept in sync with the real panel by the `website-sync` skill). The playground is a capture test bed of oversized `.pg-box` targets; its styles live in `app/playground/playground.css`, imported by that route alone so they never leak into other pages.
+
+### Privacy Page (`app/privacy/page.tsx`)
 
 Plain typographic reading layout, `max-width: 800px`, no custom components.
 
@@ -230,7 +238,7 @@ Plain typographic reading layout, `max-width: 800px`, no custom components.
 
 ## Known Duplication
 
-`popup.css`, the inline `PANEL_CSS` in `panel.js`, the inline `PREVIEW_CSS` in `preview.js`, and `website/styles.css` each redeclare the same ~15 color/radius/motion tokens and several component patterns (toggle switch, toolbar button, status dot, logo animation). They've already drifted slightly — e.g. `--text-muted` and `--warning` exist in the panel's token block but not preview's (preview doesn't need a status dot), and the website uses its own radius scale (`16px`/`8px`) instead of `--radius-sm`/`--radius-md`. This is fine as four-copies-in-sync today, but is the first thing to watch if the palette ever changes.
+`popup.css`, the inline `PANEL_CSS` in `panel.js`, the inline `PREVIEW_CSS` in `preview.js`, and `website/app/globals.css` each redeclare the same ~15 color/radius/motion tokens and several component patterns (toggle switch, toolbar button, status dot, logo animation). They've already drifted slightly — e.g. `--text-muted` and `--warning` exist in the panel's token block but not preview's (preview doesn't need a status dot), and the website uses its own radius scale (`16px`/`8px`) instead of `--radius-sm`/`--radius-md`. This is fine as four-copies-in-sync today, but is the first thing to watch if the palette ever changes.
 
 ---
 
@@ -238,7 +246,7 @@ Plain typographic reading layout, `max-width: 800px`, no custom components.
 
 Not required, just things worth considering during the refactor:
 
-1. **Single shared tokens file.** A tiny `design-tokens.css` (or JS string constant) referenced by popup/panel/preview/website would remove the 4-way copy-paste risk above, without needing a build step — content scripts can load it via `web_accessible_resources` or a `<link>` inside each Shadow DOM, and the website can `@import` it directly.
+1. **Single shared tokens file.** A tiny `design-tokens.css` (or JS string constant) referenced by popup/panel/preview/website would remove the 4-way copy-paste risk above, without needing a build step *on the extension side* — content scripts can load it via `web_accessible_resources` or a `<link>` inside each Shadow DOM, and the website can `@import` it from `app/globals.css` (it has its own Next.js build, but that build doesn't have to be the source of truth).
 2. **Unify the font stack and radius scale.** Three near-identical font stacks and two unrelated radius scales (extension's `6px`/`12px` vs. website's `8px`/`16px`) exist for no functional reason — picking one of each would tighten the shared identity.
 3. **Countdown could reuse the toast's glass-pill style** instead of being a bespoke circle — right now it's the one in-page surface with its own one-off shape language (60px circle vs. everything else's rounded-rect cards).
 4. **The `mode-full-extends` indigo highlight is a genuinely good affordance** (tells the user *before* they click that this will trigger multi-tile stitching) but it's not explained anywhere in the popup/panel UI — a first-time user has no way to learn what the arrows/badge mean except by hovering something tall. Could surface a one-line hint in the Scroll Element toggle's description, and/or show it once in the website's demo.
