@@ -55,7 +55,7 @@ html {
          clear of the bar instead of tucking under it.
 
      The value must clear the TALLEST the stuck bar ever gets, measured across
-     widths: 106px ≤768px, 110px ≥991px, and 135px in the 769–990px band,
+     widths: 102px ≤768px, 110px ≥991px, and 135px in the 769–990px band,
      where the nav links wrap to a second row before the hamburger takes over.
      152px covers that worst case with ~16px of breath.
 
@@ -784,13 +784,14 @@ body {
 }
 
 @media (max-width: 768px) {
-  /* Roomier bar below the hamburger breakpoint: the pill carries only the
-     logo and the menu button here, so the base 12px read cramped against the
-     rest of the site's spacing. This puts the bar's bottom edge at 106px when
-     stuck — still inside the scroll-padding-top reserve on `html`, so route
-     changes and #anchor jumps keep clearing it. */
+  /* More air around the floating pill below the hamburger breakpoint, without
+     making the bar itself any taller — it holds only the logo and the menu
+     button here, so it should stay compact. This sits on top of .navbar's own
+     16px, putting the pill 40px from the viewport top when stuck (bottom edge
+     at 102px, comfortably inside the scroll-padding-top reserve on `html`, so
+     route changes and #anchor jumps keep clearing it). */
   .nav-container {
-    padding-block: 18px;
+    margin-block: 8px;
   }
 
   .nav-toggle {
