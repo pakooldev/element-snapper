@@ -3,10 +3,3 @@ node_modules/
 out/
 next-env.d.ts
 *.tsbuildinfo
-
-# design-sync (claude.ai/design) — staged scripts, build output, machine state
-.ds-sync/
-ds-bundle/
-.design-sync/.cache/
-.design-sync/learnings/
-.design-sync/node_modules

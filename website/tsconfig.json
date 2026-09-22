@@ -36,9 +36,6 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    ".design-sync",
-    ".ds-sync",
-    "ds-bundle"
+    "node_modules"
   ]
 }
