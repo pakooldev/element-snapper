@@ -144,7 +144,14 @@ body {
   position: sticky;
   top: 16px;
   z-index: 100;
-  padding: 16px 0;
+  /* Horizontal padding matters below 1200px. The pill is a .container, so its
+     box is only inset by auto margins once the viewport exceeds the 1200px
+     max-width — under that it spans the full width and its edges sit flush
+     against the screen, which reads badly for something meant to float (and
+     leaves its rounded corners nothing to sit against). This keeps it clear
+     of the edges at every width; above ~1232px the centring already exceeds
+     16px, so nothing changes there. */
+  padding: 16px;
 }
 
 /* Resting state: no fill, no border, no rounding — the bar reads as part of
