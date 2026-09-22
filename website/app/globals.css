@@ -54,8 +54,16 @@ html {
        - #anchor jumps (#how-it-works, #features) — the section now stops
          clear of the bar instead of tucking under it.
 
-     ~110px is the pill's bottom edge when stuck, plus a 16px breath. */
-  scroll-padding-top: 126px;
+     The value must clear the TALLEST the stuck bar ever gets, measured across
+     widths: 106px ≤768px, 110px ≥991px, and 135px in the 769–990px band,
+     where the nav links wrap to a second row before the hamburger takes over.
+     152px covers that worst case with ~16px of breath.
+
+     One global value rather than per-breakpoint ones: over-reserving costs
+     nothing on a route change (the target clamps to the document top either
+     way) and only widens the gap above an anchored section a little, which
+     beats three numbers to keep in sync with the navbar's height. */
+  scroll-padding-top: 152px;
 }
 
 body {
@@ -776,6 +784,15 @@ body {
 }
 
 @media (max-width: 768px) {
+  /* Roomier bar below the hamburger breakpoint: the pill carries only the
+     logo and the menu button here, so the base 12px read cramped against the
+     rest of the site's spacing. This puts the bar's bottom edge at 106px when
+     stuck — still inside the scroll-padding-top reserve on `html`, so route
+     changes and #anchor jumps keep clearing it. */
+  .nav-container {
+    padding-block: 18px;
+  }
+
   .nav-toggle {
     display: flex;
   }
