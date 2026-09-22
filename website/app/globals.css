@@ -34,7 +34,28 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  /* Deliberately NOT `scroll-behavior: smooth`. Next scrolls the new route
+     into view on every navigation, and smooth turns that into a ~1s animation
+     from wherever the previous page was scrolled to — so a new page painted
+     mid-document and then slid up to the top. Route changes must land
+     instantly. (Smooth also fights prefers-reduced-motion.)
+
+     In-page anchor links opt into smooth individually — see .nav-links in
+     components/navbar.tsx. */
+
+  /* The sticky header floats over the content, so anything scrolled to the
+     top of the viewport lands underneath it. scroll-padding-top reserves its
+     height on the scrollport, which every scroll-into-view honours:
+
+       - route changes — Next calls scrollIntoView() on the new route's root
+         element, which sits directly below the header in flow. Without this
+         it lands at scrollY = header height, with the page's own title behind
+         the bar; the reserve makes the target clamp to the document top.
+       - #anchor jumps (#how-it-works, #features) — the section now stops
+         clear of the bar instead of tucking under it.
+
+     ~110px is the pill's bottom edge when stuck, plus a 16px breath. */
+  scroll-padding-top: 126px;
 }
 
 body {
@@ -109,7 +130,8 @@ body {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
-/* Navbar — floats above the page and stays pinned near the top on scroll */
+/* Navbar — sits flush with the page at rest, lifts into a floating pill once
+   the page scrolls. Sticky throughout, so it stays pinned either way. */
 .navbar {
   position: sticky;
   top: 16px;
@@ -117,18 +139,46 @@ body {
   padding: 16px 0;
 }
 
+/* Resting state: no fill, no border, no rounding — the bar reads as part of
+   the page rather than an object on top of it.
+
+   Only paint properties differ between the two states, never layout ones:
+   .navbar keeps its padding and the border stays a 1px transparent line, so
+   flipping state can't shift anything below the header. */
 .nav-container {
   position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 12px 24px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0;
+  box-shadow: none;
+  transition:
+    background 0.3s ease,
+    border-color 0.3s ease,
+    border-radius 0.3s ease,
+    box-shadow 0.3s ease,
+    backdrop-filter 0.3s ease;
+}
+
+/* Floating state — added by components/navbar.tsx once scrolled past the
+   threshold, and while the mobile menu is open so the dropdown panel isn't
+   left hanging off an invisible bar. */
+.navbar.is-scrolled .nav-container {
   background: rgba(15, 23, 42, 0.75);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-light);
+  border-color: var(--border-light);
   border-radius: var(--radius-md, 12px);
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-container {
+    transition: none;
+  }
 }
 
 .nav-toggle {

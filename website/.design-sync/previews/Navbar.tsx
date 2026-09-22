@@ -20,8 +20,8 @@ export function OverPageContent() {
             Pixel-Perfect <span className="text-gradient">Element Capture</span>
           </h1>
           <p className="hero-subtitle" style={{ maxWidth: 520 }}>
-            The navbar is sticky with a 16px top offset, so it floats over the
-            content it scrolls past rather than sitting flush against it.
+            At rest the bar is flush with the page — transparent and square.
+            Once you scroll past 8px it lifts into a floating blurred pill.
           </p>
         </div>
       </header>
