@@ -40,7 +40,7 @@ export default function Home() {
       <header className="hero">
         <div className="container hero-container">
           <div className="hero-content">
-            <div className="badge">Version 1.5.0 is out! ✨</div>
+            <div className="badge">Version 1.5.1 is out! ✨</div>
             <h1 className="hero-title">
               Pixel-Perfect <br />
               <span className="text-gradient">Element Capture</span>

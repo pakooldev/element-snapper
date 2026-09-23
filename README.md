@@ -2,7 +2,7 @@
 
 🌐 **Website:** [element-snapper.pakool.com](https://element-snapper.pakool.com/)
 
-**v1.5.0** — A professional Chrome extension that captures pixel-perfect screenshots of any webpage element, the visible viewport, or an entire scrollable page — with capture previews, session history browser, floating panel, configurable keyboard shortcuts, clipboard support, delayed capture, and smart element highlighting.
+**v1.5.1** — A professional Chrome extension that captures pixel-perfect screenshots of any webpage element, the visible viewport, or an entire scrollable page — with capture previews, session history browser, floating panel, configurable keyboard shortcuts, clipboard support, delayed capture, and smart element highlighting.
 
 ## Features
 
