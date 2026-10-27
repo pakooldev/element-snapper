@@ -14,6 +14,9 @@ export function Footer() {
             <a href={CHROME_STORE_URL} target="_blank" rel="noopener">
               Chrome Web Store
             </a>
+            <a href="https://github.com/pakooldev/element-snapper" target="_blank" rel="noopener">
+              GitHub
+            </a>
           </div>
         </div>
       </div>
