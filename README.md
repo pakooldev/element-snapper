@@ -31,7 +31,7 @@
 
 ### From Chrome Web Store
 
-_Coming soon - Extension will be published to Chrome Web Store_
+[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/lemgfajngedincmoifojlnendglikdpj)
 
 ### Load as Unpacked Extension (For Development)
 
@@ -204,12 +204,16 @@ element-snapper/
 ├── content/
 │   ├── utils.js              # Utility functions
 │   ├── element_selector.js   # Element selection logic
+│   ├── region_selector.js    # Click-and-drag area selection
+│   ├── preview.js            # Capture preview and history
+│   ├── panel.js              # Floating in-page panel (Shadow DOM)
 │   └── content-main.js       # Message routing
 ├── background/
 │   └── service_worker.js     # Screenshot capture & download
 ├── icons/                    # Extension icons
-├── test.html                 # Test page with various elements
-└── README.md                 # This file
+├── test-full-capture.html    # Test page for multi-tile capture
+├── website/                  # Next.js site (element-snapper.pakool.com)
+└── promo-video/              # Remotion project for store video and screenshots
 ```
 
 ## Edge Cases
@@ -254,23 +258,17 @@ element-snapper/
 - **No Data Collection**: Extension does not collect, store, or transmit any user data
 - **Local Only**: All processing happens locally in browser
 - **No Network Requests**: Extension does not make any external network calls
-- **Minimal Permissions**: Only requests necessary permissions (activeTab, downloads, storage)
+- **Minimal Permissions**: Only requests necessary permissions (activeTab, scripting, downloads, storage, clipboardWrite)
 
 ## Testing
 
 ### Using the Test Page
 
 1. Load the extension in Chrome
-2. Open `test.html` in your browser
-3. Test capturing various element types:
-   - Basic div elements
-   - Small inline elements
-   - Elements in scrollable containers
-   - Fixed position elements
-   - Images and tables
-   - Cross-origin iframes
-   - Complex nested structures
-   - Elements requiring scroll
+2. Open `test-full-capture.html` in your browser
+3. Capture each test element (small, tall, wide, and large 2D) with **Scroll Element** on and off
+
+The [playground](https://element-snapper.pakool.com/playground) on the website has more elements to try.
 
 ### Debugging
 
@@ -308,7 +306,7 @@ The extension follows a modular architecture:
 - **popup/**: UI components for extension popup
 - **content/**: Scripts injected into web pages
 - **background/**: Service worker for capture logic
-- **icons/**: Extension icons (replace placeholders with custom icons)
+- **icons/**: Extension icons
 
 ### Making Changes
 
@@ -317,14 +315,18 @@ The extension follows a modular architecture:
 3. Click refresh icon for "Element Snapper"
 4. Test changes
 
-### Color System
+### Design
 
-The extension uses a consistent professional color palette:
+Colors, typography, and components for the popup, in-page UI, and website are documented in [DESIGN.md](DESIGN.md).
 
-- **Primary**: #2563eb (blue)
-- **Success**: #10b981 (green)
-- **Error**: #ef4444 (red)
-- **Neutral**: #6b7280 (gray)
+### Website and Promo Video
+
+```bash
+cd website && npm install && npm run dev        # http://localhost:3000
+cd promo-video && npm install && npm start      # Remotion Studio
+```
+
+The promo video uses [Remotion](https://www.remotion.dev/license), which has its own license (free for individuals and companies of up to 3 people).
 
 ## Troubleshooting
 
@@ -361,8 +363,10 @@ Contributions are welcome! Please:
 
 1. Fork repository
 2. Create feature branch
-3. Make changes with tests
+3. Make your changes and test them in Chrome (load unpacked)
 4. Submit pull request
+
+For security issues, see [SECURITY.md](SECURITY.md).
 
 ## License
 
