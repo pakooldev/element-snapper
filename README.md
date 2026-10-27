@@ -366,7 +366,7 @@ Contributions are welcome! Please:
 
 ## License
 
-MIT License - feel free to use this extension for any purpose.
+MIT License - feel free to use this extension for any purpose. See [LICENSE](LICENSE).
 
 ## Credits
 
