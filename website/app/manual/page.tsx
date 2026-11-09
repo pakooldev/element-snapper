@@ -129,7 +129,7 @@ const TIPS = [
   [
     "📐",
     "Max Capture Size",
-    <>The maximum capture size is 16,384 × 16,384 pixels — a browser hard limit.</>,
+    <>Images can be up to 16,384 pixels each way, a browser limit. Anything larger is scaled down to fit.</>,
   ],
   [
     "🔒",

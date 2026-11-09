@@ -281,7 +281,7 @@ const CASES = {
   },
   async 'sticky-sections'() {
     await open('/playground/sticky-sections');
-    const m = await page.evaluate(() => { const side = document.querySelector('.pg-sticky-side').getBoundingClientRect(); return { x: side.left + side.width / 2 }; });
+    const m = await page.evaluate(() => { const side = document.querySelector('.pg-sticky-side').getBoundingClientRect(); return { x: side.left + 6 }; }); // Left of the sidebar's text
     const img = await capturePage();
     const main = await img.column(img.w - 80);
     const headings = bands(main, AMBER);
@@ -302,12 +302,18 @@ const CASES = {
     ok(bands(await img.column(20), AMBER).length === 1, 'the header repeats');
     const chips = await img.column(img.w - 90);
     ok(bands(chips, RED).length <= 2, `${bands(chips, RED).length} chip bands, expected at most 2`);
-    checkRuler(chips.map((px) => (near(px, RED) ? STRIPE_A : px)).slice(0, 0).concat(await img.column(img.w - 400)), 5000);
+    checkRuler(await img.column(img.w - 900), 5000);
   },
   async 'shadow-fixed'() {
     await open('/playground/shadow-fixed');
     const img = await capturePage();
-    ok(bands(await img.column(img.w / 2), AMBER).length <= 1, 'the banner repeats');
+    // Clear of the labels and the banner's text, anything that isn't a stripe is the intro or a banner.
+    const others = [];
+    (await img.column(img.w - 150)).forEach((px, y, line) => {
+      const stripe = (p) => near(p, STRIPE_A) || near(p, STRIPE_B);
+      if (!stripe(px) && (y === 0 || stripe(line[y - 1]))) others.push(y);
+    });
+    ok(others.length <= 2, `${others.length - 1} banners, expected at most 1`);
   },
   async 'long-page'() {
     await open('/playground/long-page');
@@ -316,6 +322,57 @@ const CASES = {
     const height = await page.evaluate(() => document.documentElement.scrollHeight);
     closeTo(img.h, 16384, 'height');
     checkRuler(await img.column(img.w - 80), 12000, 16384 / height, 'ruler');
+  },
+  async 'page mode starting from the bottom of the page'() {
+    await open('/playground/sticky-sections');
+    await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
+    const height = await page.evaluate(() => document.documentElement.scrollHeight);
+    const img = await capturePage();
+    closeTo(img.h, height * DPR, 'height');
+    ok(bands(await img.column(img.w - 80), AMBER).length === 4, 'section headings are missing');
+  },
+  async 'element cut off by its parent, Scroll Element off'() {
+    await open('/playground/tall-in-scroller');
+    const box = await page.evaluate(() => { const r = document.querySelector('.pg-scroll-tall').getBoundingClientRect(); return { w: r.width, h: r.height }; });
+    const img = await captureElement(stripedPoint, { arg: '.pg-scroll-tall .pg-ruler', scrollElement: false });
+    closeTo(img.h, box.h * DPR, 'height');
+    closeTo(img.w, box.w * DPR, 'width');
+    const red = (await img.column(img.w - 40)).filter((px) => near(px, RED)).length;
+    ok(red === 0, 'the page below the box is in the image');
+  },
+  async 'switching tabs stops the capture and restores the page'() {
+    await open('/playground/sticky-sections');
+    await page.evaluate(() => window.scrollTo({ top: 300, behavior: 'instant' }));
+    await send({ action: 'captureFullPage' });
+    await page.waitForTimeout(1000);
+    await pixels.bringToFront();
+    let message = '';
+    try { await waitForImage(); } catch (error) { message = error.message; }
+    await page.bringToFront();
+    ok(message.includes('tab was switched'), `expected the capture to stop, got: ${message || 'an image'}`);
+    await page.waitForTimeout(300);
+    const after = await page.evaluate(() => ({ y: scrollY, position: getComputedStyle(document.querySelector('.pg-sticky-heading')).position }));
+    ok(after.y === 300 && after.position === 'sticky', `page not restored: ${JSON.stringify(after)}`);
+  },
+  async 'started from the panel, which stays out of the image'() {
+    await open('/playground/late-fixed');
+    await sw.evaluate(async ({ url, files }) => {
+      const [tab] = await chrome.tabs.query({ url });
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: [...files, 'content/panel.js'] });
+      self.__result = null;
+    }, { url: page.url(), files: CONTENT_FILES });
+    await page.waitForTimeout(300);
+    const panel = await page.evaluate(() => {
+      const host = document.getElementById('__element-snapper-panel-host__');
+      host.shadowRoot.getElementById('captureFullPageBtn').click();
+      const r = host.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + 100 };
+    });
+    const img = await waitForImage();
+    const blue = (await img.row(panel.y * DPR)).filter((px) => near(px, [59, 130, 246], 30)).length;
+    ok(blue < 100, 'the panel is in the image');
+    await page.waitForTimeout(500);
+    ok(await page.evaluate(() => document.getElementById('__element-snapper-panel-host__').style.display !== 'none'), 'the panel did not come back');
   },
   async 'page state comes back after a capture'() {
     await open('/playground/sticky-sections');

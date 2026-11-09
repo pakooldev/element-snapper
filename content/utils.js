@@ -3,22 +3,6 @@
  */
 
 /**
- * Get viewport-relative bounding rect for an element
- * @param {HTMLElement} element - Target element
- * @returns {object} Bounding rect with x, y, width, height
- */
-function getElementRect(element) {
-  const rect = element.getBoundingClientRect();
-
-  return {
-    x: rect.left,
-    y: rect.top,
-    width: rect.width,
-    height: rect.height
-  };
-}
-
-/**
  * Get page scroll offsets
  * @returns {object} Scroll offsets with x and y
  */
@@ -166,24 +150,6 @@ function buildElementPromptText(element) {
 }
 
 /**
- * Scroll element into view smoothly
- * @param {HTMLElement} element - Element to scroll into view
- * @returns {Promise<void>} Resolves when scroll is complete
- */
-function scrollIntoView(element) {
-  return new Promise((resolve) => {
-    element.scrollIntoView({
-      behavior: 'smooth',
-      block: 'center',
-      inline: 'center'
-    });
-
-    // Wait for scroll to complete
-    setTimeout(resolve, 400);
-  });
-}
-
-/**
  * Check if element is a cross-origin iframe
  * @param {HTMLElement} element - Element to check
  * @returns {boolean} True if cross-origin iframe
@@ -219,6 +185,8 @@ function deepElementFromPoint(x, y) {
 
 /** An element's shadow root, closed ones included. */
 function shadowRootOf(element) {
+  // The API throws on anything but an HTML element, such as <svg>.
+  if (!(element instanceof HTMLElement)) return element.shadowRoot || null;
   return element.shadowRoot || chrome.dom?.openOrClosedShadowRoot?.(element) || null;
 }
 
@@ -417,17 +385,15 @@ function createHighlightOverlay() {
  * @param {string} [outputMode] - 'download' | 'copyImage' | 'copyPrompt' — picks the border color
  */
 function updateHighlightOverlay(overlay, element, fullCapture, isPromptMode, outputMode) {
-  const rect = element.getBoundingClientRect();
-  const vw = window.innerWidth;
   const vh = window.innerHeight;
 
-  // Visible intersection of element with viewport
-  const visLeft = Math.max(0, rect.left);
-  const visTop = Math.max(0, rect.top);
-  const visRight = Math.min(vw, rect.right);
-  const visBottom = Math.min(vh, rect.bottom);
-  const visW = visRight - visLeft;
-  const visH = visBottom - visTop;
+  // The part of the element that can be seen, past the viewport and any scrolling or clipping ancestor
+  const visible = getVisibleRect(element);
+  const visLeft = visible.x;
+  const visTop = visible.y;
+  const visW = visible.width;
+  const visH = visible.height;
+  const visBottom = visTop + visH;
 
   if (visW <= 0 || visH <= 0) {
     overlay.style.display = 'none';
@@ -440,8 +406,10 @@ function updateHighlightOverlay(overlay, element, fullCapture, isPromptMode, out
   overlay.style.width = visW + 'px';
   overlay.style.height = visH + 'px';
 
-  const extendsBeyond = rect.right > vw || rect.bottom > vh ||
-    rect.left < 0 || rect.top < 0;
+  const fullSize = getCaptureSize(element);
+  const extendsVertically = fullSize.height > visH + 1;
+  const extendsHorizontally = fullSize.width > visW + 1;
+  const extendsBeyond = extendsVertically || extendsHorizontally;
 
   const badge = overlay.querySelector('#element-screenshot-extend-badge');
 
@@ -469,8 +437,8 @@ function updateHighlightOverlay(overlay, element, fullCapture, isPromptMode, out
     overlay.className = 'mode-full-extends';
     if (badge) {
       const arrows = [];
-      if (rect.top < 0 || rect.bottom > vh) arrows.push('↕');
-      if (rect.left < 0 || rect.right > vw) arrows.push('↔');
+      if (extendsVertically) arrows.push('↕');
+      if (extendsHorizontally) arrows.push('↔');
       badge.textContent = arrows.join(' ') + ' Full Element';
       badge.style.display = 'block';
 
@@ -525,85 +493,379 @@ function removeCaptureOverlay(overlay) {
   }
 }
 
+// ─── Stitched capture ───────────────────────────────────────────────────────
+//
+// A capture bigger than what's on screen is taken in tiles. The service worker
+// asks for each tile, and this side scrolls whatever has to move, then measures
+// which part of the target is really visible. Nothing is computed in advance,
+// so it doesn't matter which elements scroll, or whether a scroll landed where
+// it was asked to.
+
+// IDs of this extension's own on-page UI, never touched while capturing.
+const OWN_ELEMENT_ID_PREFIXES = ['element-screenshot-', 'region-selector-', '__element-snapper'];
+const CAPTURE_STYLE_ID = 'element-screenshot-capture-styles';
+
+// Without these, scrolling to a tile animates or snaps away from where it was
+// asked to go. Scrollbars go too, without touching `overflow`, which would stop
+// the element scrolling at all.
+const CAPTURE_CSS = `
+  * {
+    scroll-behavior: auto !important;
+    scroll-snap-type: none !important;
+    scrollbar-width: none !important;
+  }
+  *::-webkit-scrollbar { display: none !important; }
+`;
+
+let captureTarget = null; // The selected element, set before an element capture is requested.
+let captureSession = null;
+
+function composedParent(node) {
+  return node.assignedSlot || node.parentElement || node.getRootNode().host || null;
+}
+
+/** html and, when its overflow goes to the viewport, body: neither is a box of its own then. */
+function isViewportScroller(element) {
+  if (element === document.documentElement) return true;
+  if (element !== document.body) return false;
+  const html = getComputedStyle(document.documentElement);
+  return html.overflowX === 'visible' && html.overflowY === 'visible';
+}
+
+function viewportBox() {
+  const { clientWidth, clientHeight } = document.scrollingElement || document.documentElement;
+  return { left: 0, top: 0, right: clientWidth, bottom: clientHeight };
+}
+
+function paddingBox(element) {
+  const rect = element.getBoundingClientRect();
+  const left = rect.left + element.clientLeft;
+  const top = rect.top + element.clientTop;
+  return { left, top, right: left + element.clientWidth, bottom: top + element.clientHeight };
+}
+
 /**
- * Hide scrollbars temporarily (for clean multi-capture screenshots).
- * Hides the visual scrollbar chrome only — must NOT touch `overflow`
- * (setting it to 'hidden' doesn't just hide the scrollbar, it disables
- * scrolling itself on some pages, which breaks the very scrolling the
- * multi-tile capture caller needs to do next).
- * @returns {object} Object with restore function
+ * The ancestors that can cut an element off, nearest first, following what
+ * positioning actually does: an absolute element ignores ancestors below its
+ * containing block, and a fixed one ignores everything, including page scroll.
  */
-function hideScrollbars() {
+function clippingChain(element) {
+  const ancestors = [];
+  let position = getComputedStyle(element).position;
+  if (position === 'fixed') return { ancestors, scrollsWithWindow: false };
+
+  let skipStatic = position === 'absolute';
+  for (let node = composedParent(element); node && !isViewportScroller(node); node = composedParent(node)) {
+    const style = getComputedStyle(node);
+    if (skipStatic && style.position === 'static' && style.transform === 'none') continue;
+    skipStatic = style.position === 'absolute';
+    if (style.overflowX !== 'visible' || style.overflowY !== 'visible') ancestors.push(node);
+    if (style.position === 'fixed') return { ancestors, scrollsWithWindow: false };
+  }
+  return { ancestors, scrollsWithWindow: true };
+}
+
+function clipToAncestors(box, ancestors) {
+  let { left, top, right, bottom } = box;
+  for (const ancestor of ancestors) {
+    const style = getComputedStyle(ancestor);
+    const edge = paddingBox(ancestor);
+    if (style.overflowX !== 'visible') {
+      left = Math.max(left, edge.left);
+      right = Math.min(right, edge.right);
+    }
+    if (style.overflowY !== 'visible') {
+      top = Math.max(top, edge.top);
+      bottom = Math.min(bottom, edge.bottom);
+    }
+  }
+  const viewport = viewportBox();
+  left = Math.max(left, viewport.left);
+  top = Math.max(top, viewport.top);
+  right = Math.min(right, viewport.right);
+  bottom = Math.min(bottom, viewport.bottom);
+  return { left, top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
+}
+
+/** What of an element can be seen right now, in viewport coordinates. */
+function getVisibleRect(element) {
+  const rect = element.getBoundingClientRect();
+  const { left, top, width, height } = clipToAncestors(rect, clippingChain(element).ancestors);
+  return { x: left, y: top, width, height };
+}
+
+function canScroll(element, style = getComputedStyle(element)) {
+  const scrollsOn = (overflow) => overflow === 'auto' || overflow === 'scroll' || overflow === 'hidden';
+  return (scrollsOn(style.overflowY) && element.scrollHeight > element.clientHeight + 1) ||
+    (scrollsOn(style.overflowX) && element.scrollWidth > element.clientWidth + 1);
+}
+
+/** An element that scrolls is captured as all of its content, not just the part showing. */
+function capturesOwnContent(element) {
+  return !isViewportScroller(element) && canScroll(element);
+}
+
+/** The size a stitched capture of this element will have, in CSS pixels. */
+function getCaptureSize(element) {
+  if (capturesOwnContent(element)) return { width: element.scrollWidth, height: element.scrollHeight };
+  const { width, height } = element.getBoundingClientRect();
+  return { width, height };
+}
+
+function forEachDeepElement(root, visit) {
+  for (const element of root.querySelectorAll('*')) {
+    if (element.id && OWN_ELEMENT_ID_PREFIXES.some((prefix) => element.id.startsWith(prefix))) continue;
+    visit(element);
+    const shadow = shadowRootOf(element);
+    if (shadow) forEachDeepElement(shadow, visit);
+  }
+}
+
+/** The biggest on-screen box that scrolls vertically: the main pane of an app-style page. */
+function findMainPane() {
+  const viewport = viewportBox();
+  let best = null;
+  let bestArea = 0;
+  forEachDeepElement(document, (element) => {
+    const style = getComputedStyle(element);
+    if (style.overflowY !== 'auto' && style.overflowY !== 'scroll') return;
+    if (element.scrollHeight <= element.clientHeight + 1 || isViewportScroller(element)) return;
+    const rect = element.getBoundingClientRect();
+    const width = Math.min(rect.right, viewport.right) - Math.max(rect.left, 0);
+    const height = Math.min(rect.bottom, viewport.bottom) - Math.max(rect.top, 0);
+    if (width > 0 && height > 0 && width * height > bestArea) {
+      best = element;
+      bestArea = width * height;
+    }
+  });
+  const viewportArea = viewport.right * viewport.bottom;
+  return best && { element: best, coversMostOfScreen: bestArea >= viewportArea / 2 };
+}
+
+/** What Page mode should scroll: null for the document, or the page's main pane. */
+function choosePagePane() {
+  const scroller = document.scrollingElement || document.documentElement;
+  const extra = scroller.scrollHeight - scroller.clientHeight;
+
+  // Only trying it tells whether the window scrolls: it depends on html and body together.
+  const { scrollX, scrollY } = window;
+  window.scrollTo({ left: scrollX, top: extra === scrollY ? 0 : extra, behavior: 'instant' });
+  const windowScrolls = extra > 1 && window.scrollY !== scrollY;
+  window.scrollTo({ left: scrollX, top: scrollY, behavior: 'instant' });
+
+  const pane = findMainPane();
+  if (!pane) return null;
+  if (!windowScrolls) return pane.element;
+  // A page with a little stray scroll around a full-screen pane is still an app shell.
+  return extra < 100 && pane.coversMostOfScreen ? pane.element : null;
+}
+
+/** Sets inline styles for the capture, keeping what's needed to put them back. */
+function overrideStyles(session, element, properties) {
+  for (const [name, value] of Object.entries(properties)) {
+    const before = element.style.getPropertyValue(name);
+    const priority = element.style.getPropertyPriority(name);
+    session.restores.push(() => {
+      if (before) element.style.setProperty(name, before, priority);
+      else element.style.removeProperty(name);
+    });
+    element.style.setProperty(name, value, 'important');
+  }
+}
+
+/**
+ * Deals with elements that would stay on screen across tiles. This runs before
+ * every tile, because pages change them as they scroll.
+ *  - Sticky becomes plain flow: a heading stays with its section once, instead
+ *    of covering the content or vanishing with it. The layout doesn't change.
+ *  - Fixed is hidden, as it would repeat on every tile. It stays only if it
+ *    holds the target or is inside it.
+ */
+function settleStuckElements(session, hideFixed) {
+  forEachDeepElement(document, (element) => {
+    if (session.handled.has(element)) return;
+    const { position } = getComputedStyle(element);
+    if (position === 'sticky') {
+      session.handled.add(element);
+      overrideStyles(session, element, { position: 'relative', top: 'auto', right: 'auto', bottom: 'auto', left: 'auto' });
+    } else if (position === 'fixed' && hideFixed && !isRelatedToTarget(session, element)) {
+      session.handled.add(element);
+      overrideStyles(session, element, { visibility: 'hidden', transition: 'none' });
+    }
+  });
+}
+
+function isRelatedToTarget(session, element) {
+  if (!session.target) return false;
+  for (let node = session.target; node; node = composedParent(node)) if (node === element) return true;
+  for (let node = element; node; node = composedParent(node)) if (node === session.target) return true;
+  return false;
+}
+
+/** Where the top-left of the content is in the viewport, and the box it shows through. */
+function measureContent(session) {
+  const { target } = session;
+  if (!target) {
+    const viewport = viewportBox();
+    return { x: -window.scrollX, y: -window.scrollY, box: viewport };
+  }
+  if (session.ownContent) {
+    const box = paddingBox(target);
+    return { x: box.left - target.scrollLeft, y: box.top - target.scrollTop, box };
+  }
+  const box = target.getBoundingClientRect();
+  return { x: box.left, y: box.top, box };
+}
+
+/**
+ * Sets up a capture. Page mode captures the document, or the main pane plus what
+ * surrounds it on screen. Element mode captures captureTarget.
+ * @param {'page'|'element'} mode
+ * @returns {object} The plan the service worker tiles and sizes its canvas from
+ */
+function prepareCapture(mode) {
+  finishCapture();
+
+  const session = { mode, target: null, pane: null, ownContent: false, scrollers: [], handled: new WeakSet(), restores: [], positions: [] };
+
   const style = document.createElement('style');
-  style.textContent = `
-    html, body { scrollbar-width: none !important; -ms-overflow-style: none !important; }
-    html::-webkit-scrollbar, body::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
-  `;
-  document.head.appendChild(style);
+  style.id = CAPTURE_STYLE_ID;
+  style.textContent = CAPTURE_CSS;
+  (document.head || document.documentElement).appendChild(style);
+  session.restores.push(() => style.remove());
+  captureSession = session;
 
-  return {
-    restore: () => style.remove()
-  };
+  if (mode === 'element') {
+    if (!captureTarget?.isConnected) throw new Error('The selected element is no longer on the page');
+    session.target = captureTarget;
+  } else {
+    session.pane = choosePagePane();
+    session.target = session.pane;
+  }
+
+  if (session.target) {
+    const chain = clippingChain(session.target);
+    session.ancestors = chain.ancestors;
+    session.scrollsWithWindow = chain.scrollsWithWindow;
+    session.ownContent = capturesOwnContent(session.target);
+    if (session.ownContent) session.scrollers.push(session.target);
+    session.scrollers.push(...chain.ancestors.filter((ancestor) => canScroll(ancestor)));
+  } else {
+    session.ancestors = [];
+    session.scrollsWithWindow = true;
+  }
+
+  // Everything that moves goes back where it was afterwards.
+  session.positions = session.scrollers.map((element) => ({ element, left: element.scrollLeft, top: element.scrollTop }));
+  session.windowPosition = { left: window.scrollX, top: window.scrollY };
+
+  // Element captures have no use for the page's chrome. Page captures keep it for the first tile.
+  settleStuckElements(session, mode === 'element');
+
+  const viewport = viewportBox();
+  const plan = { viewportWidth: window.innerWidth, viewportHeight: window.innerHeight };
+
+  if (session.pane) {
+    const edge = paddingBox(session.pane);
+    const extra = session.pane.scrollHeight - session.pane.clientHeight;
+    session.plan = {
+      ...plan,
+      width: session.pane.clientWidth,
+      height: session.pane.scrollHeight,
+      canvasWidth: viewport.right,
+      canvasHeight: viewport.bottom + extra,
+      offsetX: edge.left,
+      offsetY: edge.top,
+      pane: { bottom: edge.bottom, extra, background: pageBackground() },
+    };
+    return session.plan;
+  }
+
+  const size = session.target ? getCaptureSize(session.target) : getDocumentDimensions();
+  session.plan = { ...plan, width: size.width, height: size.height, canvasWidth: size.width, canvasHeight: size.height, offsetX: 0, offsetY: 0 };
+  return session.plan;
+}
+
+/** What shows behind the page where a pane grows past the rest of the layout. */
+function pageBackground() {
+  const isPainted = (color) => color && color !== 'transparent' && color !== 'rgba(0, 0, 0, 0)';
+  const body = document.body && getComputedStyle(document.body).backgroundColor;
+  if (isPainted(body)) return body;
+  const html = getComputedStyle(document.documentElement).backgroundColor;
+  return isPainted(html) ? html : '#ffffff';
 }
 
 /**
- * Show scrollbars (restore after hiding)
- * @param {object} scrollbarState - State object returned from hideScrollbars
+ * Brings a point of the content as close to the top-left of the visible area as
+ * it will go, innermost scroller first.
  */
-function showScrollbars(scrollbarState) {
-  if (scrollbarState && scrollbarState.restore) {
-    scrollbarState.restore();
+function revealContentPoint(session, x, y) {
+  for (const scroller of session.scrollers) {
+    const content = measureContent(session);
+    const edge = paddingBox(scroller);
+    scroller.scrollBy({ left: content.x + x - edge.left, top: content.y + y - edge.top, behavior: 'instant' });
+  }
+  if (session.scrollsWithWindow) {
+    const content = measureContent(session);
+    window.scrollBy({ left: content.x + x, top: content.y + y, behavior: 'instant' });
   }
 }
 
-// IDs of this extension's own on-page overlays (light-DOM, position: fixed) —
-// never hide these as part of hiding the page's own fixed/sticky elements.
-const OWN_FIXED_ELEMENT_ID_PREFIXES = ['element-screenshot-', 'region-selector-'];
+const nextFrame = () => new Promise((resolve) => {
+  // rAF stops firing if the tab goes to the background, which the service worker reports.
+  const timer = setTimeout(resolve, 200);
+  requestAnimationFrame(() => requestAnimationFrame(() => { clearTimeout(timer); resolve(); }));
+});
 
 /**
- * Hide the page's own fixed/sticky-positioned elements temporarily (for
- * multi-tile capture, after the first tile). A fixed element (floating ad,
- * sticky header, cookie banner) stays pinned to the viewport across every
- * tile — captured once in the first tile, it must be hidden for the rest or
- * it ends up duplicated at the same spot in every tile of the stitched image.
- * Uses visibility (not display) so layout/scroll position is undisturbed.
- * @returns {object} Object with restore function
+ * Moves to the next tile and reports what's on screen.
+ * @param {object} request
+ * @param {number} request.x - Wanted content x, CSS pixels
+ * @param {number} request.y - Wanted content y, CSS pixels
+ * @param {number} request.index - Tile number, 0 for the first
+ * @param {number} request.settleMs - Time for lazy content, and Chrome's limit on captures per second
+ * @returns {Promise<object>} The visible area, and which content position it starts at
  */
-function hideFixedElements() {
-  const changed = [];
-  const all = document.body ? document.body.querySelectorAll('*') : [];
+async function positionTile({ x, y, index, settleMs }) {
+  const session = captureSession;
+  revealContentPoint(session, x, y);
+  await new Promise((resolve) => setTimeout(resolve, settleMs));
 
-  for (const el of all) {
-    if (el.id && OWN_FIXED_ELEMENT_ID_PREFIXES.some((p) => el.id.startsWith(p))) continue;
+  settleStuckElements(session, session.mode === 'element' || index > 0);
+  await nextFrame();
 
-    const position = getComputedStyle(el).position;
-    if (position === 'fixed' || position === 'sticky') {
-      changed.push({ el, prevVisibility: el.style.visibility });
-      el.style.setProperty('visibility', 'hidden', 'important');
-    }
-  }
-
-  return {
-    restore: () => {
-      for (const { el, prevVisibility } of changed) {
-        if (prevVisibility) {
-          el.style.setProperty('visibility', prevVisibility);
-        } else {
-          el.style.removeProperty('visibility');
-        }
-      }
-    }
-  };
+  // Scrolling can load content or change the layout, so this has to come last.
+  const content = measureContent(session);
+  const visible = clipToAncestors(content.box, session.ancestors);
+  const horizontal = snapCutEdges(visible.left, visible.width, content.x, session.plan.width);
+  const vertical = snapCutEdges(visible.top, visible.height, content.y, session.plan.height);
+  return { left: horizontal.start, top: vertical.start, width: horizontal.size, height: vertical.size, atX: horizontal.start - content.x, atY: vertical.start - content.y };
 }
 
 /**
- * Show fixed/sticky elements again (restore after hiding)
- * @param {object} fixedElementsState - State object returned from hideFixedElements
+ * Moves edges where the content is cut off inward to whole device pixels. On a
+ * fractional position the edge pixel is half background, which would show as a
+ * faint line at the seam. The next tile picks up from the snapped edge.
  */
-function showFixedElements(fixedElementsState) {
-  if (fixedElementsState && fixedElementsState.restore) {
-    fixedElementsState.restore();
-  }
+function snapCutEdges(start, size, contentStart, contentSize) {
+  const dpr = window.devicePixelRatio || 1;
+  const end = start + size;
+  const cutAtStart = start - contentStart > 0.01;
+  const cutAtEnd = contentStart + contentSize - end > 0.01;
+  const snappedStart = cutAtStart ? Math.ceil(start * dpr - 0.001) / dpr : start;
+  const snappedEnd = cutAtEnd ? Math.floor(end * dpr + 0.001) / dpr : end;
+  return { start: snappedStart, size: Math.max(0, snappedEnd - snappedStart) };
+}
+
+/** Hands the page back as it was found. */
+function finishCapture() {
+  const session = captureSession;
+  if (!session) return;
+  captureSession = null;
+
+  for (const { element, left, top } of session.positions) element.scrollTo({ left, top, behavior: 'instant' });
+  if (session.windowPosition) window.scrollTo({ ...session.windowPosition, behavior: 'instant' });
+  for (const restore of session.restores.reverse()) restore();
 }
 
 /**

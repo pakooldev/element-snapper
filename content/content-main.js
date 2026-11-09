@@ -7,10 +7,6 @@
 // Initialize on page load
 console.log('Element Snapper: Content script loaded');
 
-// Store scrollbar state for multi-capture
-let scrollbarState = null;
-let fixedElementsState = null;
-
 /**
  * Handle viewport capture
  * Captures the current visible viewport without element selection
@@ -203,28 +199,10 @@ async function handleFullPageCapture() {
     // Notify popup that capture started
     chrome.runtime.sendMessage({ action: 'captureStarted' });
 
-    // Scroll to top before starting
-    window.scrollTo({ left: 0, top: 0, behavior: 'instant' });
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    // Get page dimensions
-    const scroll = getScrollOffsets();
-    const docDims = getDocumentDimensions();
-    const dpr = window.devicePixelRatio || 1;
-
-    // Prepare capture data for full page — same shape captureTiledRegion()
-    // uses for a multi-tile element capture, just with a rect spanning the
-    // whole document instead of one element.
+    // The service worker tiles it from here, starting at the top of the page.
     const captureData = {
       captureMode: 'fullpage',
-      rect: { x: 0, y: 0, width: docDims.width, height: docDims.height },
-      scroll: scroll,
-      documentDimensions: docDims,
-      devicePixelRatio: dpr,
-      viewport: {
-        width: window.innerWidth,
-        height: window.innerHeight
-      },
+      devicePixelRatio: window.devicePixelRatio || 1,
       debugMode: debugMode,
       timestamp: Date.now()
     };
@@ -236,7 +214,9 @@ async function handleFullPageCapture() {
     });
 
     if (response.success) {
-      if (response.action === 'download') {
+      if (response.notice) {
+        showNotification(response.notice, 'success');
+      } else if (response.action === 'download') {
         showNotification('Screenshot saved to downloads', 'success');
       }
       if (response.captureId && window.elementSnapperPreview) {
@@ -260,7 +240,7 @@ async function handleFullPageCapture() {
 
 /**
  * Message handler
- * Routes messages from popup and service worker
+ * Routes messages from the panel and service worker
  */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Handle async operations with IIFE
@@ -286,77 +266,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: true });
         break;
 
-      case 'hideScrollbars':
-        // Hide scrollbars for multi-capture (called before first tile)
-        scrollbarState = hideScrollbars();
-        sendResponse({ success: true });
+      case 'tilePrepare':
+        // Set up a stitched capture (called once, before the first tile)
+        try {
+          sendResponse({ plan: prepareCapture(message.mode) });
+        } catch (error) {
+          finishCapture();
+          sendResponse({ error: error.message });
+        }
         break;
 
-      case 'showScrollbars':
-        // Restore scrollbars after multi-capture (called after last tile)
-        showScrollbars(scrollbarState);
-        scrollbarState = null;
-        sendResponse({ success: true });
+      case 'tilePosition':
+        // Move to a tile and report what's on screen
+        sendResponse(await positionTile(message));
         break;
 
-      case 'hideFixedElements':
-        // Hide fixed/sticky page elements after the first tile is captured,
-        // so they appear once (in tile 0,0) instead of duplicated everywhere
-        fixedElementsState = hideFixedElements();
+      case 'tileFinish':
+        // Hand the page back (called after the last tile, or on failure)
+        finishCapture();
         sendResponse({ success: true });
-        break;
-
-      case 'showFixedElements':
-        // Restore fixed/sticky page elements after multi-capture (called after last tile)
-        showFixedElements(fixedElementsState);
-        fixedElementsState = null;
-        sendResponse({ success: true });
-        break;
-
-      case 'scrollToPosition':
-        // Service worker requests scroll to specific position
-        window.scrollTo({
-          left: message.x,
-          top: message.y,
-          behavior: 'smooth'  // Smooth scroll for better UX
-        });
-
-        // Wait for smooth scroll to complete by checking when position stabilizes
-        await new Promise(resolve => {
-          let lastX = window.scrollX;
-          let lastY = window.scrollY;
-          let stableCount = 0;
-
-          const checkStable = () => {
-            const currentX = window.scrollX;
-            const currentY = window.scrollY;
-
-            // Check if scroll position has stabilized (hasn't changed for 2 consecutive checks)
-            if (Math.abs(currentX - lastX) < 1 && Math.abs(currentY - lastY) < 1) {
-              stableCount++;
-              if (stableCount >= 2) {
-                // Position is stable, wait a bit more for rendering
-                setTimeout(resolve, 100);
-                return;
-              }
-            } else {
-              stableCount = 0;
-            }
-
-            lastX = currentX;
-            lastY = currentY;
-
-            // Check again in next frame
-            requestAnimationFrame(checkStable);
-          };
-
-          // Start checking after initial delay
-          setTimeout(() => requestAnimationFrame(checkStable), 50);
-        });
-
-        // Return actual scroll position (may differ from target if at document bounds)
-        const actualScroll = getScrollOffsets();
-        sendResponse({ scroll: actualScroll });
         break;
 
       case 'showDebugBorder':

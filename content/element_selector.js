@@ -122,17 +122,12 @@ class ElementSelector {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
 
-      // Show full element size when full-capture or prompt mode (prompt mode
-      // always describes the whole element, viewport-clipping is irrelevant
-      // since nothing is screenshotted); otherwise show clipped size
-      let labelW, labelH;
-      if (this.fullCapture || this.isPromptMode) {
-        labelW = Math.round(rect.width);
-        labelH = Math.round(rect.height);
-      } else {
-        labelW = Math.round(Math.max(0, Math.min(rect.right, vw) - Math.max(rect.left, 0)));
-        labelH = Math.round(Math.max(0, Math.min(rect.bottom, vh) - Math.max(rect.top, 0)));
-      }
+      // Show the size the image will have. Prompt mode always describes the
+      // whole element, since nothing is screenshotted.
+      const visible = getVisibleRect(element);
+      const size = this.isPromptMode ? rect : this.fullCapture ? getCaptureSize(element) : visible;
+      const labelW = Math.round(size.width);
+      const labelH = Math.round(size.height);
 
       this.dimensionLabel.textContent = `${labelW} × ${labelH}`;
       this.dimensionLabel.style.display = 'block';
@@ -141,8 +136,8 @@ class ElementSelector {
       const lw = this.dimensionLabel.offsetWidth;
       const lh = this.dimensionLabel.offsetHeight;
 
-      const visRight = Math.min(rect.right, vw);
-      const visBottom = Math.min(rect.bottom, vh);
+      const visRight = visible.x + visible.width;
+      const visBottom = visible.y + visible.height;
       const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
       const scrollY = window.pageYOffset || document.documentElement.scrollTop;
 
@@ -228,38 +223,18 @@ class ElementSelector {
       await showCountdownOverlay(delay);
     }
 
-    // Only scroll into view if full capture mode is enabled
-    // For regular capture, we want exactly what the user sees
-    if (fullCapture) {
-      await scrollIntoView(element);
-    }
+    // Scroll Element on: the service worker stitches the whole element, wherever it scrolls.
+    // Off: exactly what the user sees of it.
+    captureTarget = element;
+    const rect = fullCapture ? null : getVisibleRect(element);
 
     // Get element position data
-    const rawRect = getElementRect(element);
     const scroll = getScrollOffsets();
     const docDims = getDocumentDimensions();
     const dpr = window.devicePixelRatio || 1;
 
     // Check for cross-origin iframe
     const isCrossOrigin = isCrossOriginIframe(element);
-
-    // When NOT in full-capture mode, clamp the rect to what's actually visible
-    // in the viewport so we capture only what the user can see.
-    let rect = rawRect;
-    if (!fullCapture) {
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const visLeft = Math.max(0, rawRect.x);
-      const visTop = Math.max(0, rawRect.y);
-      const visRight = Math.min(vw, rawRect.x + rawRect.width);
-      const visBottom = Math.min(vh, rawRect.y + rawRect.height);
-      rect = {
-        x: visLeft,
-        y: visTop,
-        width: Math.max(0, visRight - visLeft),
-        height: Math.max(0, visBottom - visTop)
-      };
-    }
 
     // Prepare capture data
     const captureData = {
@@ -293,7 +268,9 @@ class ElementSelector {
       });
 
       if (response.success) {
-        if (response.action === 'download') {
+        if (response.notice) {
+          showNotification(response.notice, 'success');
+        } else if (response.action === 'download') {
           showNotification('Screenshot saved to downloads', 'success');
         }
         if (response.captureId && window.elementSnapperPreview) {

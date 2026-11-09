@@ -140,6 +140,8 @@ chrome.action.onClicked.addListener(async (tab) => {
   }
 });
 
+const MAX_CANVAS_DIMENSION = 16384; // Browser hard limit
+
 /**
  * Block until the tab has actually produced a new compositor frame, so a
  * capture right after this is guaranteed to reflect any DOM change made just
@@ -193,6 +195,7 @@ async function handleViewportOrPageCapture(data, tabId) {
 
     let captureBlob;
     let filename;
+    let notice;
 
     if (data.captureMode === 'viewport') {
       // Viewport capture - just capture visible area
@@ -222,16 +225,10 @@ async function handleViewportOrPageCapture(data, tabId) {
 
       filename = generateViewportFilename('viewport', outputFormat);
     } else if (data.captureMode === 'fullpage') {
-      // Full page capture - scroll + captureVisibleTab + stitch, same
-      // technique (and function) as a multi-tile element capture, just
-      // with a rect spanning the whole document.
-      try {
-        captureBlob = await captureTiledRegion(data, tabId, outputFormat, outputQuality);
-      } finally {
-        // Tiling leaves the tab scrolled wherever the last tile was — a full
-        // page capture should hand the page back at the top either way.
-        await chrome.tabs.sendMessage(tabId, { action: 'scrollToPosition', x: 0, y: 0 }).catch(() => {});
-      }
+      // Full page capture - scroll + captureVisibleTab + stitch
+      const stitched = await captureStitched(data, tabId, outputFormat, outputQuality, 'page');
+      captureBlob = stitched.blob;
+      notice = scaledNotice(stitched.scale);
       filename = generateViewportFilename('fullpage', outputFormat);
     } else {
       throw new Error('Invalid capture mode');
@@ -263,7 +260,7 @@ async function handleViewportOrPageCapture(data, tabId) {
         byteSize: captureBlob.size,
       });
     }
-    return captureId ? { success: true, action, captureId } : { success: true, action };
+    return captureId ? { success: true, action, captureId, notice } : { success: true, action, notice };
   } catch (error) {
     console.error('Capture failed:', error);
     return { success: false, error: error.message };
@@ -304,15 +301,12 @@ async function handleElementCapture(data, tabId) {
     const copyToClipboard = resolveCopyToClipboard(settings);
     const showPreview = settings.showPreview ?? true;
 
-    // Determine if multi-capture is needed
-    const needsMultiCapture = fullCapture && (
-      data.rect.width > data.viewport.width ||
-      data.rect.height > data.viewport.height
-    );
-
     let croppedBlob;
-    if (needsMultiCapture) {
-      croppedBlob = await captureTiledRegion(data, tabId, outputFormat, outputQuality);
+    let notice;
+    if (fullCapture) {
+      const stitched = await captureStitched(data, tabId, outputFormat, outputQuality, 'element');
+      croppedBlob = stitched.blob;
+      notice = scaledNotice(stitched.scale);
     } else {
       // Use existing single-capture logic
       await waitForNextFrame(tabId);
@@ -344,7 +338,7 @@ async function handleElementCapture(data, tabId) {
         byteSize: croppedBlob.size,
       });
     }
-    return captureId ? { success: true, action, captureId } : { success: true, action };
+    return captureId ? { success: true, action, captureId, notice } : { success: true, action, notice };
   } catch (error) {
     console.error('Capture failed:', error);
     return { success: false, error: error.message };
@@ -407,225 +401,128 @@ async function handleRegionCapture(data, tabId) {
 }
 
 /**
- * Capture a rect larger than the viewport by scrolling, capturing each tile
- * with chrome.tabs.captureVisibleTab(), and stitching them onto one canvas.
- * Used for both a multi-tile element capture (rect = the element's bounds)
- * and a full-page capture (rect = the whole document) — same technique,
- * same tiling math either way.
+ * Capture more than the screen shows, by asking the page for one tile at a time
+ * (see "Stitched capture" in content/utils.js) and drawing each onto one canvas.
+ * Used for a Scroll Element capture and for Page mode.
  * @param {object} data - Capture data from content script
  * @param {number} tabId - Tab ID for capturing
  * @param {string} format - Output format (png/jpg)
  * @param {number} quality - Output quality (1-100)
- * @returns {Promise<Blob>} Stitched image
+ * @param {'page'|'element'} mode
+ * @returns {Promise<{blob: Blob, scale: number}>} Stitched image, and the scale it was drawn at
  */
-async function captureTiledRegion(data, tabId, format, quality) {
-  const { rect, scroll, viewport, devicePixelRatio: dpr, debugMode } = data;
-
-  // Region's absolute position on the page
-  const elementAbsX = scroll.x + rect.x;
-  const elementAbsY = scroll.y + rect.y;
-
-  // Calculate tile grid
-  const tilesX = Math.ceil(rect.width / viewport.width);
-  const tilesY = Math.ceil(rect.height / viewport.height);
-
-  console.log(`Multi-capture: ${tilesX}×${tilesY} tiles for ${rect.width}×${rect.height}px region`);
-
-  // Validate final canvas size
-  const finalWidth = Math.round(rect.width * dpr);
-  const finalHeight = Math.round(rect.height * dpr);
-  const MAX_DIMENSION = 16384;
-  if (finalWidth > MAX_DIMENSION || finalHeight > MAX_DIMENSION) {
-    throw new Error(`Capture too large: ${finalWidth}×${finalHeight}px exceeds max ${MAX_DIMENSION}px`);
-  }
-
-  // Create final canvas for stitching
-  const finalCanvas = new OffscreenCanvas(finalWidth, finalHeight);
-  const finalCtx = finalCanvas.getContext('2d');
+async function captureStitched(data, tabId, format, quality, mode) {
+  const { devicePixelRatio: dpr, debugMode } = data;
 
   try {
-    // Hide scrollbars before capturing tiles
-    await chrome.tabs.sendMessage(tabId, { action: 'hideScrollbars' });
+    const { plan, error } = await chrome.tabs.sendMessage(tabId, { action: 'tilePrepare', mode });
+    if (error) throw new Error(error);
+    if (plan.width <= 0 || plan.height <= 0) throw new Error('Element has zero dimensions');
 
-    // Track cumulative Y position to avoid rounding gaps between rows
-    let cumulativeY = 0;
+    // Past the browser's canvas limit, the image is scaled down rather than refused.
+    const scale = Math.min(1, MAX_CANVAS_DIMENSION / (plan.canvasWidth * dpr), MAX_CANVAS_DIMENSION / (plan.canvasHeight * dpr));
+    const toCanvas = dpr * scale;
+    const canvas = new OffscreenCanvas(Math.max(1, Math.round(plan.canvasWidth * toCanvas)), Math.max(1, Math.round(plan.canvasHeight * toCanvas)));
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
 
-    // Capture each tile
-    for (let tileY = 0; tileY < tilesY; tileY++) {
-      // Calculate row height for this row (needed for cumulative positioning)
-      const rowHeight = Math.min(viewport.height, rect.height - (tileY * viewport.height));
-      const rowHeightPhysical = Math.ceil(rowHeight * dpr);
+    // Rounding each edge from its exact position leaves no gap or overlap between tiles.
+    const draw = (bitmap, left, top, width, height, canvasX, canvasY) => {
+      const toImageX = bitmap.width / plan.viewportWidth;
+      const toImageY = bitmap.height / plan.viewportHeight;
+      const sx = Math.round(left * toImageX);
+      const sy = Math.round(top * toImageY);
+      const dx = Math.round(canvasX * toCanvas);
+      const dy = Math.round(canvasY * toCanvas);
+      ctx.drawImage(
+        bitmap,
+        sx, sy, Math.round((left + width) * toImageX) - sx, Math.round((top + height) * toImageY) - sy,
+        dx, dy, Math.round((canvasX + width) * toCanvas) - dx, Math.round((canvasY + height) * toCanvas) - dy,
+      );
+    };
 
-      // Track cumulative X position to avoid rounding gaps between columns —
-      // same reasoning as cumulativeY, reset at the start of each row.
-      let cumulativeX = 0;
+    let index = 0;
+    let reachedX = 0;
+    let reachedY = 0;
+    let y = 0;
 
-      for (let tileX = 0; tileX < tilesX; tileX++) {
-        // Calculate scroll position for this tile
-        const targetScrollX = elementAbsX + (tileX * viewport.width);
-        const targetScrollY = elementAbsY + (tileY * viewport.height);
+    while (y < plan.height - 0.5) {
+      let x = 0;
+      let rowEnd = y;
 
-        console.log(`Capturing tile (${tileX},${tileY}): scrolling to (${targetScrollX}, ${targetScrollY})`);
+      while (x < plan.width - 0.5) {
+        // Wait for dynamic content and Chrome's limit of about 2 captures a second.
+        // Debug mode waits longer so the border can be seen.
+        const tile = await chrome.tabs.sendMessage(tabId, { action: 'tilePosition', x, y, index, settleMs: debugMode ? 1200 : 600 });
+        if (tile.width <= 0 || tile.height <= 0) break;
 
-        // Request content script to scroll
-        const scrollResponse = await chrome.tabs.sendMessage(tabId, {
-          action: 'scrollToPosition',
-          x: targetScrollX,
-          y: targetScrollY
-        });
-
-        const actualScrollX = scrollResponse.scroll.x;
-        const actualScrollY = scrollResponse.scroll.y;
-
-        console.log(`Target scroll: (${targetScrollX}, ${targetScrollY}), Actual: (${actualScrollX}, ${actualScrollY})`);
-
-        // Calculate visible element size in this tile
-        const visibleWidth = Math.min(
-          viewport.width,
-          rect.width - (tileX * viewport.width)
-        );
-        const visibleHeight = Math.min(
-          viewport.height,
-          rect.height - (tileY * viewport.height)
-        );
-
-        // Calculate absolute position of the region we want to capture
-        const regionAbsX = elementAbsX + (tileX * viewport.width);
-        const regionAbsY = elementAbsY + (tileY * viewport.height);
-
-        // Calculate where this tile appears in viewport for debug visualization
-        const tileViewportX = regionAbsX - actualScrollX;
-        const tileViewportY = regionAbsY - actualScrollY;
-        const tileViewportWidth = Math.min(visibleWidth, viewport.width - tileViewportX);
-        const tileViewportHeight = Math.min(visibleHeight, viewport.height - tileViewportY);
-
-        // Show debug border if debug mode enabled
         if (debugMode) {
-          await chrome.tabs.sendMessage(tabId, {
-            action: 'showDebugBorder',
-            x: Math.max(0, tileViewportX),
-            y: Math.max(0, tileViewportY),
-            width: tileViewportWidth,
-            height: tileViewportHeight
-          });
+          await chrome.tabs.sendMessage(tabId, { action: 'showDebugBorder', x: tile.left, y: tile.top, width: tile.width, height: tile.height });
+          await waitForNextFrame(tabId);
         }
 
-        // Wait for dynamic content AND Chrome's capture rate limit
-        // Chrome limits captureVisibleTab to ~2 per second (500ms minimum between captures)
-        // Add extra delay in debug mode so user can see the border
-        await new Promise(resolve => setTimeout(resolve, debugMode ? 1200 : 600));
+        const bitmap = await captureTileBitmap(tabId);
 
-        // Capture visible tab at this scroll position
-        const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
-
-        // Fixed/sticky elements (floating ads, sticky headers) stay pinned to
-        // the viewport across every tile. Let the very first tile capture them
-        // naturally, then hide them for the rest so they appear once in the
-        // stitched image instead of duplicated at every tile.
-        if (tileX === 0 && tileY === 0) {
-          await chrome.tabs.sendMessage(tabId, { action: 'hideFixedElements' }).catch(() => {});
+        // A pane's page keeps what surrounds the pane, once, from the first tile.
+        if (index === 0 && plan.pane) {
+          const { bottom, extra, background } = plan.pane;
+          draw(bitmap, 0, 0, plan.canvasWidth, plan.viewportHeight, 0, 0);
+          ctx.fillStyle = background;
+          ctx.fillRect(0, Math.round(bottom * toCanvas), canvas.width, Math.round(extra * toCanvas));
+          draw(bitmap, 0, bottom, plan.canvasWidth, plan.viewportHeight - bottom, 0, bottom + extra);
         }
 
-        const blob = await fetch(dataUrl).then(r => r.blob());
-        const imageBitmap = await createImageBitmap(blob);
+        draw(bitmap, tile.left, tile.top, tile.width, tile.height, plan.offsetX + tile.atX, plan.offsetY + tile.atY);
+        bitmap.close();
 
-        // Calculate where this region appears in the captured viewport
-        // If scroll didn't reach target (document boundary), region won't be at (0,0)
-        const viewportOffsetX = regionAbsX - actualScrollX;
-        const viewportOffsetY = regionAbsY - actualScrollY;
-
-        // Source region (physical pixels) - use floor to avoid gaps
-        const sx = Math.floor(viewportOffsetX * dpr);
-        const sy = Math.floor(viewportOffsetY * dpr);
-        const sWidth = Math.ceil(visibleWidth * dpr);
-        const sHeight = Math.ceil(visibleHeight * dpr);
-
-        // Destination position on final canvas (physical pixels)
-        // Use cumulative X/Y to avoid rounding gaps between columns/rows
-        const dx = cumulativeX;
-        const dy = cumulativeY;
-
-        // Destination size - use exact tile size to avoid gaps
-        const dWidth = Math.ceil(visibleWidth * dpr);
-        const dHeight = Math.ceil(visibleHeight * dpr);
-
-        // Validate source region is within captured image bounds
-        if (sx < 0 || sy < 0 || sx + sWidth > imageBitmap.width || sy + sHeight > imageBitmap.height) {
-          console.warn(`Tile (${tileX},${tileY}): Source region out of bounds - sx:${sx} sy:${sy} sw:${sWidth} sh:${sHeight}, image:${imageBitmap.width}×${imageBitmap.height}`);
-          // Clamp to valid region
-          const clampedSX = Math.max(0, Math.min(sx, imageBitmap.width - 1));
-          const clampedSY = Math.max(0, Math.min(sy, imageBitmap.height - 1));
-          const clampedWidth = Math.min(sWidth, imageBitmap.width - clampedSX);
-          const clampedHeight = Math.min(sHeight, imageBitmap.height - clampedSY);
-
-          if (clampedWidth > 0 && clampedHeight > 0) {
-            finalCtx.drawImage(
-              imageBitmap,
-              clampedSX, clampedSY, clampedWidth, clampedHeight,
-              dx, dy, dWidth, dHeight
-            );
-          }
-        } else {
-          // Draw tile onto final canvas
-          finalCtx.drawImage(
-            imageBitmap,
-            sx, sy, sWidth, sHeight,
-            dx, dy, dWidth, dHeight
-          );
-        }
-
-        // Cleanup
-        imageBitmap.close();
-
-        console.log(`Tile (${tileX},${tileY}): extracted (${sx},${sy},${sWidth}×${sHeight}) → canvas (${dx},${dy})`);
-
-        // After completing a column, update cumulative X position
-        cumulativeX += dWidth;
+        index++;
+        const nextX = tile.atX + tile.width;
+        rowEnd = Math.max(rowEnd, tile.atY + tile.height);
+        reachedX = Math.max(reachedX, nextX);
+        reachedY = Math.max(reachedY, rowEnd);
+        if (nextX <= x + 0.5) break; // Can't go further this way
+        x = nextX;
       }
 
-      // After completing a row, update cumulative Y position
-      cumulativeY += rowHeightPhysical;
+      if (rowEnd <= y + 0.5) break;
+      y = rowEnd;
     }
 
-    // Convert final canvas to blob
-    const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/png';
-    const qualityParam = format === 'jpg' ? quality / 100 : undefined;
+    if (index === 0) throw new Error('The element is not visible on the page');
 
-    const stitchedBlob = await finalCanvas.convertToBlob({
-      type: mimeType,
-      quality: qualityParam
-    });
-
-    // Cleanup
-    finalCanvas.width = 0;
-    finalCanvas.height = 0;
-
-    console.log(`Multi-capture complete: ${finalWidth}×${finalHeight}px`);
-
-    return stitchedBlob;
-
+    const blob = await encodeStitched(canvas, plan, reachedX, reachedY, toCanvas, format, quality);
+    canvas.width = 0;
+    canvas.height = 0;
+    return { blob, scale };
   } finally {
-    // Always restore scrollbars, fixed elements, and hide debug border, even if capture fails
-    try {
-      await chrome.tabs.sendMessage(tabId, { action: 'showScrollbars' });
-    } catch (e) {
-      console.warn('Failed to restore scrollbars:', e);
-    }
-
-    try {
-      await chrome.tabs.sendMessage(tabId, { action: 'showFixedElements' });
-    } catch (e) {
-      console.warn('Failed to restore fixed elements:', e);
-    }
-
-    if (debugMode) {
-      try {
-        await chrome.tabs.sendMessage(tabId, { action: 'hideDebugBorder' });
-      } catch (e) {
-        console.warn('Failed to hide debug border:', e);
-      }
-    }
+    await chrome.tabs.sendMessage(tabId, { action: 'tileFinish' }).catch((e) => console.warn('Failed to restore the page:', e));
+    if (debugMode) await chrome.tabs.sendMessage(tabId, { action: 'hideDebugBorder' }).catch(() => {});
   }
+}
+
+/** A screenshot of the tab being captured, failing if the user has switched away from it. */
+async function captureTileBitmap(tabId) {
+  const tab = await chrome.tabs.get(tabId);
+  if (!tab.active) throw new Error('Capture stopped because the tab was switched');
+  const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
+  return createImageBitmap(await (await fetch(dataUrl)).blob());
+}
+
+/** Encodes the result, trimmed to what could be reached if part of a target can't be scrolled to. */
+async function encodeStitched(canvas, plan, reachedX, reachedY, toCanvas, format, quality) {
+  const options = { type: format === 'jpg' ? 'image/jpeg' : 'image/png', quality: format === 'jpg' ? quality / 100 : undefined };
+  const width = plan.pane ? canvas.width : Math.min(canvas.width, Math.round(reachedX * toCanvas));
+  const height = plan.pane ? canvas.height : Math.min(canvas.height, Math.round(reachedY * toCanvas));
+  if (width === canvas.width && height === canvas.height) return canvas.convertToBlob(options);
+
+  const trimmed = new OffscreenCanvas(width, height);
+  trimmed.getContext('2d').drawImage(canvas, 0, 0);
+  return trimmed.convertToBlob(options);
+}
+
+/** What to tell the user about a capture that had to be scaled down. */
+function scaledNotice(scale) {
+  return scale < 1 ? `Too large for one image, so it was scaled to ${Math.round(scale * 100)}%` : undefined;
 }
 
 /**
@@ -661,12 +558,6 @@ async function cropImageToElement(dataUrl, data, format, quality) {
     // Calculate physical pixel dimensions
     const physicalWidth = Math.round(rect.width * dpr);
     const physicalHeight = Math.round(rect.height * dpr);
-
-    // Validate canvas size limits
-    const MAX_DIMENSION = 16384;
-    if (physicalWidth > MAX_DIMENSION || physicalHeight > MAX_DIMENSION) {
-      throw new Error(`Element too large (max ${MAX_DIMENSION}px)`);
-    }
 
     // Convert dataURL to Blob
     const response = await fetch(dataUrl);
