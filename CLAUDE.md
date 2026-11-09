@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Element Snapper is a **Chrome browser extension** (Manifest V3) that captures pixel-perfect screenshots of webpage elements. It supports single elements, full-page captures, viewport screenshots, region (click-and-drag) selection, clipboard output, and delayed capture.
 
-Current version: v1.3.0. Published on Chrome Web Store.
+Current version: see `manifest.json`. Published on Chrome Web Store.
 
-Visual design (colors, typography, components) across the popup, in-page runtime UI, and website is documented in [`DESIGN.md`](DESIGN.md) — read it before touching any CSS/styling or adding a new UI surface.
+Visual design (colors, typography, components) across the in-page runtime UI and website is documented in [`DESIGN.md`](DESIGN.md) — read it before touching any CSS/styling or adding a new UI surface.
 
 ## Development
 
@@ -39,40 +39,27 @@ The three v1.5.0 output modes (Download / Copy Image / Copy as Prompt) are the t
 
 ## Architecture
 
-The extension has three isolated layers. Content scripts are **not** declared in `manifest.json` — they are injected on demand via `chrome.scripting.executeScript` (requires `activeTab` + `scripting` permissions).
+The extension has two isolated layers. There is no popup: the manifest sets no `default_popup`, so a toolbar click goes to the service worker's `onClicked`. Content scripts are **not** declared in `manifest.json` — they are injected on demand via `chrome.scripting.executeScript` (requires `activeTab` + `scripting` permissions).
 
 ```
-popup/popup.html + popup.js
+toolbar icon click → background/service_worker.js (onClicked)
   → chrome.scripting.executeScript() → injects content scripts if not present
-  → chrome.tabs.sendMessage()        → content/content-main.js
+content/panel.js → content/content-main.js, element_selector.js, region_selector.js
   → chrome.runtime.sendMessage()     → background/service_worker.js
   → relays status back               → content/content-main.js (toast/panel updates)
 ```
 
-There are two injection entry points:
-- **Popup click**: injects `utils.js` → `element_selector.js` → `region_selector.js` → `content-main.js`
-- **Extension icon click** (service worker `onClicked`): injects all of the above plus `panel.js`
-
-### Popup (`popup/`)
-
-`popup.js` manages a state machine (`idle → selecting → capturing → success/error`) and two sliding views (Home and Settings). The body height animates to fit the active view.
-
-- **Home view**: primary "Select Element" button, three quick-action buttons (Area, Screen, Page), Clipboard toggle
-- **Settings view**: Format (PNG/JPG), Quality slider, Delay slider (0–10s), Scroll Element toggle
-- Settings are persisted via `chrome.storage.local` on every change
-- The popup closes immediately after triggering element/region selection so the user can interact with the page
-
-`manifest.json` does not declare a `default_popup` under `"action"` — the popup is opened via the service worker's `onClicked` handler. Check `manifest.json` before assuming how the popup is opened.
+The service worker injects `utils.js` → `element_selector.js` → `region_selector.js` → `content-main.js` → `preview.js` → `panel.js`. On later clicks it toggles the existing panel.
 
 ### Content Scripts (`content/`)
 
-Load order is significant: `utils.js` → `element_selector.js` → `region_selector.js` → `content-main.js` (→ `panel.js` optional)
+Load order is significant: `utils.js` → `element_selector.js` → `region_selector.js` → `content-main.js` → `preview.js` → `panel.js`
 
 - **`content-main.js`**: Global message handler and orchestrator. Manages capture flows for all modes (element, viewport, full-page, region). Handles delay countdown UI, toast notifications, and scroll-lock/restore during multi-tile capture.
 - **`element_selector.js`**: `ElementSelector` class — fixed-position overlay that highlights hovered elements. Highlight turns blue→indigo (dashed) when the element exceeds viewport height, signalling that fullCapture mode will be used.
 - **`region_selector.js`**: `RegionSelector` class — full-screen semi-transparent overlay for click-and-drag area selection. Shows live pixel dimensions. Sends `captureRegion` message with the selected rect on mouse up.
 - **`utils.js`**: Pure DOM helpers — `getElementRect`, `getScrollOffsets`, `getDocumentDimensions`, `scrollIntoView`, `isCrossOriginIframe`.
-- **`panel.js`**: Floating in-page panel injected via Shadow DOM for CSS isolation. Hosts its own `STATE_CONFIG` state machine mirroring the popup's. Toggled via extension icon click; uses element ID `__element-snapper-panel-host__` to detect if already present.
+- **`panel.js`**: The extension's UI, a floating in-page panel injected via Shadow DOM for CSS isolation, with Home and Settings views that slide. Settings persist to `chrome.storage.local` on every change. Holds the capture state machine (`STATE_CONFIG`). Toggled via extension icon click; uses element ID `__element-snapper-panel-host__` to detect if already present.
 
 ### Service Worker (`background/service_worker.js`)
 
@@ -80,7 +67,7 @@ Handles `captureElement`, `captureViewportOrPage`, and `captureRegion` messages.
 
 - **DPR-aware cropping**: All canvas math multiplies coordinates by `devicePixelRatio` to support Retina/HiDPI displays without blur. Content scripts report CSS pixels; the service worker converts to physical pixels.
 - **Multi-tile stitching**: For elements larger than the viewport, scrolls in a grid pattern, captures each tile via `chrome.tabs.captureVisibleTab()`, stitches onto a single canvas. Enforces a 600ms inter-tile delay (Chrome API rate limit). Near page edges, the actual scroll position achieved (not the target) determines where the element region appears in the captured tile.
-- **Status relay**: After capture, the service worker sends `captureSuccess`/`captureError` back to the content script in the same tab so the floating panel can update even after the popup closes.
+- **Status relay**: After capture, the service worker sends `captureSuccess`/`captureError` back to the content script in the same tab so the floating panel can update.
 - Output is converted to PNG or JPEG, then either downloaded via `chrome.downloads.download()` or copied to clipboard via the Clipboard API.
 
 ### Key Constraints
@@ -94,13 +81,13 @@ Handles `captureElement`, `captureViewportOrPage`, and `captureRegion` messages.
 
 | Message | Direction | Description |
 |---------|-----------|-------------|
-| `startSelection` | popup → content | Enable element hover highlighting |
-| `startRegionSelection` | popup → content | Enable area drag selector |
+| `startSelection` | panel → content | Enable element hover highlighting |
+| `startRegionSelection` | panel → content | Enable area drag selector |
 | `captureElement` | content → service worker | Capture a specific DOM element |
 | `captureViewportOrPage` | content → service worker | Capture viewport or full page |
 | `captureRegion` | content → service worker | Capture a dragged rectangle |
 | `captureStarted` / `captureSuccess` / `captureError` | service worker → content | Status relay to update panel UI |
-| `selectionCancelled` | content → popup | User pressed Escape |
+| `selectionCancelled` | content → panel | User pressed Escape |
 
 ## Storage Schema
 
@@ -129,7 +116,8 @@ npm run build   # static export → out/
 - Routes: `app/page.tsx` (landing), `app/manual`, `app/playground`, `app/releases`, `app/privacy`
 - Playground: `app/playground/page.tsx` holds cases that can share a page; anything that changes the document (scroll owner, fixed chrome, very long) goes in `app/playground/cases.tsx`, one entry per `/playground/<slug>`, with the mode and expected result. Keep the main page under 8,192 CSS px, or Page mode hits the canvas limit on a 2x screen
 - `app/globals.css` holds the whole design system (the old `styles.css`); `app/playground/playground.css` is imported by that route only
-- Everything is a Server Component except four small client islands: `components/navbar.tsx` (mobile menu), `hero-mockup.tsx` (parallax + playable popup), `demo-video.tsx` (loader fade), `floating-ad.tsx`, `glow-cursor.tsx`
+- Everything is a Server Component except small client islands: `components/navbar.tsx` (mobile menu), `hero-mockup.tsx` (parallax + playable panel), `real-panel.tsx`, `playground-widgets.tsx`, `demo-video.tsx` (loader fade), `floating-ad.tsx`, `glow-cursor.tsx`
+- The panel on the hero and manual pages is the real one: `scripts/sync-panel.mjs` (runs before `dev` and `build`) copies `PANEL_HTML`, `PANEL_CSS` and the default shortcuts from `content/panel.js` to the git-ignored `generated/panel-ui.json`, and `components/real-panel.tsx` renders them in a shadow root. Change the panel in `content/panel.js` and the site follows on its next build, even before that version reaches the Web Store. The script fails the build if the panel changes shape. The manual's letter callouts are `HOME_BADGES` / `SETTINGS_BADGES` in `app/manual/page.tsx` (CSS selector -> letter; a selector with no match logs a console error)
 - The changelog is `import`ed from `data/releases.json` at build time and pre-rendered — no runtime fetch. To add a release, append an entry to `data/releases.json`
 - `public/` holds `demo.mp4` and `favicon.png`; Inter is self-hosted via `next/font`
 

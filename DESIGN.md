@@ -1,12 +1,12 @@
 # Element Snapper — Design System
 
-Element Snapper renders UI across three products — the extension popup, the in-page runtime UI, and the marketing website — all sharing one unwritten design language (dark glass, blue accent, `#0f172a`/`#1e293b`/`#3b82f6`). This is the single source of truth for that language, plus what's specific to each surface.
+Element Snapper renders UI across two products — the in-page runtime UI (floating panel, overlays, preview) and the marketing website — all sharing one unwritten design language (dark glass, blue accent, `#0f172a`/`#1e293b`/`#3b82f6`). This is the single source of truth for that language, plus what's specific to each surface.
 
 ---
 
 ## Shared Design Tokens
 
-Every surface below re-declares these as CSS custom properties (`popup.css`, `panel.js`, `preview.js`, `website/app/globals.css` each have their own copy — see [Known Duplication](#known-duplication)). Values must stay in sync.
+Every surface below re-declares these as CSS custom properties (`panel.js`, `preview.js`, `website/app/globals.css` each have their own copy — see [Known Duplication](#known-duplication)). Values must stay in sync.
 
 ### Colors
 
@@ -34,7 +34,7 @@ Every surface below re-declares these as CSS custom properties (`popup.css`, `pa
 
 | Token | Value |
 |---|---|
-| Font | `"Inter", -apple-system, sans-serif` (popup; the website is the same Inter, self-hosted by `next/font` and injected as `--font-inter`); `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif` (panel/preview); `ui-sans-serif, system-ui, ...` (on-page overlays/toast) — three near-identical stacks, worth unifying |
+| Font | `"Inter", -apple-system, sans-serif` (website; Inter is self-hosted by `next/font` and injected as `--font-inter`); `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif` (panel/preview); `ui-sans-serif, system-ui, ...` (on-page overlays/toast) — three near-identical stacks, worth unifying |
 | Base size | `14px` (extension UI) |
 | `--radius-sm` | `6px` |
 | `--radius-md` | `12px` |
@@ -59,8 +59,7 @@ This ordering is why `panel.js` explicitly hides itself before capture and befor
 
 | Surface | File | Injected/loaded by | Purpose |
 |---|---|---|---|
-| Popup | `popup/popup.html`, `.css`, `.js` | `default_popup` / extension click | Primary control UI when using the popup workflow |
-| Floating panel | `content/panel.js` | Extension icon click (`background/service_worker.js` `onClicked`) | In-page equivalent of the popup, draggable, stays open across captures |
+| Floating panel | `content/panel.js` | Extension icon click (`background/service_worker.js` `onClicked`) | Primary control UI, draggable, stays open across captures |
 | Element selector overlay | `content/element_selector.js` + styles in `content/utils.js` | `startSelection` message | Hover-to-highlight + click-to-capture |
 | Region selector overlay | `content/region_selector.js` + styles in `content/utils.js` | `startRegionSelection` message | Click-and-drag area capture |
 | Countdown | `content/utils.js` (`showCountdownOverlay`) | Any capture with `delay > 0` | Circular countdown badge, top-right |
@@ -70,9 +69,11 @@ This ordering is why `panel.js` explicitly hides itself before capture and befor
 
 ---
 
-## Popup (`popup/`)
+## Floating Panel (`content/panel.js`)
 
-340px-wide, plain HTML/CSS/JS. Two views (Home and Settings) that slide horizontally; the popup body animates its height to fit the active view.
+340px-wide, plain JS with its markup and styles as template strings, in a Shadow DOM. Two views (Home and Settings) that slide horizontally; the panel animates its height to fit the active view.
+
+The website shows this same markup and CSS through `website/components/real-panel.tsx`, so there is no separate mockup to keep in sync.
 
 **Design goals:** minimal footprint (no scrolling), clear capture-mode feedback, dark focused aesthetic that doesn't compete with the page underneath.
 
@@ -80,8 +81,8 @@ This ordering is why `panel.js` explicitly hides itself before capture and befor
 
 | Property | Value |
 |---|---|
-| Popup width | `340px` (fixed) |
-| Popup height | Dynamic — body height animates to match the active view |
+| Panel width | `340px` (fixed) |
+| Panel height | Dynamic — animates to match the active view |
 | Padding | `16px` top/bottom, `20px` left/right per view |
 | Gap between sections | `12px` (main content), `16px` (settings sections) |
 
@@ -124,7 +125,7 @@ Viewport, Full Page, and Select Area buttons follow a simplified path: directly 
 
 ### View Navigation
 
-Clicking **Settings**: JS adds `.settings-open` to `.views-wrapper` → Home slides to `translateX(-30%)` at `opacity:0.5` (parallax depth cue) → Settings slides in from `translateX(100%)` → JS measures `scrollHeight` and animates `body.style.height` to match. **Back** reverses it. **Close** (X) calls `window.close()`.
+Clicking **Settings**: JS adds `.settings-open` to `.views-wrapper` → Home slides to `translateX(-30%)` at `opacity:0.5` (parallax depth cue) → Settings slides in from `translateX(100%)` → JS measures the view and animates `.views-wrapper` height to match. **Back** reverses it. **Close** (X) hides the panel.
 
 ### Accessibility
 
@@ -136,10 +137,10 @@ All icon-only buttons have `aria-label`s; radio/range inputs use real `<input>` 
 
 ### Floating Panel (`content/panel.js`)
 
-Nearly a 1:1 port of the popup (same Home/Settings sliding-view pattern, same component set — capture button, action grid, toggles, sliders) rendered inside a Shadow DOM host (`#__element-snapper-panel-host__`) so page CSS can't leak in. Differences from the popup:
+See [Floating Panel](#floating-panel-contentpaneljs) for its layout and components. It renders inside a Shadow DOM host (`#__element-snapper-panel-host__`) so page CSS can't leak in. Beyond that:
 - Draggable via a `.draggable` header (`mousedown`/`mousemove`/`mouseup` on `document`), clamped to the viewport.
-- Adds a **Shortcuts** section (record-a-combo inputs, per-action reset, global enable toggle) that the popup doesn't have.
-- Adds a **View history** link and a **Preview Captures** toggle, both wired to `preview.js`.
+- Has a **Shortcuts** section (record-a-combo inputs, per-action reset, global enable toggle).
+- Has a **View history** link and a **Preview Captures** toggle, both wired to `preview.js`.
 - Hides itself before triggering any capture (`hidePanel()`) so it never appears in the screenshot, then restores itself via the `captureSuccess`/`captureError`/`selectionCancelled` messages relayed from the service worker.
 
 ### Element Selector Overlay (`content/element_selector.js`)
@@ -182,9 +183,9 @@ Uses a shared `.checker` background (CSS `linear-gradient` checkerboard) for tra
 
 Next.js (App Router) site built as a static export — one route folder per page under `app/`, all sharing `app/globals.css`. Shares the extension's color tokens and logo SVG to present a unified brand.
 
-Every page is a Server Component; the only client islands are the ones that need an event handler: `components/navbar.tsx` (mobile menu), `hero-mockup.tsx` (parallax + playable popup replica), `demo-video.tsx` (loader fade), `floating-ad.tsx`, `glow-cursor.tsx`. Anything new that is purely presentational should stay a Server Component.
+Every page is a Server Component; the only client islands are the ones that need an event handler: `components/navbar.tsx` (mobile menu), `hero-mockup.tsx` (parallax + playable panel), `real-panel.tsx`, `playground-widgets.tsx`, `demo-video.tsx` (loader fade), `floating-ad.tsx`, `glow-cursor.tsx`. Anything new that is purely presentational should stay a Server Component.
 
-**Design goals:** match the popup's identity, "show don't tell" (a live, interactive popup replica embedded in a browser mockup), dark glassmorphism, responsive down to a single-column mobile layout.
+**Design goals:** match the panel's identity, "show don't tell" (the real panel, playable, embedded in a browser mockup), dark glassmorphism, responsive down to a single-column mobile layout.
 
 ### Background Effects
 
@@ -192,7 +193,7 @@ Two absolutely positioned blurred circles (`filter: blur(120px)`, `z-index: -1`)
 
 ### Glassmorphism Pattern
 
-Reusable `.glass-panel` surface (feature cards, video container, popup replica):
+Reusable `.glass-panel` surface (feature cards, video container):
 ```css
 background: rgba(30, 41, 59, 0.7);
 backdrop-filter: blur(16px);
@@ -205,7 +206,7 @@ box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 
 Both live in `components/` and are rendered once by `app/layout.tsx`, so every route gets them automatically — pages don't re-declare the nav, footer or background glows.
 
-- **Navbar** (`components/navbar.tsx`) — sticky, `z-index: 100`. Logo (same marching-ants SVG + hover animation as popup/panel) left; text nav links + outlined Download button right. Active page indicated via `color: var(--text-primary)` on its nav link, derived from `usePathname()`.
+- **Navbar** (`components/navbar.tsx`) — sticky, `z-index: 100`. Logo (same marching-ants SVG + hover animation as the panel) left; text nav links + outlined Download button right. Active page indicated via `color: var(--text-primary)` on its nav link, derived from `usePathname()`.
   - **Inset from the edges at every width.** `.navbar` carries `padding: 16px`, not `16px 0`. The pill is a `.container`, so auto margins only inset it once the viewport passes the 1200px max-width — below that it spanned full width with its edges flush against the screen. Above ~1232px the centring already exceeds 16px, so the horizontal padding changes nothing there.
   - **Two states.** At rest the bar is flush with the page — transparent, square, borderless — so it reads as part of the hero rather than an object on top of it. Past 8px of scroll it lifts into the floating pill: `rgba(15,23,42,.75)` + `blur(16px)`, `--border-light` hairline, 12px radius, `0 10px 30px -10px` shadow, faded over 0.3s (suppressed under `prefers-reduced-motion`). The component adds `.is-scrolled` on `.navbar`; the open mobile menu forces the same state so its dropdown doesn't hang off an invisible bar.
   - Only paint properties differ between the states — `.navbar` padding is constant and the resting border is a transparent 1px line — so the transition can't shift the page.
@@ -215,7 +216,7 @@ Both live in `components/` and are rendered once by `app/layout.tsx`, so every r
 
 ### Landing Page (`app/page.tsx`)
 
-- **Hero** — two-column grid. Left: version badge pill, `4rem/800` H1 with a `.text-gradient` (`#60a5fa → #3b82f6`) highlighted word, subtitle, CTA row (Add to Chrome + BMC), stats row. Right: a 3D-tilted (`perspective`, mouse-parallax ±10°) browser-chrome mockup containing a **functional pixel-for-pixel popup replica** — clicking "Select Element" in it runs a real 3-second demo (status pill → green, highlight box → green dashed, mock page content behind it with a breathing `selectPulse` animation).
+- **Hero** — two-column grid. Left: version badge pill, `4rem/800` H1 with a `.text-gradient` (`#60a5fa → #3b82f6`) highlighted word, subtitle, CTA row (Add to Chrome + BMC), stats row. Right: a 3D-tilted (`perspective`, mouse-parallax ±10°) browser-chrome mockup containing **the real panel** (`components/real-panel.tsx`) — clicking "Select Element" or Area/Screen/Page runs a short simulated capture (status dot and highlight box turn green).
 - **Demo Video** (`#how-it-works`) — `autoplay loop muted` video inside a `.glass-panel` frame, with a spinner overlay until `loadeddata` fires.
 - **Features** (`#features`) — 3-column grid of `.feature-card.glass-panel` (DPR-Aware Cropping / blue, Multi-Tile Stitching / green, Capture Delay / yellow), lift `5px` on hover.
 
@@ -225,7 +226,7 @@ Data-driven — `data/releases.json` is `import`ed and pre-rendered at build tim
 
 ### Manual (`app/manual/page.tsx`) and Playground (`app/playground/page.tsx`)
 
-The manual is the lettered `.manual-popup` diagram + `.legend-grid` walkthrough (kept in sync with the real panel by the `website-sync` skill). The playground is a capture test bed of oversized `.pg-box` targets; its styles live in `app/playground/playground.css`, imported by that route alone so they never leak into other pages.
+The manual is the lettered `.manual-popup` diagram + `.legend-grid` walkthrough (the real panel with CSS callouts; the `website-sync` skill covers what still needs updating by hand). The playground is a capture test bed of oversized `.pg-box` targets; its styles live in `app/playground/playground.css`, imported by that route alone so they never leak into other pages.
 
 ### Privacy Page (`app/privacy/page.tsx`)
 
@@ -243,7 +244,7 @@ Plain typographic reading layout, `max-width: 800px`, no custom components.
 
 ## Known Duplication
 
-`popup.css`, the inline `PANEL_CSS` in `panel.js`, the inline `PREVIEW_CSS` in `preview.js`, and `website/app/globals.css` each redeclare the same ~15 color/radius/motion tokens and several component patterns (toggle switch, toolbar button, status dot, logo animation). They've already drifted slightly — e.g. `--text-muted` and `--warning` exist in the panel's token block but not preview's (preview doesn't need a status dot), and the website uses its own radius scale (`16px`/`8px`) instead of `--radius-sm`/`--radius-md`. This is fine as four-copies-in-sync today, but is the first thing to watch if the palette ever changes.
+The inline `PANEL_CSS` in `panel.js`, the inline `PREVIEW_CSS` in `preview.js`, and `website/app/globals.css` each redeclare the same ~15 color/radius/motion tokens and several component patterns (toggle switch, toolbar button, status dot, logo animation). They've already drifted slightly — e.g. `--text-muted` and `--warning` exist in the panel's token block but not preview's (preview doesn't need a status dot), and the website uses its own radius scale (`16px`/`8px`) instead of `--radius-sm`/`--radius-md`. This is fine as three-copies-in-sync today, but is the first thing to watch if the palette ever changes.
 
 ---
 
@@ -251,8 +252,8 @@ Plain typographic reading layout, `max-width: 800px`, no custom components.
 
 Not required, just things worth considering during the refactor:
 
-1. **Single shared tokens file.** A tiny `design-tokens.css` (or JS string constant) referenced by popup/panel/preview/website would remove the 4-way copy-paste risk above, without needing a build step *on the extension side* — content scripts can load it via `web_accessible_resources` or a `<link>` inside each Shadow DOM, and the website can `@import` it from `app/globals.css` (it has its own Next.js build, but that build doesn't have to be the source of truth).
+1. **Single shared tokens file.** A tiny `design-tokens.css` (or JS string constant) referenced by panel/preview/website would remove the 3-way copy-paste risk above, without needing a build step *on the extension side* — content scripts can load it via `web_accessible_resources` or a `<link>` inside each Shadow DOM, and the website can `@import` it from `app/globals.css` (it has its own Next.js build, but that build doesn't have to be the source of truth).
 2. **Unify the font stack and radius scale.** Three near-identical font stacks and two unrelated radius scales (extension's `6px`/`12px` vs. website's `8px`/`16px`) exist for no functional reason — picking one of each would tighten the shared identity.
 3. **Countdown could reuse the toast's glass-pill style** instead of being a bespoke circle — right now it's the one in-page surface with its own one-off shape language (60px circle vs. everything else's rounded-rect cards).
-4. **The `mode-full-extends` indigo highlight is a genuinely good affordance** (tells the user *before* they click that this will trigger multi-tile stitching) but it's not explained anywhere in the popup/panel UI — a first-time user has no way to learn what the arrows/badge mean except by hovering something tall. Could surface a one-line hint in the Scroll Element toggle's description, and/or show it once in the website's demo.
+4. **The `mode-full-extends` indigo highlight is a genuinely good affordance** (tells the user *before* they click that this will trigger multi-tile stitching) but it's not explained anywhere in the panel UI — a first-time user has no way to learn what the arrows/badge mean except by hovering something tall. Could surface a one-line hint in the Scroll Element toggle's description, and/or show it once in the website's demo.
 5. **Z-index stacking relies on insertion order**, which is implicit and fragile (see [Z-Index Stacking](#z-index-stacking-in-page-surfaces-only)) — a comment at each injection site noting "must be inserted after X" would save someone a debugging session later.

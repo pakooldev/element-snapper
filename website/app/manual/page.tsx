@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { PopupLogo } from "@/components/logo";
+import { RealPanel } from "@/components/real-panel";
+import panel from "@/generated/panel-ui.json";
 
 export const metadata: Metadata = {
   title: "User Manual",
@@ -18,12 +18,12 @@ const STATUS_STATES = [
 
 const HOME_LEGEND = [
   ["B", "Settings", <>Opens the settings panel to configure format, delay, and scroll capture.</>],
-  ["C", "Close", <>Closes the popup panel.</>],
+  ["C", "Close", <>Closes the panel.</>],
   [
     "D",
     "Select Element",
     <>
-      Click, then hover any element on the page to capture it. The popup closes so you can interact
+      Click, then hover any element on the page to capture it. The panel hides so you can interact
       with the page.
     </>,
   ],
@@ -81,13 +81,34 @@ const SETTINGS_LEGEND = [
   ],
 ] as const;
 
-const SHORTCUTS = [
-  ["Toggle Panel", "Shift+Cmd+E"],
-  ["Element", "Shift+Cmd+Y"],
-  ["Area", "Shift+Cmd+U"],
-  ["Screen", "Shift+Cmd+S"],
-  ["Page", "Shift+Cmd+O"],
-] as const;
+const HOME_BADGES = {
+  "#statusPill": "A",
+  "#settingsBtn": "B",
+  "#closeBtn": "C",
+  "#captureBtn": "D",
+  "#captureRegionBtn": "E",
+  "#captureViewportBtn": "F",
+  "#captureFullPageBtn": "G",
+  "#homeView .setting-group": "H",
+  "#historyBtn": "I",
+};
+
+const SETTINGS_BADGES = {
+  "#backBtn": "A",
+  '#settingsView a.icon-btn': "B",
+  "#settingsView .setting-group:has(#fmt-png)": "C",
+  ".setting-row:has(#delayInput)": "D",
+  ".switch-row:has(#fullCaptureCheckbox)": "E",
+  ".switch-row:has(#showPreviewCheckbox)": "F",
+  "label:has(#sc-enabled)": "G",
+};
+
+// The state a new install starts in. On Windows and Linux the shortcuts use Alt instead of Cmd.
+const SETTINGS_FIELDS = {
+  showPreviewCheckbox: true,
+  "sc-enabled": true,
+  ...Object.fromEntries(Object.entries(panel.shortcuts).map(([name, keys]) => [`sc-${name}`, keys])),
+} as Record<string, string | true>;
 
 const TIPS = [
   [
@@ -157,7 +178,7 @@ export default function Manual() {
           <div className="step-number">1</div>
           <h2 className="step-title">Open the Extension</h2>
           <p className="step-desc">
-            Click the Element Snapper icon in the Chrome toolbar to open the popup panel.
+            Click the Element Snapper icon in the Chrome toolbar to open the panel.
           </p>
 
           <div className="step-visual">
@@ -222,77 +243,7 @@ export default function Manual() {
           <div className="labeled-diagram">
             <div className="diagram-popup">
               <div className="manual-popup">
-                <div className="mp-header">
-                  <div className="mp-brand">
-                    {PopupLogo}
-                    <span className="mp-title">Element Snapper</span>
-                  </div>
-                  <div className="mp-header-right">
-                    <div className="mp-status">
-                      <span className="mp-dot" />
-                      <span className="num-badge">A</span>
-                    </div>
-                    <div className="mp-settings-btn">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <path
-                          d="M10.3246 4.31731C10.751 2.5609 13.249 2.5609 13.6754 4.31731C13.9508 5.45193 15.2507 5.99038 16.2478 5.38228C17.7913 4.44105 19.5589 6.2087 18.6177 7.75218C18.0096 8.74925 18.5481 10.0492 19.6827 10.3246C21.4391 10.751 21.4391 13.249 19.6827 13.6754C18.5481 13.9508 18.0096 15.2507 18.6177 16.2478C19.5589 17.7913 17.7913 19.5589 16.2478 18.6177C15.2507 18.0096 13.9508 18.5481 13.6754 19.6827C13.249 21.4391 10.751 21.4391 10.3246 19.6827C10.0492 18.5481 8.74926 18.0096 7.75219 18.6177C6.2087 19.5589 4.44105 17.7913 5.38228 16.2478C5.99038 15.2507 5.45193 13.9508 4.31731 13.6754C2.5609 13.249 2.5609 10.751 4.31731 10.3246C5.45193 10.0492 5.99038 8.74926 5.38228 7.75219C4.44105 6.2087 6.2087 4.44105 7.75219 5.38228C8.74926 5.99038 10.0492 5.45193 10.3246 4.31731Z"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        />
-                        <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
-                      </svg>
-                      <span className="num-badge">B</span>
-                    </div>
-                    <div className="mp-close-btn">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span className="num-badge">C</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="mp-main-btn">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path
-                      d="M4 4H10V6H6V10H4V4ZM20 4V10H18V6H14V4H20ZM4 20V14H6V18H10V20H4ZM20 20H14V18H18V14H20V20ZM12 8C14.2 8 16 9.8 16 12C16 14.2 14.2 16 12 16C9.8 16 8 14.2 8 12C8 9.8 9.8 8 12 8Z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                  <span>Select Element</span>
-                  <span className="num-badge">D</span>
-                </div>
-                <div className="mp-actions">
-                  <div className="mp-action-btn">
-                    Area<span className="num-badge">E</span>
-                  </div>
-                  <div className="mp-action-btn">
-                    Screen<span className="num-badge">F</span>
-                  </div>
-                  <div className="mp-action-btn">
-                    Page<span className="num-badge">G</span>
-                  </div>
-                </div>
-                <div className="mp-setting-group" style={{ position: "relative" }}>
-                  <label className="mp-setting-label">Output</label>
-                  <div className="mp-toggle-group mp-toggle-group-3">
-                    <span className="mp-toggle-opt">Download</span>
-                    <span className="mp-toggle-opt active">Copy Image</span>
-                    <span className="mp-toggle-opt">Copy as Prompt</span>
-                  </div>
-                  <span className="num-badge" style={{ position: "absolute", top: -8, right: -8 }}>
-                    H
-                  </span>
-                </div>
-                <div className="mp-link-btn" style={{ position: "relative" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-                    <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                  <span>View history</span>
-                  <span className="num-badge" style={{ position: "absolute", top: -8, right: -8 }}>
-                    I
-                  </span>
-                </div>
+                <RealPanel inert badges={HOME_BADGES} />
               </div>
             </div>
 
@@ -339,111 +290,7 @@ export default function Manual() {
           <div className="labeled-diagram">
             <div className="diagram-popup">
               <div className="manual-popup">
-                {/* Header */}
-                <div className="mp-header">
-                  <div className="mp-brand">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    <span className="mp-title">Settings</span>
-                    <span className="num-badge">A</span>
-                  </div>
-                  <div className="mp-header-right">
-                    <div className="mp-info-btn">
-                      <Link
-                        href="/#how-it-works"
-                        style={{ color: "inherit", display: "flex", alignItems: "center" }}
-                        title="How it works"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                          <path d="M12 16v-4M12 8h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                        </svg>
-                      </Link>
-                      <span className="num-badge">B</span>
-                    </div>
-                    <div className="mp-close-btn">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Format */}
-                <div className="mp-setting-group">
-                  <label className="mp-setting-label">Format</label>
-                  <div className="mp-toggle-group">
-                    <span className="mp-toggle-opt active">PNG</span>
-                    <span className="mp-toggle-opt">JPG</span>
-                  </div>
-                  <span className="num-badge">C</span>
-                </div>
-
-                {/* Delay */}
-                <div className="mp-setting-group mp-setting-row" style={{ marginTop: 12 }}>
-                  <label className="mp-setting-label" style={{ marginBottom: 0 }}>
-                    Delay
-                  </label>
-                  <div className="mp-slider-track">
-                    <div className="mp-slider-fill" style={{ width: "0%" }} />
-                    <div className="mp-slider-thumb" style={{ left: "0%" }} />
-                  </div>
-                  <span className="mp-slider-value">Off</span>
-                  <span className="num-badge">D</span>
-                </div>
-
-                {/* Scroll Element */}
-                <div className="mp-switch-row" style={{ marginTop: 8 }}>
-                  <div className="mp-switch-info">
-                    <span className="mp-switch-title">Scroll Element</span>
-                    <span className="mp-switch-desc">Capture scrollable content</span>
-                  </div>
-                  <div className="mp-toggle">
-                    <div className="mp-toggle-knob" />
-                  </div>
-                  <span className="num-badge">E</span>
-                </div>
-
-                {/* Preview Captures */}
-                <div className="mp-switch-row" style={{ marginTop: 8 }}>
-                  <div className="mp-switch-info">
-                    <span className="mp-switch-title">Preview Captures</span>
-                    <span className="mp-switch-desc">Show floating preview after capture</span>
-                  </div>
-                  <div className="mp-toggle on">
-                    <div className="mp-toggle-knob" />
-                  </div>
-                  <span className="num-badge">F</span>
-                </div>
-
-                {/* Shortcuts section */}
-                <div className="mp-setting-group mp-shortcuts-group" style={{ marginTop: 12 }}>
-                  <div className="mp-shortcuts-header">
-                    <label className="mp-setting-label" style={{ marginBottom: 0 }}>
-                      Shortcuts
-                    </label>
-                    <div className="mp-shortcuts-controls">
-                      <span className="mp-reset-btn">Reset</span>
-                      <div style={{ position: "relative", display: "inline-flex" }}>
-                        <div className="mp-toggle on">
-                          <div className="mp-toggle-knob" />
-                        </div>
-                        <span className="num-badge" style={{ position: "absolute", top: -8, right: -8 }}>
-                          G
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mp-shortcuts-list" style={{ marginTop: 6 }}>
-                    {SHORTCUTS.map(([label, key]) => (
-                      <div key={label} className="mp-shortcut-row">
-                        <span className="mp-shortcut-label">{label}</span>
-                        <span className="mp-shortcut-key">{key}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <RealPanel inert view="settings" badges={SETTINGS_BADGES} fields={SETTINGS_FIELDS} />
               </div>
             </div>
 

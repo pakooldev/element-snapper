@@ -13,7 +13,7 @@
 - **Copy as Prompt**: Skip the screenshot and copy a structured, Cursor-style text description of an element (tag, role, selector, dimensions, styles) to your clipboard for AI coding tools
 - **Capture Preview**: macOS-style thumbnail slides in after every capture; click to expand into a full modal with Download, Copy, and Close
 - **Capture History Browser**: Session-scoped history of recent captures accessible via a thumbnail strip in the preview modal; remove individual captures or clear all history with an inline confirm flow
-- **Floating In-Page Panel**: Persistent, draggable panel injected via Shadow DOM — stays open across captures without reloading the popup
+- **Floating In-Page Panel**: Persistent, draggable panel injected via Shadow DOM — stays open across captures
 - **Configurable Keyboard Shortcuts**: Per-OS safe defaults for each capture mode, with an enable toggle and one-click reset
 - **Area Capture**: Click-and-drag region selection with live pixel-dimension label
 - **Quick Actions**: One-click **Area**, **Screen** (viewport), and **Page** (full scrollable page) buttons
@@ -46,7 +46,7 @@
 
 ### Element Capture
 
-1. Click the extension icon to open the popup
+1. Click the extension icon to open the panel
 2. Click **Select Element**
 3. Hover over elements — a dashed overlay shows what will be captured
 4. Click the desired element to capture it
@@ -79,14 +79,14 @@ All settings are automatically saved and restored between sessions.
 ### Architecture
 
 ```
-Popup ──> Content Script ──> Service Worker ──> Download
+Panel ──> Content Script ──> Service Worker ──> Download
   ↑            ↓                    ↓
   └────────────┴────────────────────┘
 ```
 
 **Message Flow:**
 
-1. Popup sends "startSelection" to content script
+1. Panel starts element selection in the content script
 2. Content script enables element highlighting
 3. User clicks element
 4. Content script sends element rect + metadata to service worker
@@ -197,10 +197,6 @@ When debug mode is enabled:
 ```
 element-snapper/
 ├── manifest.json              # Manifest V3 configuration
-├── popup/
-│   ├── popup.html            # Popup UI structure
-│   ├── popup.js              # Popup logic and messaging
-│   └── popup.css             # Professional styling
 ├── content/
 │   ├── utils.js              # Utility functions
 │   ├── element_selector.js   # Element selection logic
@@ -289,21 +285,12 @@ The [playground](https://element-snapper.pakool.com/playground) on the website h
 4. Service worker console opens in new window
 ```
 
-**Popup Console:**
-
-```
-1. Right-click extension icon
-2. Select "Inspect popup"
-3. Popup DevTools opens
-```
-
 ## Development
 
 ### Project Structure
 
 The extension follows a modular architecture:
 
-- **popup/**: UI components for extension popup
 - **content/**: Scripts injected into web pages
 - **background/**: Service worker for capture logic
 - **icons/**: Extension icons
@@ -317,7 +304,7 @@ The extension follows a modular architecture:
 
 ### Design
 
-Colors, typography, and components for the popup, in-page UI, and website are documented in [DESIGN.md](DESIGN.md).
+Colors, typography, and components for the in-page UI and website are documented in [DESIGN.md](DESIGN.md).
 
 ### Website and Promo Video
 

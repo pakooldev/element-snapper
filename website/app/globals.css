@@ -377,7 +377,7 @@ body {
   margin-right: 4px;
 }
 
-/* Hero Visual & Extension UI Replica */
+/* Hero Visual */
 .hero-visual {
   position: relative;
   perspective: 1000px;
@@ -454,16 +454,13 @@ body {
   overflow: hidden;
 }
 
-/* Popup Replica Styling inside the Browser body */
+/* The real panel, placed inside the fake browser */
 .extension-popup {
   position: absolute;
   top: 10px;
   right: 10px;
   width: 340px;
-  max-width: 90%;
-  background: var(--bg-dark); /* Override glass panel bg specific for ext */
   border-radius: 12px;
-  padding: 24px;
   z-index: 10;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
   animation: slideIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
@@ -889,17 +886,9 @@ body {
     font-size: 2.2rem;
   }
 
+  /* The panel has a fixed 340px layout, so narrow screens scale it rather than reflow it. */
   .extension-popup {
-    padding: 16px;
-  }
-
-  .mp-main-btn {
-    font-size: 14px;
-  }
-
-  .mp-actions {
-    flex-direction: column;
-    display: flex;
+    zoom: 0.8;
   }
 }
 
@@ -1107,84 +1096,6 @@ body {
   justify-content: center;
 }
 
-/* Number badges overlaid on popup elements */
-.num-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  background: var(--accent-primary);
-  color: white;
-  font-size: 11px;
-  font-weight: 700;
-  border-radius: 50%;
-  flex-shrink: 0;
-  line-height: 1;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);
-  position: relative;
-  z-index: 5;
-}
-
-/* Badge positioning tweaks inside popup elements */
-.mp-status .num-badge,
-.mp-settings-btn .num-badge {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-}
-
-.mp-status,
-.mp-settings-btn,
-.mp-info-btn,
-.mp-close-btn {
-  position: relative;
-}
-
-.mp-main-btn {
-  position: relative;
-}
-
-.mp-main-btn > .num-badge {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-}
-
-.mp-action-btn {
-  position: relative;
-}
-
-.mp-action-btn > .num-badge {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-}
-
-.mp-switch-row {
-  position: relative;
-}
-
-.mp-switch-row > .num-badge {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-}
-
-.mp-setting-group {
-  position: relative;
-}
-
-.mp-setting-group > .num-badge {
-  position: absolute;
-  top: -4px;
-  right: -8px;
-}
-
-.mp-brand > .num-badge {
-  margin-left: 4px;
-}
-
 /* Legend grid below the popup */
 .legend-grid {
   display: grid;
@@ -1237,60 +1148,14 @@ body {
   line-height: 1.45;
 }
 
-/* Manual Popup Replica */
+/* The real panel in the manual diagrams */
 .manual-popup {
   width: 340px;
-  background: var(--bg-dark);
-  border: 1px solid var(--border-light);
   border-radius: 12px;
-  padding: 16px 20px;
-  font-family: var(--font-sans);
   position: relative;
   z-index: 2;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
   flex-shrink: 0;
-}
-
-.mp-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-
-.mp-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text-primary);
-}
-
-.mp-title {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.mp-header-right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.mp-status {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border-light);
-  border-radius: 20px;
-}
-
-.mp-status-label {
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  letter-spacing: 0.02em;
 }
 
 .mp-dot {
@@ -1329,347 +1194,10 @@ body {
 .mp-state-pill.is-success .mp-dot    { background: #10b981; }
 .mp-state-pill.is-error .mp-dot      { background: #ef4444; }
 
-.mp-settings-btn,
-.mp-info-btn,
-.mp-close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px;
-  border-radius: 6px;
-  color: var(--text-secondary);
-  cursor: default;
-}
-
-.mp-info-btn a {
-  cursor: pointer;
-  color: inherit;
-  display: flex;
-  align-items: center;
-}
-
-.mp-main-btn {
-  width: 100%;
-  height: 54px;
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
-  color: white;
-  border: none;
-  border-radius: var(--radius-md, 12px);
-  font-size: 16px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  box-shadow: 0 4px 12px rgba(59,130,246,0.3);
-}
-
-.mp-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.mp-action-btn {
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  padding: 14px 8px;
-  border-radius: var(--radius-md, 12px);
-  color: white;
-  font-weight: 500;
-  font-size: 12px;
-  text-align: center;
-}
-
-.mp-switch-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: var(--bg-card);
-  padding: 12px 14px;
-  border-radius: 10px;
-  border: 1px solid var(--border-light);
-}
-
-.mp-switch-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.mp-switch-title {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.mp-switch-desc {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-.mp-toggle {
-  width: 44px;
-  height: 24px;
-  background: var(--bg-dark);
-  border: 1px solid var(--border-light);
-  border-radius: 20px;
-  position: relative;
-  flex-shrink: 0;
-}
-
-.mp-toggle.on {
-  background: var(--accent-primary);
-  border-color: var(--accent-primary);
-}
-
-.mp-toggle-knob {
-  width: 18px;
-  height: 18px;
-  background: var(--text-secondary);
-  border-radius: 50%;
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  transition: transform 0.3s;
-}
-
-.mp-toggle.on .mp-toggle-knob {
-  transform: translateX(20px);
-  background: white;
-}
-
-/* Settings-specific */
-.mp-setting-group {
-  margin-bottom: 14px;
-}
-
-/* Shortcuts section inside settings replica */
-.mp-shortcuts-group {
-  margin-top: 4px;
-}
-
-.mp-shortcuts-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-.mp-shortcuts-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.mp-reset-btn {
-  font-size: 10px;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-light);
-  border-radius: 4px;
-  padding: 2px 6px;
-  cursor: default;
-}
-
-.mp-shortcuts-list {
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.mp-shortcut-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 7px 12px;
-  border-bottom: 1px solid var(--border-light);
-}
-
-.mp-shortcut-row:last-child {
-  border-bottom: none;
-}
-
-.mp-shortcut-label {
-  font-size: 11px;
-  color: var(--text-primary);
-}
-
-.mp-shortcut-key {
-  background: var(--bg-dark);
-  border: 1px solid var(--border-light);
-  border-radius: 4px;
-  color: var(--accent-primary);
-  font-family: monospace;
-  font-size: 10px;
-  padding: 2px 8px;
-  min-width: 56px;
-  text-align: center;
-}
-
-.mp-setting-label {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-secondary);
-  display: block;
-  margin-bottom: 6px;
-}
-
-.mp-link-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  margin-top: 4px;
-  padding: 8px;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: default;
-}
-
-.mp-link-btn svg { opacity: 0.6; }
-
-.mp-toggle-group {
-  display: flex;
-  gap: 0;
-  padding: 4px;
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-}
-
-.mp-toggle-opt {
-  flex: 1;
-  text-align: center;
-  padding: 8px 16px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  border-radius: 4px;
-  cursor: default;
-}
-
-.mp-toggle-opt.active {
-  background: var(--accent-primary);
-  color: white;
-}
-
-/* Hero mockup is a live, clickable showcase — the manual diagram isn't */
-.hero-visual .mp-main-btn,
-.hero-visual .mp-action-btn {
-  cursor: pointer;
-  transition: transform 0.1s;
-}
-
-/* Press feedback: CSS :active instead of a JS transform + setTimeout */
-.hero-visual .mp-main-btn:active,
-.hero-visual .mp-action-btn:active {
-  transform: scale(0.95);
-}
-
 /* Simulated "capture succeeded" state, toggled by a single class */
-.hero-visual .mp-dot.is-success {
-  background: var(--success);
-}
-
 .hero-visual .mock-highlight-box.is-success {
   border-color: var(--success);
   background: rgba(16, 185, 129, 0.1);
-}
-
-.hero-visual .mp-toggle-opt {
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-}
-
-/* 3-way variant (Output mode) — longer labels need tighter sizing to fit
-   the popup's fixed 340px width without wrapping */
-.mp-toggle-group-3 .mp-toggle-opt {
-  padding: 8px 4px;
-  font-size: 11px;
-  white-space: nowrap;
-}
-
-.mp-setting-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.mp-slider-track {
-  flex: 1;
-  height: 4px;
-  background: var(--bg-hover);
-  border-radius: 2px;
-  position: relative;
-}
-
-.mp-slider-fill {
-  height: 100%;
-  background: var(--accent-primary);
-  border-radius: 2px;
-}
-
-.mp-slider-thumb {
-  width: 12px;
-  height: 12px;
-  background: white;
-  border-radius: 50%;
-  position: absolute;
-  top: -4px;
-  transform: translateX(-50%);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-.mp-slider-value {
-  font-family: monospace;
-  font-size: 12px;
-  color: var(--accent-primary);
-  background: rgba(59, 130, 246, 0.1);
-  padding: 3px 7px;
-  border-radius: 4px;
-  min-width: 40px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-/* Dual popup side-by-side layout */
-.diagram-dual-popup {
-  display: flex;
-  gap: 24px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.diagram-dual-popup .manual-popup + .manual-popup {
-  border-left: none;
-}
-
-/* Buy Me a Coffee row in settings mockup */
-.mp-bmc-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: 11px;
-  background: rgba(255, 221, 0, 0.05);
-  border: 1px solid rgba(255, 221, 0, 0.2);
-  border-radius: var(--radius-md, 12px);
-  color: #fbbf24;
-  font-weight: 500;
-  font-size: 13px;
-  margin-top: 4px;
-  position: relative;
 }
 
 /* Tips Section */
@@ -1750,7 +1278,6 @@ body {
 
 @media (max-width: 480px) {
   .manual-popup {
-    width: 290px;
-    padding: 14px 16px;
+    zoom: 0.85;
   }
 }

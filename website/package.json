@@ -2,7 +2,10 @@
   "name": "element-snapper-website",
   "private": true,
   "scripts": {
+    "sync": "node scripts/sync-panel.mjs",
+    "predev": "npm run sync",
     "dev": "next dev",
+    "prebuild": "npm run sync",
     "build": "next build",
     "start": "npx serve out"
   },
