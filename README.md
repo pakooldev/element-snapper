@@ -9,7 +9,7 @@
 - **Pixel-Perfect Capture**: DPR-aware cropping for crisp screenshots on Retina and HiDPI displays
 - **Smart Element Highlight**: Fixed-position overlay shows exactly what will be captured — dashed blue for normal captures, dashed indigo when the element extends beyond the viewport
 - **Viewport-Clip**: When _Scroll Element_ is disabled, captures only the visible portion of any element — no black/empty areas
-- **Full Element Capture**: Scroll-and-stitch full-page capture — no debugger permission or "is debugging this browser" banner
+- **Full Element Capture**: Scroll-and-stitch capture of whole elements and pages, including content in scrolling boxes and app-style layouts — no debugger permission or "is debugging this browser" banner
 - **Copy as Prompt**: Skip the screenshot and copy a structured, Cursor-style text description of an element (tag, role, selector, dimensions, styles) to your clipboard for AI coding tools
 - **Capture Preview**: macOS-style thumbnail slides in after every capture; click to expand into a full modal with Download, Copy, and Close
 - **Capture History Browser**: Session-scoped history of recent captures accessible via a thumbnail strip in the preview modal; remove individual captures or clear all history with an inline confirm flow

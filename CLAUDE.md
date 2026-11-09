@@ -21,6 +21,16 @@ After any code change, click the refresh icon on the extension card in `chrome:/
 
 `test-full-capture.html` is a standalone HTML page for manually testing full-element capture locally.
 
+## Checks
+
+`tests/capture-check.mjs` runs the real extension against the built playground and reads the images pixel by pixel. Run it after any capture or selection change:
+
+```bash
+(cd website && npm run build) && cd tests && npm install && npm run check   # or: npm run check "app-shell,long-page"
+```
+
+The ruler stripes on the playground's case pages make repeats, seams, gaps and stretching show up as wrong run lengths. Set `CHROMIUM_PATH` to reuse an installed Chromium, `SHOTS_DIR` to keep the images. A new playground case should get a check here. Confirm a new check fails on the broken code: one here passed on the old stitching until it was rewritten.
+
 ## Promo Video (`promo-video/`)
 
 React + Remotion project for generating the Chrome Web Store assets.
@@ -56,9 +66,9 @@ The service worker injects `utils.js` → `element_selector.js` → `region_sele
 Load order is significant: `utils.js` → `element_selector.js` → `region_selector.js` → `content-main.js` → `preview.js` → `panel.js`
 
 - **`content-main.js`**: Global message handler and orchestrator. Manages capture flows for all modes (element, viewport, full-page, region). Handles delay countdown UI, toast notifications, and scroll-lock/restore during multi-tile capture.
-- **`element_selector.js`**: `ElementSelector` class — fixed-position overlay that highlights hovered elements. Highlight turns blue→indigo (dashed) when the element exceeds viewport height, signalling that fullCapture mode will be used.
-- **`region_selector.js`**: `RegionSelector` class — full-screen semi-transparent overlay for click-and-drag area selection. Shows live pixel dimensions. Sends `captureRegion` message with the selected rect on mouse up.
-- **`utils.js`**: Pure DOM helpers — `getElementRect`, `getScrollOffsets`, `getDocumentDimensions`, `scrollIntoView`, `isCrossOriginIframe`.
+- **`element_selector.js`**: `ElementSelector` class — fixed-position overlay that highlights hovered elements. Highlight turns blue→indigo (dashed) when the element extends past what's visible, signalling that fullCapture mode will stitch it. It selects on `pointerup` because disabled controls never get `mousedown`, `mouseup` or `click`, and stops presses on `window` so the page never sees them. Hover still reaches the page on purpose, so a hover-opened menu stays open while you pick from it.
+- **`region_selector.js`**: `RegionSelector` class — full-screen semi-transparent overlay for click-and-drag area selection, over a transparent layer that takes the pointer so the page gets no hover or press. Shows live pixel dimensions. Sends `captureRegion` message with the selected rect on mouse up.
+- **`utils.js`**: DOM helpers, overlay styles, and the page side of stitched capture (`prepareCapture`, `positionTile`, `finishCapture`): which elements scroll or clip the target, and what's visible of it.
 - **`panel.js`**: The extension's UI, a floating in-page panel injected via Shadow DOM for CSS isolation, with Home and Settings views that slide. Settings persist to `chrome.storage.local` on every change. Holds the capture state machine (`STATE_CONFIG`). Toggled via extension icon click; uses element ID `__element-snapper-panel-host__` to detect if already present.
 
 ### Service Worker (`background/service_worker.js`)
@@ -66,15 +76,15 @@ Load order is significant: `utils.js` → `element_selector.js` → `region_sele
 Handles `captureElement`, `captureViewportOrPage`, and `captureRegion` messages.
 
 - **DPR-aware cropping**: All canvas math multiplies coordinates by `devicePixelRatio` to support Retina/HiDPI displays without blur. Content scripts report CSS pixels; the service worker converts to physical pixels.
-- **Multi-tile stitching**: For elements larger than the viewport, scrolls in a grid pattern, captures each tile via `chrome.tabs.captureVisibleTab()`, stitches onto a single canvas. Enforces a 600ms inter-tile delay (Chrome API rate limit). Near page edges, the actual scroll position achieved (not the target) determines where the element region appears in the captured tile.
+- **Stitching** (`captureStitched`, used by Scroll Element and Page mode): asks the page for one tile at a time (`tilePrepare`, `tilePosition`, `tileFinish`). The page scrolls whatever the target depends on, waits 600ms (lazy content, and Chrome's limit on captures per second), then reports the visible part and which content position it starts at. Nothing is computed ahead, so nested scrollers, app-shell panes and layout changes all go through the same path. Sticky elements become `position: relative` and other fixed elements are hidden, re-checked before each tile. Everything goes back at the end, including scroll positions. Past the canvas limit the image is scaled down.
 - **Status relay**: After capture, the service worker sends `captureSuccess`/`captureError` back to the content script in the same tab so the floating panel can update.
 - Output is converted to PNG or JPEG, then either downloaded via `chrome.downloads.download()` or copied to clipboard via the Clipboard API.
 
 ### Key Constraints
 
-- Max canvas size: 16,384px per dimension (browser hard limit)
+- Max canvas size: 16,384px per dimension (browser hard limit); larger captures are scaled to fit
 - Full-page capture rate-limited to ~2 captures/second
-- Cannot capture cross-origin iframes or Chrome system pages (`chrome://`, Web Store)
+- Cannot select inside iframes (content scripts are injected into the top frame only), or capture Chrome system pages (`chrome://`, Web Store)
 - `debugMode` flag (hidden from settings UI) draws red/green tile borders during multi-tile stitching
 
 ## Message Types
