@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { LateFixed, ShadowBanner } from "@/components/playground-widgets";
+import { LateFixed, PressCounter, ShadowContent } from "@/components/playground-widgets";
 
 /**
  * Cases that need a whole document to themselves: Page mode captures the
@@ -16,6 +16,15 @@ export type PlaygroundCase = {
 };
 
 const SCROLL_ELEMENT = "Element, with Scroll Element on (click the striped area, not a label)";
+
+const SHADOW_BANNER = `
+  <div style="position:fixed;left:24px;right:24px;bottom:24px;padding:16px;border-radius:12px;
+              background:#f59e0b;color:#111;font:600 14px sans-serif;text-align:center">
+    Cookie banner (fixed, inside a shadow root)
+  </div>`;
+
+const SHADOW_BUTTON = `
+  <button style="width:260px;height:48px;font:600 14px sans-serif">Button inside a shadow root</button>`;
 
 const TABLE_COLUMNS = ["Start", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "End"];
 
@@ -38,6 +47,57 @@ function Ruler({ height, step = 500 }: { height: number; step?: number }) {
 }
 
 export const CASES: PlaygroundCase[] = [
+  {
+    slug: "selection-targets",
+    group: "Selecting",
+    title: "Hard to select",
+    mode: "Element, with Scroll Element off",
+    expected:
+      "Each control is captured exactly, at its own size. Nothing opens, takes focus or navigates, and the counter stays at 0.",
+    render: (intro) => (
+      <div className="pg-case">
+        {intro}
+        <div className="pg-select-list">
+          <PressCounter />
+          <button id="disabled-btn" disabled>
+            Disabled button
+          </button>
+          <input id="disabled-input" disabled defaultValue="Disabled input" aria-label="Disabled input" />
+          <select id="native-select" aria-label="Native select" defaultValue="one">
+            <option value="one">Native select</option>
+            <option value="two">Second option</option>
+          </select>
+          <input id="text-input" defaultValue="Text input" aria-label="Text input" />
+          <a id="plain-link" href="#followed">
+            A link
+          </a>
+          <div id="shadow-host">
+            <ShadowContent html={SHADOW_BUTTON} />
+          </div>
+        </div>
+      </div>
+    ),
+  },
+  {
+    slug: "press-sensitive",
+    group: "Selecting",
+    title: "Page that reacts to the mouse",
+    mode: "Area (drag across the squares)",
+    expected: "The squares stay blue while you drag and in the image, and the counter stays at 0.",
+    render: (intro) => (
+      <div className="pg-case">
+        {intro}
+        <div className="pg-select-list">
+          <PressCounter />
+        </div>
+        <div className="pg-press-grid">
+          {Array.from({ length: 24 }, (_, i) => (
+            <div key={i} className="pg-press-cell" />
+          ))}
+        </div>
+      </div>
+    ),
+  },
   {
     slug: "app-shell",
     group: "Scroll owners",
@@ -215,7 +275,7 @@ export const CASES: PlaygroundCase[] = [
     expected: "The cookie banner appears at most once. It must not repeat on every tile.",
     render: (intro) => (
       <div className="pg-case">
-        <ShadowBanner />
+        <ShadowContent html={SHADOW_BANNER} />
         {intro}
         <Ruler height={4000} />
       </div>

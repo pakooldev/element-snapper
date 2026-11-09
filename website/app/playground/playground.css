@@ -210,6 +210,48 @@ html:has(.pg-case) .bg-glow {
   font-size: 1.8rem;
 }
 
+.pg-select-list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 0 24px 24px;
+}
+
+.pg-select-list button,
+.pg-select-list input,
+.pg-select-list select,
+.pg-select-list a {
+  display: block;
+  width: 260px;
+  height: 48px;
+  padding: 0 12px;
+  font: 600 14px var(--font-sans);
+  line-height: 48px;
+}
+
+.pg-press-count {
+  font-weight: 600;
+}
+
+.pg-press-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  padding: 0 24px 24px;
+}
+
+.pg-press-cell {
+  height: 100px;
+  border-radius: 8px;
+  background: var(--accent-primary);
+}
+
+.pg-press-cell:hover,
+.pg-press-cell:active {
+  background: #ef4444;
+}
+
 .pg-ruler {
   position: relative;
   background: repeating-linear-gradient(

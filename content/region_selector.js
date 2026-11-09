@@ -3,12 +3,16 @@
  * Handles click-and-drag region selection for area capture
  */
 
+// mousedown, mousemove and mouseup have their own handlers.
+const REGION_BLOCKED_EVENTS = ['pointerdown', 'pointermove', 'pointerup', 'click', 'dblclick', 'mouseover', 'mouseout', 'contextmenu'];
+
 class RegionSelector {
   constructor() {
     this.isActive = false;
     this.isDragging = false;
     this.startX = 0;
     this.startY = 0;
+    this.layer = null;
     this.overlay = null;
     this.selection = null;
     this.dimensionLabel = null;
@@ -16,6 +20,7 @@ class RegionSelector {
     this.boundMouseMove = this.handleMouseMove.bind(this);
     this.boundMouseUp = this.handleMouseUp.bind(this);
     this.boundKeyDown = this.handleKeyDown.bind(this);
+    this.boundBlock = this.handleBlockedEvent.bind(this);
   }
 
   /**
@@ -29,6 +34,12 @@ class RegionSelector {
     this.isDragging = false;
 
     injectRegionSelectorStyles();
+
+    // Takes the pointer so the page never sees it. Not the overlay below,
+    // whose clip-path would let the page get events inside the selection.
+    this.layer = document.createElement('div');
+    this.layer.id = 'region-selector-layer';
+    document.body.appendChild(this.layer);
 
     // Create full-screen overlay
     this.overlay = document.createElement('div');
@@ -53,10 +64,11 @@ class RegionSelector {
     this.hint.textContent = 'Click and drag to select area · Esc to cancel';
     document.body.appendChild(this.hint);
 
-    // Add listeners on capture phase
-    document.addEventListener('mousedown', this.boundMouseDown, true);
-    document.addEventListener('mousemove', this.boundMouseMove, true);
-    document.addEventListener('mouseup', this.boundMouseUp, true);
+    // Add listeners on window's capture phase, ahead of the page's own
+    window.addEventListener('mousedown', this.boundMouseDown, true);
+    window.addEventListener('mousemove', this.boundMouseMove, true);
+    window.addEventListener('mouseup', this.boundMouseUp, true);
+    REGION_BLOCKED_EVENTS.forEach((name) => window.addEventListener(name, this.boundBlock, true));
     document.addEventListener('keydown', this.boundKeyDown, true);
 
     // Set cursor
@@ -74,12 +86,14 @@ class RegionSelector {
     this.isDragging = false;
 
     // Remove listeners
-    document.removeEventListener('mousedown', this.boundMouseDown, true);
-    document.removeEventListener('mousemove', this.boundMouseMove, true);
-    document.removeEventListener('mouseup', this.boundMouseUp, true);
+    window.removeEventListener('mousedown', this.boundMouseDown, true);
+    window.removeEventListener('mousemove', this.boundMouseMove, true);
+    window.removeEventListener('mouseup', this.boundMouseUp, true);
+    REGION_BLOCKED_EVENTS.forEach((name) => window.removeEventListener(name, this.boundBlock, true));
     document.removeEventListener('keydown', this.boundKeyDown, true);
 
     // Remove DOM elements
+    if (this.layer) { this.layer.remove(); this.layer = null; }
     if (this.overlay) { this.overlay.remove(); this.overlay = null; }
     if (this.selection) { this.selection.remove(); this.selection = null; }
     if (this.dimensionLabel) { this.dimensionLabel.remove(); this.dimensionLabel = null; }
@@ -96,8 +110,7 @@ class RegionSelector {
   handleMouseDown(event) {
     if (!this.isActive) return;
 
-    event.preventDefault();
-    event.stopPropagation();
+    blockEvent(event);
 
     this.isDragging = true;
     this.startX = event.clientX;
@@ -121,10 +134,10 @@ class RegionSelector {
    * @param {MouseEvent} event
    */
   handleMouseMove(event) {
-    if (!this.isActive || !this.isDragging) return;
+    if (!this.isActive) return;
 
-    event.preventDefault();
-    event.stopPropagation();
+    blockEvent(event);
+    if (!this.isDragging) return;
 
     const currentX = event.clientX;
     const currentY = event.clientY;
@@ -178,8 +191,8 @@ class RegionSelector {
   async handleMouseUp(event) {
     if (!this.isActive || !this.isDragging) return;
 
-    event.preventDefault();
-    event.stopPropagation();
+    blockEvent(event);
+    swallowEndOfPress();
 
     this.isDragging = false;
 
@@ -192,17 +205,40 @@ class RegionSelector {
     const width = Math.abs(currentX - this.startX);
     const height = Math.abs(currentY - this.startY);
 
-    // Stop selection mode (clean up UI)
+    // Stop selection mode (clean up UI), but leave the layer in place so that
+    // whatever was under the pointer doesn't turn hovered in the image.
+    const layer = this.layer;
+    this.layer = null;
     this.stop();
 
     // Ignore tiny selections (accidental clicks)
     if (width < 5 || height < 5) {
+      layer.remove();
       showNotification('Selection too small — drag a larger area', 'error');
       return;
     }
 
-    // Delegate capture to content-main.js (same pattern as viewport/fullpage)
-    await handleRegionCaptureRequest(left, top, width, height);
+    // A delay exists so the user can open a hover state during the countdown.
+    const { delay } = await chrome.storage.local.get(['delay']);
+    if (delay > 0) layer.remove();
+
+    try {
+      // Delegate capture to content-main.js (same pattern as viewport/fullpage)
+      await handleRegionCaptureRequest(left, top, width, height);
+    } finally {
+      layer.remove();
+    }
+  }
+
+  /**
+   * Keep every other pointer event from the page while selecting.
+   * @param {Event} event
+   */
+  handleBlockedEvent(event) {
+    if (!this.isActive) return;
+    event.stopImmediatePropagation();
+    // Cancelling a pointer event would also cancel the mouse events the drag runs on.
+    if (!event.type.startsWith('pointer')) event.preventDefault();
   }
 
   /**

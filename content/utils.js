@@ -202,6 +202,42 @@ function isCrossOriginIframe(element) {
 }
 
 /**
+ * The deepest element at a point. document.elementFromPoint stops at a shadow
+ * host, so this keeps going down through shadow roots.
+ * @returns {Element|null}
+ */
+function deepElementFromPoint(x, y) {
+  let element = document.elementFromPoint(x, y);
+  while (element) {
+    const root = shadowRootOf(element);
+    const inner = root?.elementFromPoint(x, y);
+    if (!inner || inner === element) break;
+    element = inner;
+  }
+  return element;
+}
+
+/** An element's shadow root, closed ones included. */
+function shadowRootOf(element) {
+  return element.shadowRoot || chrome.dom?.openOrClosedShadowRoot?.(element) || null;
+}
+
+function blockEvent(event) {
+  event.preventDefault();
+  event.stopImmediatePropagation();
+}
+
+/**
+ * Selection can end on a release, but the browser still sends the rest of that
+ * press (mouseup, click). Keep those from the page so it doesn't act on them.
+ */
+function swallowEndOfPress() {
+  const events = ['mouseup', 'click', 'dblclick'];
+  events.forEach((name) => window.addEventListener(name, blockEvent, true));
+  setTimeout(() => events.forEach((name) => window.removeEventListener(name, blockEvent, true)), 400);
+}
+
+/**
  * Inject professional highlight styles
  * Clean, minimal design with blue outline
  */
@@ -736,6 +772,14 @@ function injectRegionSelectorStyles() {
       z-index: 2147483645;
       pointer-events: none;
       transition: clip-path 0s;
+    }
+
+    /* Takes the pointer so the page gets no hover, press or click during a drag */
+    #region-selector-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 2147483644;
+      cursor: crosshair;
     }
 
     /* Selection rectangle border */

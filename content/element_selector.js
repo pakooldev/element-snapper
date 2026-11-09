@@ -11,8 +11,10 @@ class ElementSelector {
     this.fullCapture = false;        // cached setting, updated on start()
     this.isPromptMode = false;       // cached setting, updated on start()
     this.outputMode = 'copyImage';   // cached setting, updated on start()
+    this.pressed = false;
     this.boundMouseMove = this.handleMouseMove.bind(this);
-    this.boundClick = this.handleClick.bind(this);
+    this.boundPress = this.handlePress.bind(this);
+    this.boundRelease = this.handleRelease.bind(this);
     this.boundKeyDown = this.handleKeyDown.bind(this);
   }
 
@@ -37,9 +39,14 @@ class ElementSelector {
 
     injectHighlightStyles();
 
-    // Add event listeners using capture phase
+    // Add event listeners using capture phase. Selection runs on pointerup
+    // because disabled controls never get mousedown, mouseup or click. Presses
+    // are stopped on window, before the page's own listeners can see them.
+    this.pressed = false;
     document.addEventListener('mousemove', this.boundMouseMove, true);
-    document.addEventListener('click', this.boundClick, true);
+    window.addEventListener('pointerdown', this.boundPress, true);
+    window.addEventListener('mousedown', this.boundPress, true);
+    window.addEventListener('pointerup', this.boundRelease, true);
     document.addEventListener('keydown', this.boundKeyDown, true);
 
     // Create fixed-position highlight overlay
@@ -66,7 +73,9 @@ class ElementSelector {
 
     // Remove event listeners
     document.removeEventListener('mousemove', this.boundMouseMove, true);
-    document.removeEventListener('click', this.boundClick, true);
+    window.removeEventListener('pointerdown', this.boundPress, true);
+    window.removeEventListener('mousedown', this.boundPress, true);
+    window.removeEventListener('pointerup', this.boundRelease, true);
     document.removeEventListener('keydown', this.boundKeyDown, true);
 
     // Remove highlight overlay
@@ -97,7 +106,7 @@ class ElementSelector {
     if (!this.isActive) return;
 
     // Get element under cursor
-    const element = document.elementFromPoint(event.clientX, event.clientY);
+    const element = deepElementFromPoint(event.clientX, event.clientY);
     if (!element || element === this.currentElement) return;
 
     this.currentElement = element;
@@ -174,19 +183,29 @@ class ElementSelector {
   }
 
   /**
-   * Handle click event
-   * Captures clicked element and initiates screenshot
-   * @param {MouseEvent} event - Click event
+   * Keep a press from the page: no focus, no opened <select>, no page handlers.
+   * @param {PointerEvent|MouseEvent} event
    */
-  async handleClick(event) {
-    if (!this.isActive) return;
+  handlePress(event) {
+    if (!this.isActive || event.button !== 0) return;
+    this.pressed = true;
+    blockEvent(event);
+  }
 
-    // Prevent default action and propagation
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
+  /**
+   * Handle the end of a press
+   * Captures the element under the pointer and initiates screenshot
+   * @param {PointerEvent} event - Pointer up event
+   */
+  async handleRelease(event) {
+    // Only a press made during selection counts, not one already in progress when it began.
+    if (!this.isActive || event.button !== 0 || !this.pressed) return;
 
-    const element = event.target;
+    blockEvent(event);
+    swallowEndOfPress();
+
+    const element = deepElementFromPoint(event.clientX, event.clientY);
+    if (!element) return;
 
     // Stop selection mode
     this.stop();

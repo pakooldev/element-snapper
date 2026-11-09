@@ -30,18 +30,32 @@ export function LateFixed() {
   );
 }
 
-/** A fixed banner inside a shadow root, out of reach of document.querySelectorAll. */
-export function ShadowBanner() {
+/** Markup in a shadow root, out of reach of document.querySelectorAll and elementFromPoint. */
+export function ShadowContent({ html }: { html: string }) {
   const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!host.current || host.current.shadowRoot) return;
-    host.current.attachShadow({ mode: "open" }).innerHTML = `
-      <div style="position:fixed;left:24px;right:24px;bottom:24px;padding:16px;border-radius:12px;
-                  background:#f59e0b;color:#111;font:600 14px sans-serif;text-align:center">
-        Cookie banner (fixed, inside a shadow root)
-      </div>`;
-  }, []);
+    host.current.attachShadow({ mode: "open" }).innerHTML = html;
+  }, [html]);
 
   return <div ref={host} />;
+}
+
+/** Shows how many presses reached the page, the way a page's own script would see them. */
+export function PressCounter() {
+  const [presses, setPresses] = useState(0);
+
+  useEffect(() => {
+    const count = () => setPresses((n) => n + 1);
+    const events = ["pointerdown", "mousedown", "pointerup", "mouseup", "click"];
+    events.forEach((name) => document.addEventListener(name, count, true));
+    return () => events.forEach((name) => document.removeEventListener(name, count, true));
+  }, []);
+
+  return (
+    <p data-presses={presses} className="pg-press-count">
+      Presses the page saw: {presses}
+    </p>
+  );
 }
