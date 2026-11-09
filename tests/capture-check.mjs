@@ -1,0 +1,353 @@
+// Drives the real extension against the built playground and checks the images pixel by pixel.
+//
+//   (cd website && npm run build) && cd tests && npm install && npm run check [case,case...]
+//
+// Set CHROMIUM_PATH to use an existing Chromium instead of Playwright's own, and SHOTS_DIR to
+// keep the images. It loads a temp copy of the extension with host_permissions <all_urls>,
+// standing in for the activeTab grant of a toolbar click, and starts captures through the same
+// messages the panel sends.
+import { chromium } from 'playwright';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import { tmpdir } from 'node:os';
+import { extname, join } from 'node:path';
+
+const repo = new URL('..', import.meta.url).pathname;
+const site = join(repo, 'website/out');
+if (!existsSync(site)) throw new Error('Build the site first: cd website && npm run build');
+
+const ext = mkdtempSync(join(tmpdir(), 'snapper-ext-'));
+for (const p of ['manifest.json', 'background', 'content', 'icons']) cpSync(join(repo, p), join(ext, p), { recursive: true });
+const manifest = JSON.parse(readFileSync(join(ext, 'manifest.json')));
+writeFileSync(join(ext, 'manifest.json'), JSON.stringify({ ...manifest, host_permissions: ['<all_urls>'] }));
+const CONTENT_FILES = manifest.content_scripts?.[0]?.js ??
+  readFileSync(join(repo, 'background/service_worker.js'), 'utf8').match(/files: \[([^\]]*content\/utils\.js[^\]]*)\]/)[1].match(/content\/[\w-]+\.js/g).filter((f) => f !== 'content/panel.js');
+
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png' };
+const server = createServer((req, res) => {
+  const path = decodeURIComponent(req.url.split('?')[0]);
+  const file = [join(site, path), join(site, path + '.html'), join(site, path, 'index.html')].find((f) => existsSync(f) && extname(f));
+  if (!file) { res.statusCode = 404; return res.end(); }
+  res.setHeader('content-type', TYPES[extname(file)] || 'application/octet-stream');
+  res.end(readFileSync(file));
+});
+await new Promise((r) => server.listen(0, r));
+const ORIGIN = `http://localhost:${server.address().port}`;
+
+const DPR = 2;
+const ctx = await chromium.launchPersistentContext('', {
+  ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : { channel: 'chromium' }),
+  headless: true,
+  viewport: null,
+  args: [`--disable-extensions-except=${ext}`, `--load-extension=${ext}`, '--window-size=1280,860', `--force-device-scale-factor=${DPR}`],
+});
+const sw = ctx.serviceWorkers()[0] || (await ctx.waitForEvent('serviceworker'));
+await sw.evaluate(() => {
+  self.__result = null;
+  // Keep the bytes instead of really downloading.
+  downloadImage = async (blob, _filename, dataUrl) => { self.__result = { dataUrl: dataUrl || (await blobToDataURL(blob)) }; };
+  chrome.runtime.onMessage.addListener((m) => { if (m.action === 'captureError') self.__result = { error: m.error }; });
+  return chrome.storage.local.set({ outputMode: 'download', showPreview: false, format: 'png', delay: 0 });
+});
+
+const page = ctx.pages()[0] || (await ctx.newPage());
+const pageErrors = [];
+page.on('pageerror', (e) => pageErrors.push(String(e)));
+
+// The pixels are read in a blank tab, which can decode an image of any size.
+const pixels = await ctx.newPage();
+await pixels.goto(`${ORIGIN}/favicon.png`);
+await page.bringToFront();
+
+const send = (msg) => sw.evaluate(async ({ url, msg, files }) => {
+  const [tab] = await chrome.tabs.query({ url });
+  if (!tab.__injected) await chrome.scripting.executeScript({ target: { tabId: tab.id }, files });
+  self.__result = null;
+  chrome.tabs.sendMessage(tab.id, msg).catch(() => {});
+}, { url: page.url().split('#')[0], msg, files: CONTENT_FILES });
+
+async function waitForImage() {
+  for (let i = 0; i < 240; i++) {
+    const r = await sw.evaluate(() => self.__result && (self.__result.error ? { error: self.__result.error } : { ready: true }));
+    if (r?.error) throw new Error(`capture error: ${r.error}`);
+    if (r) break;
+    if (i === 239) throw new Error('no image after 120s');
+    await page.waitForTimeout(500);
+  }
+  const dataUrl = await sw.evaluate(() => self.__result.dataUrl);
+  const name = currentCase;
+  if (process.env.SHOTS_DIR) {
+    mkdirSync(process.env.SHOTS_DIR, { recursive: true });
+    writeFileSync(join(process.env.SHOTS_DIR, `${name}.png`), Buffer.from(dataUrl.split(',')[1], 'base64'));
+  }
+  const size = await pixels.evaluate(async (url) => {
+    window.bitmap?.close();
+    window.bitmap = await createImageBitmap(await (await fetch(url)).blob());
+    window.canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    window.ctx2d = canvas.getContext('2d', { willReadFrequently: true });
+    ctx2d.drawImage(bitmap, 0, 0);
+    return { w: bitmap.width, h: bitmap.height };
+  }, dataUrl);
+  return {
+    ...size,
+    /** RGB of every pixel in a column, top to bottom. */
+    column: (x) => pixels.evaluate((x) => Array.from(ctx2d.getImageData(x, 0, 1, canvas.height).data), Math.round(x)).then(chunk),
+    /** RGB of every pixel in a row, left to right. */
+    row: (y) => pixels.evaluate((y) => Array.from(ctx2d.getImageData(0, y, canvas.width, 1).data), Math.round(y)).then(chunk),
+  };
+}
+const chunk = (data) => { const out = []; for (let i = 0; i < data.length; i += 4) out.push([data[i], data[i + 1], data[i + 2]]); return out; };
+
+const near = (a, b, tolerance = 14) => a.every((v, i) => Math.abs(v - b[i]) <= tolerance);
+const bands = (line, color) => {
+  const found = [];
+  let start = -1;
+  line.forEach((px, i) => {
+    const on = near(px, color);
+    if (on && start < 0) start = i;
+    if (!on && start >= 0) { found.push([start, i - start]); start = -1; }
+  });
+  if (start >= 0) found.push([start, line.length - start]);
+  return found;
+};
+
+// The two ruler stripes over the page background.
+const STRIPE_A = [27, 53, 99];
+const STRIPE_B = [32, 33, 70];
+const AMBER = [245, 158, 11];
+const RED = [239, 68, 68];
+
+/** Stripes in a column: any repeat, seam, gap or stretch shows as a wrong run length or order. */
+function checkRuler(line, cssHeight, scale = DPR, label = 'ruler') {
+  const runs = [];
+  line.forEach((px) => {
+    const kind = near(px, STRIPE_A) ? 'A' : near(px, STRIPE_B) ? 'B' : null;
+    if (!kind) return void (runs.length && runs[runs.length - 1].kind !== '-' && runs.push({ kind: '-', n: 0 }));
+    const last = runs[runs.length - 1];
+    if (last?.kind === kind) last.n++;
+    else if (last?.kind === '-') { last.kind = kind; last.n = 1; }
+    else runs.push({ kind, n: 1 });
+  });
+  while (runs.length && runs[runs.length - 1].kind === '-') runs.pop();
+  const stripes = runs.filter((r) => r.kind !== '-');
+  const expected = Math.round(cssHeight / 100);
+  if (stripes.length !== expected) throw new Error(`${label}: ${stripes.length} stripes, expected ${expected}`);
+  const size = 100 * scale;
+  const worst = stripes.reduce((m, r) => Math.max(m, Math.abs(r.n - size)), 0);
+  if (worst > 3) throw new Error(`${label}: a stripe is off by ${worst}px (expected ${size}px each)`);
+  for (let i = 1; i < stripes.length; i++) {
+    if (stripes[i].kind === stripes[i - 1].kind) throw new Error(`${label}: stripes ${i - 1} and ${i} repeat`);
+  }
+}
+const ok = (cond, message) => { if (!cond) throw new Error(message); };
+const closeTo = (a, b, what, tolerance = 4) => ok(Math.abs(a - b) <= tolerance, `${what}: ${a}, expected ${b}`);
+
+async function open(path) {
+  await page.goto(ORIGIN + path, { waitUntil: 'load' });
+  await page.waitForTimeout(300);
+}
+
+const capturePage = async () => { await send({ action: 'captureFullPage' }); return waitForImage(); };
+
+/** Clicks a point through the real selection flow. `locate` runs in the page and returns a rect. */
+async function captureElement(locate, { scrollElement = true, arg } = {}) {
+  await sw.evaluate((v) => chrome.storage.local.set({ fullCapture: v }), scrollElement);
+  await send({ action: 'startSelection' });
+  await page.waitForTimeout(250);
+  const r = await page.evaluate(locate, arg);
+  const x = r.x, y = r.y;
+  await page.mouse.move(x - 2, y);
+  await page.mouse.move(x, y);
+  await page.waitForTimeout(100);
+  await page.mouse.click(x, y);
+  return waitForImage();
+}
+const stripedPoint = (selector) => {
+  const r = document.querySelector(selector).getBoundingClientRect();
+  return { x: Math.min(r.right, innerWidth) - 40, y: Math.min(Math.max(r.top, 0) + 150, innerHeight - 20) };
+};
+
+const presses = () => page.evaluate(() => Number(document.querySelector('[data-presses]')?.dataset.presses ?? 0));
+
+const selectable = (id, css) => async () => {
+  await open('/playground/selection-targets');
+  const expected = await page.evaluate((id) => {
+    const el = id === 'shadow-btn' ? document.querySelector('#shadow-host > div').shadowRoot.querySelector('button') : document.getElementById(id);
+    const r = el.getBoundingClientRect();
+    return { w: r.width, h: r.height, x: r.left + 10, y: r.top + r.height / 2 };
+  }, id);
+  const img = await captureElement((p) => p, { scrollElement: false, arg: expected });
+  closeTo(img.w, expected.w * DPR, `${css} width`);
+  closeTo(img.h, expected.h * DPR, `${css} height`);
+  ok((await presses()) === 0, `the page saw ${await presses()} presses`);
+  ok(new URL(page.url()).hash === '', 'the link navigated');
+  ok(await page.evaluate(() => document.activeElement === document.body), 'something took focus');
+};
+
+const CASES = {
+  'select disabled button': selectable('disabled-btn', 'disabled button'),
+  'select disabled input': selectable('disabled-input', 'disabled input'),
+  'select <select> without opening it': selectable('native-select', '<select>'),
+  'select text input without focusing it': selectable('text-input', 'text input'),
+  'select link without following it': selectable('plain-link', 'link'),
+  'select inside a shadow root': selectable('shadow-btn', 'shadow button'),
+
+  async 'area ignores page hover and press'() {
+    await open('/playground/press-sensitive');
+    await sw.evaluate(() => chrome.storage.local.set({ fullCapture: false }));
+    await send({ action: 'startRegionSelection' });
+    await page.waitForTimeout(250);
+    const r = await page.evaluate(() => { const b = document.querySelector('.pg-press-grid').getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height }; });
+    await page.mouse.move(r.x + 20, r.y + 20);
+    await page.waitForTimeout(100);
+    await page.mouse.down();
+    await page.mouse.move(r.x + r.w - 20, r.y + r.h - 20, { steps: 6 });
+    await page.mouse.up();
+    const img = await waitForImage();
+    closeTo(img.w, (r.w - 40) * DPR, 'width');
+    closeTo(img.h, (r.h - 40) * DPR, 'height');
+    const reds = (await img.row(img.h - 6)).filter((px) => near(px, RED)).length + (await img.column(img.w - 6)).filter((px) => near(px, RED)).length;
+    ok(reds === 0, 'a hover style is in the image');
+    ok((await presses()) === 0, `the page saw ${await presses()} presses`);
+  },
+
+  async 'main page, page mode'() {
+    await open('/playground');
+    const height = await page.evaluate(() => document.documentElement.scrollHeight);
+    const img = await capturePage();
+    closeTo(img.h, height * DPR, 'height');
+  },
+  async 'section 2, sticky header stays off the element'() {
+    await open('/playground');
+    await page.evaluate(() => document.querySelector('.pg-tall').scrollIntoView({ behavior: 'instant', block: 'start' }));
+    const img = await captureElement(stripedPoint, { arg: '.pg-tall' });
+    closeTo(img.h, 2000 * DPR, 'height');
+    const line = await img.column(img.w - 40);
+    const dark = line.filter(([r]) => r < 180).length;
+    ok(dark === 0, `${dark} rows of something dark over the box`);
+  },
+  async 'section 5, content of a scrolling box'() {
+    await open('/playground');
+    await page.evaluate(() => document.querySelector('.pg-scroll').scrollIntoView({ behavior: 'instant', block: 'center' }));
+    const img = await captureElement(stripedPoint, { arg: '.pg-scroll' });
+    closeTo(img.h, 900 * DPR, 'height');
+    const colors = new Set((await img.column(img.w - 40)).map((px) => px.join()));
+    ok(colors.size <= 3, `${colors.size} colors where only the box background should be`);
+  },
+  async 'app-shell'() {
+    await open('/playground/app-shell');
+    const m = await page.evaluate(() => { const s = document.querySelector('.pg-shell-main'); return { extra: s.scrollHeight - s.clientHeight, top: document.querySelector('.pg-ruler').getBoundingClientRect().top, x: s.getBoundingClientRect().right, side: document.querySelector('.pg-shell-side').getBoundingClientRect().width }; });
+    const img = await capturePage();
+    closeTo(img.h, (innerHeightCss + m.extra) * DPR, 'height');
+    checkRuler(await img.column((m.x - 40) * DPR), 4000);
+    ok(near((await img.column(20))[20], [30, 41, 59]), 'the sidebar is missing');
+  },
+  async 'body-scroll'() {
+    await open('/playground/body-scroll');
+    const img = await capturePage();
+    checkRuler(await img.column(img.w - 80), 4000);
+  },
+  async 'scroll-snap'() {
+    await open('/playground/scroll-snap');
+    const m = await page.evaluate(() => ({ h: document.documentElement.scrollHeight, s: document.querySelectorAll('.pg-snap-section')[3].getBoundingClientRect().height }));
+    const img = await capturePage();
+    closeTo(img.h, m.h * DPR, 'height');
+    const lines = bands(await img.column(img.w - 80), [59, 130, 246]);
+    ok(lines.length === 8, `${lines.length} section borders, expected 8`);
+    for (let i = 2; i < lines.length; i++) closeTo(lines[i][0] - lines[i - 1][0], m.s * DPR, `section ${i + 1} height`);
+  },
+  async 'tall-in-scroller'() {
+    await open('/playground/tall-in-scroller');
+    const img = await captureElement(stripedPoint, { arg: '.pg-scroll-tall .pg-ruler' });
+    closeTo(img.h, 1500 * DPR, 'height');
+    checkRuler(await img.column(img.w - 40), 1500);
+  },
+  async 'wide-table'() {
+    await open('/playground/wide-table');
+    const expected = await page.evaluate(() => { const r = document.querySelector('.pg-table').getBoundingClientRect(); const th = document.querySelector('.pg-table th').getBoundingClientRect(); return { w: r.width, h: r.height, thY: th.top - r.top + th.height / 2 }; });
+    const img = await captureElement(() => { const r = document.querySelector('.pg-table').getBoundingClientRect(); return { x: r.left + 5, y: r.top + 5 }; });
+    closeTo(img.w, expected.w * DPR, 'width');
+    closeTo(img.h, expected.h * DPR, 'height');
+    const cells = bands(await img.row(expected.thY * DPR - 16), [30, 41, 59]);
+    ok(cells.length === 12, `${cells.length} columns, expected 12`);
+    const widths = cells.map((c) => c[1]);
+    ok(Math.max(...widths) / Math.min(...widths) < 1.4, `column widths differ too much: ${widths}`);
+  },
+  async 'smooth-scroll'() {
+    await open('/playground/smooth-scroll');
+    const img = await captureElement(stripedPoint, { arg: '.pg-ruler' });
+    closeTo(img.h, 3000 * DPR, 'height');
+    checkRuler(await img.column(img.w - 40), 3000);
+  },
+  async 'sticky-sections'() {
+    await open('/playground/sticky-sections');
+    const m = await page.evaluate(() => { const side = document.querySelector('.pg-sticky-side').getBoundingClientRect(); return { x: side.left + side.width / 2 }; });
+    const img = await capturePage();
+    const main = await img.column(img.w - 80);
+    const headings = bands(main, AMBER);
+    ok(headings.length === 4, `${headings.length} section headings, expected 4`);
+    for (let i = 1; i < 4; i++) closeTo(headings[i][0] - headings[i - 1][0], (1500 + headings[0][1] / DPR) * DPR, `heading ${i + 1} position`, 8);
+    const side = bands(await img.column(m.x * DPR), [30, 41, 59]);
+    ok(side.length === 1, `${side.length} sidebars, expected 1`);
+  },
+  async 'tall-modal'() {
+    await open('/playground/tall-modal');
+    const img = await captureElement(stripedPoint, { arg: '.pg-modal .pg-ruler' });
+    closeTo(img.h, 1800 * DPR, 'height');
+    checkRuler(await img.column(img.w - 40), 1800);
+  },
+  async 'late-fixed'() {
+    await open('/playground/late-fixed');
+    const img = await capturePage();
+    ok(bands(await img.column(20), AMBER).length === 1, 'the header repeats');
+    const chips = await img.column(img.w - 90);
+    ok(bands(chips, RED).length <= 2, `${bands(chips, RED).length} chip bands, expected at most 2`);
+    checkRuler(chips.map((px) => (near(px, RED) ? STRIPE_A : px)).slice(0, 0).concat(await img.column(img.w - 400)), 5000);
+  },
+  async 'shadow-fixed'() {
+    await open('/playground/shadow-fixed');
+    const img = await capturePage();
+    ok(bands(await img.column(img.w / 2), AMBER).length <= 1, 'the banner repeats');
+  },
+  async 'long-page'() {
+    await open('/playground/long-page');
+    const img = await capturePage();
+    ok(img.h <= 16384, `image is ${img.h}px tall`);
+    const height = await page.evaluate(() => document.documentElement.scrollHeight);
+    closeTo(img.h, 16384, 'height');
+    checkRuler(await img.column(img.w - 80), 12000, 16384 / height, 'ruler');
+  },
+  async 'page state comes back after a capture'() {
+    await open('/playground/sticky-sections');
+    await page.evaluate(() => window.scrollTo({ top: 700, behavior: 'instant' }));
+    await capturePage();
+    const after = await page.evaluate(() => ({ y: scrollY, position: getComputedStyle(document.querySelector('.pg-sticky-heading')).position, visibility: getComputedStyle(document.querySelector('.pg-sticky-side')).visibility, leftover: document.querySelector('#element-screenshot-capture-styles') !== null }));
+    ok(after.y === 700, `scrolled to ${after.y}, expected 700`);
+    ok(after.position === 'sticky', `heading is ${after.position}`);
+    ok(after.visibility === 'visible', 'sidebar stayed hidden');
+    ok(!after.leftover, 'capture styles left behind');
+  },
+};
+
+let innerHeightCss = 0;
+let currentCase = '';
+await open('/playground');
+innerHeightCss = await page.evaluate(() => innerHeight);
+
+const only = process.argv[2]?.split(',');
+let failed = 0;
+for (const [name, run] of Object.entries(CASES)) {
+  if (only && !only.includes(name)) continue;
+  currentCase = name.replace(/[^\w-]+/g, '-');
+  try {
+    await run();
+    console.log(`ok    ${name}`);
+  } catch (error) {
+    failed++;
+    console.log(`FAIL  ${name}: ${error.message.split('\n')[0]}`);
+  }
+}
+if (pageErrors.length) console.log('page errors:', pageErrors.slice(0, 5));
+await ctx.close();
+server.close();
+process.exit(failed ? 1 : 0);

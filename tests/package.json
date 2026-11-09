@@ -1,0 +1,11 @@
+{
+  "name": "element-snapper-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node capture-check.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.50.0"
+  }
+}
