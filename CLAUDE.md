@@ -127,6 +127,7 @@ npm run build   # static export → out/
 ```
 
 - Routes: `app/page.tsx` (landing), `app/manual`, `app/playground`, `app/releases`, `app/privacy`
+- Playground: `app/playground/page.tsx` holds cases that can share a page; anything that changes the document (scroll owner, fixed chrome, very long) goes in `app/playground/cases.tsx`, one entry per `/playground/<slug>`, with the mode and expected result. Keep the main page under 8,192 CSS px, or Page mode hits the canvas limit on a 2x screen
 - `app/globals.css` holds the whole design system (the old `styles.css`); `app/playground/playground.css` is imported by that route only
 - Everything is a Server Component except four small client islands: `components/navbar.tsx` (mobile menu), `hero-mockup.tsx` (parallax + playable popup), `demo-video.tsx` (loader fade), `floating-ad.tsx`, `glow-cursor.tsx`
 - The changelog is `import`ed from `data/releases.json` at build time and pre-rendered — no runtime fetch. To add a release, append an entry to `data/releases.json`

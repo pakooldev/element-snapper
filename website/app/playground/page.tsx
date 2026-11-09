@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { FloatingAd } from "@/components/floating-ad";
+import { CASES } from "./cases";
 import "./playground.css";
+
+const GROUPS = [...new Set(CASES.map((c) => c.group))];
 
 export const metadata: Metadata = {
   title: "Playground",
@@ -70,16 +74,16 @@ export default function Playground() {
             </h2>
             <p className="step-desc">
               Taller than the viewport. With &quot;Scroll Element&quot; enabled in Settings, capture
-              should scroll down and stitch tiles so every marker below appears in the result.
+              should scroll down and stitch tiles so every marker below appears in the result, and
+              the site&apos;s sticky header must not cover the top of the box.
             </p>
             <div className="pg-box pg-tall">
               <h3>600 × 2000</h3>
-              {["100px", "500px", "900px", "1300px", "1700px"].map((at) => (
-                <div key={at} className="pg-marker">
+              {["100px", "500px", "900px", "1300px", "1700px", "1900px"].map((at) => (
+                <div key={at} className="pg-marker pg-marker-h" style={{ left: 20, top: at }}>
                   Marker · {at}
                 </div>
               ))}
-              <div className="pg-marker">Bottom marker · 1900px</div>
             </div>
           </div>
 
@@ -129,7 +133,9 @@ export default function Playground() {
             </h2>
             <p className="step-desc">
               This box has its own <code>overflow: auto</code> — its content is taller than the box
-              itself, separate from the page&apos;s scroll.
+              itself, separate from the page&apos;s scroll. With &quot;Scroll Element&quot; on,
+              clicking inside the box should capture all four markers. With it off, only what&apos;s
+              visible.
             </p>
             <div className="pg-box pg-scroll">
               <div className="pg-scroll-inner">
@@ -151,6 +157,28 @@ export default function Playground() {
               banner, or chat widget. Try selecting it at different scroll positions, and confirm
               Page capture doesn&apos;t pick up a duplicate of it on every stitched tile.
             </p>
+          </div>
+
+          <div className="test-section" id="page-cases">
+            <h2 className="test-heading">
+              Page-level cases <span className="test-tag">one page each</span>
+            </h2>
+            <p className="step-desc">
+              These need a whole page to themselves. Each one states the mode to use and the result
+              to expect at the top of the page, so it also appears in your capture.
+            </p>
+            {GROUPS.map((group) => (
+              <div key={group} className="pg-case-group">
+                <h3>{group}</h3>
+                <div className="pg-case-list">
+                  {CASES.filter((c) => c.group === group).map((c) => (
+                    <Link key={c.slug} href={`/playground/${c.slug}`} className="btn btn-outline">
+                      {c.title}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Checklist */}

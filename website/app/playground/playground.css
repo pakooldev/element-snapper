@@ -172,7 +172,246 @@ body {
   cursor: pointer;
 }
 
+/* List of page-level cases */
+
+.pg-case-group {
+  margin-top: 16px;
+}
+
+.pg-case-group h3 {
+  margin-bottom: 8px;
+}
+
+.pg-case-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Page-level cases: each owns its document, so the site's chrome stays out of
+   the capture. :has() scopes these rules to the mounted case with no JS. */
+
+html:has(.pg-case) {
+  scroll-padding-top: 0;
+}
+
+html:has(.pg-case) .navbar,
+html:has(.pg-case) .site-footer,
+html:has(.pg-case) .bg-glow {
+  display: none;
+}
+
+.pg-case-intro {
+  padding: 24px;
+}
+
+.pg-case-intro h1 {
+  margin: 16px 0 8px;
+  font-size: 1.8rem;
+}
+
+.pg-ruler {
+  position: relative;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(59, 130, 246, 0.28) 0 100px,
+    rgba(139, 92, 246, 0.14) 100px 200px
+  );
+}
+
+.pg-ruler-mark {
+  position: absolute;
+  left: 24px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #111;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pg-after {
+  padding: 24px;
+  background: #ef4444;
+  color: white;
+  font-weight: 600;
+}
+
+.pg-scroll-tall {
+  height: 60vh;
+  margin: 0 24px 24px;
+  overflow: auto;
+}
+
+/* The table's own background shows through the spacing, so a click there selects the table, not a cell. */
+.pg-table-wrap {
+  margin: 0 24px;
+  overflow-x: auto;
+}
+
+.pg-table {
+  width: 2400px;
+  border-spacing: 12px;
+  background: rgba(59, 130, 246, 0.28);
+}
+
+.pg-table th,
+.pg-table td {
+  padding: 12px 16px;
+  background: var(--bg-card);
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* app-shell: the document never scrolls, one pane does */
+html:has(.pg-app-shell),
+html:has(.pg-app-shell) body {
+  height: 100%;
+  overflow: hidden;
+}
+
+.pg-app-shell {
+  display: flex;
+  height: 100vh;
+}
+
+.pg-shell-side {
+  flex: 0 0 200px;
+  padding: 24px;
+  background: var(--bg-card);
+  font-weight: 600;
+}
+
+.pg-shell-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+/* body-scroll: html's overflow goes to the viewport, leaving body as its own scroller */
+html:has(.pg-body-scroll) {
+  height: 100%;
+  overflow: hidden;
+}
+
+html:has(.pg-body-scroll) body {
+  height: 100%;
+  overflow: auto;
+}
+
+/* scroll-snap: sections are shorter than the viewport, so a one-viewport scroll lands between snap points */
+html:has(.pg-snap) {
+  scroll-snap-type: y mandatory;
+}
+
+.pg-snap-section {
+  min-height: 70vh;
+  scroll-snap-align: start;
+  border-bottom: 4px solid var(--accent-primary);
+}
+
+.pg-snap-section:nth-child(even) {
+  background: rgba(139, 92, 246, 0.14);
+}
+
+.pg-snap-label {
+  display: block;
+  padding: 24px;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+html:has(.pg-smooth) {
+  scroll-behavior: smooth;
+}
+
+/* sticky-sections */
+.pg-sticky-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+}
+
+.pg-sticky-side {
+  position: sticky;
+  top: 16px;
+  align-self: start;
+  margin: 16px;
+  padding: 24px 16px;
+  border-radius: var(--radius-md, 12px);
+  background: var(--bg-card);
+  font-weight: 600;
+}
+
+.pg-sticky-heading {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 12px 24px;
+  background: #f59e0b;
+  color: #111;
+  font-size: 1.2rem;
+}
+
+/* tall-modal */
+.pg-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.pg-modal {
+  width: min(600px, 100%);
+  margin: 40px auto;
+  border-radius: var(--radius-md, 12px);
+  background: var(--bg-dark);
+  overflow: hidden;
+}
+
+/* late-fixed */
+.pg-late-slot {
+  height: 56px;
+}
+
+.pg-late-header {
+  padding: 16px 24px;
+  background: #f59e0b;
+  color: #111;
+  font-weight: 600;
+}
+
+.pg-late-header.is-fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+}
+
+.pg-late-chip {
+  position: fixed;
+  right: 24px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md, 12px);
+  background: #ef4444;
+  color: white;
+  font-weight: 600;
+}
+
+.pg-late-top {
+  bottom: 24px;
+}
+
+.pg-late-popup {
+  bottom: 88px;
+}
+
 @media (max-width: 640px) {
+  .pg-shell-side {
+    flex-basis: 96px;
+    padding: 24px 12px;
+  }
+
   .pg-tall,
   .pg-wide,
   .pg-grid {
