@@ -51,7 +51,9 @@ async function handleViewportCapture() {
     });
 
     if (response.success) {
-      if (response.action === 'download') {
+      if (response.notice) {
+        showNotification(response.notice, 'success');
+      } else if (response.action === 'download') {
         showNotification('Screenshot saved to downloads', 'success');
       }
       if (response.captureId && window.elementSnapperPreview) {
@@ -118,7 +120,9 @@ async function handleRegionCaptureRequest(x, y, width, height) {
     });
 
     if (response && response.success) {
-      if (response.action === 'download') {
+      if (response.notice) {
+        showNotification(response.notice, 'success');
+      } else if (response.action === 'download') {
         showNotification('Screenshot saved to downloads', 'success');
       }
       if (response.captureId && window.elementSnapperPreview) {
@@ -143,6 +147,8 @@ async function handleRegionCaptureRequest(x, y, width, height) {
  * @param {string} dataUrl - Image data URL
  */
 async function handleClipboardCopy(dataUrl) {
+  if (!window.isSecureContext) throw Object.assign(new Error('Not a secure page'), { reason: 'browsers block copying images on http:// pages' });
+  if (!document.hasFocus()) throw Object.assign(new Error('Page not focused'), { reason: 'the page lost focus' });
   try {
     // Convert data URL to blob
     const response = await fetch(dataUrl);
@@ -173,8 +179,8 @@ async function handleClipboardCopy(dataUrl) {
     console.log('Image copied to clipboard successfully');
     showNotification('Copied to clipboard', 'success');
   } catch (error) {
+    // The service worker downloads it instead and says so.
     console.error('Failed to copy to clipboard:', error);
-    showNotification('Failed to copy to clipboard: ' + error.message, 'error');
     throw error;
   }
 }
@@ -325,8 +331,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'copyToClipboard':
         // Copy image to clipboard
-        await handleClipboardCopy(message.dataUrl);
-        sendResponse({ success: true });
+        try {
+          await handleClipboardCopy(message.dataUrl);
+          sendResponse({ success: true });
+        } catch (error) {
+          sendResponse({ success: false, error: error.message, reason: error.reason });
+        }
         break;
 
       default:

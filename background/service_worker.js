@@ -239,14 +239,8 @@ async function handleViewportOrPageCapture(data, tabId) {
     const dataUrl = showPreview ? await blobToDataURL(captureBlob) : null;
 
     // Save to downloads or copy to clipboard based on settings
-    let action;
-    if (copyToClipboard) {
-      await copyImageToClipboard(captureBlob, dataUrl);
-      action = 'copy';
-    } else {
-      await downloadImage(captureBlob, filename, dataUrl);
-      action = 'download';
-    }
+    const { action, notice: copyNotice } = await saveOrCopy(copyToClipboard, captureBlob, filename, dataUrl);
+    notice = copyNotice || notice;
 
     // Persist to history (and surface its id) only when preview is enabled —
     // history is the data source for the preview UI's history view.
@@ -319,15 +313,9 @@ async function handleElementCapture(data, tabId) {
     const dataUrl = showPreview ? await blobToDataURL(croppedBlob) : null;
 
     // Save to downloads or copy to clipboard based on settings
-    let action;
-    if (copyToClipboard) {
-      await copyImageToClipboard(croppedBlob, dataUrl);
-      action = 'copy';
-    } else {
-      const filename = generateFilename(data.elementInfo, outputFormat);
-      await downloadImage(croppedBlob, filename, dataUrl);
-      action = 'download';
-    }
+    const filename = generateFilename(data.elementInfo, outputFormat);
+    const { action, notice: copyNotice } = await saveOrCopy(copyToClipboard, croppedBlob, filename, dataUrl);
+    notice = copyNotice || notice;
 
     let captureId = null;
     if (dataUrl) {
@@ -374,15 +362,8 @@ async function handleRegionCapture(data, tabId) {
     const previewDataUrl = showPreview ? await blobToDataURL(croppedBlob) : null;
 
     // Save to downloads or copy to clipboard based on settings
-    let action;
-    if (copyToClipboard) {
-      await copyImageToClipboard(croppedBlob, previewDataUrl);
-      action = 'copy';
-    } else {
-      const filename = generateViewportFilename('region', outputFormat);
-      await downloadImage(croppedBlob, filename, previewDataUrl);
-      action = 'download';
-    }
+    const filename = generateViewportFilename('region', outputFormat);
+    const { action, notice } = await saveOrCopy(copyToClipboard, croppedBlob, filename, previewDataUrl);
 
     let captureId = null;
     if (previewDataUrl) {
@@ -393,7 +374,7 @@ async function handleRegionCapture(data, tabId) {
         byteSize: croppedBlob.size,
       });
     }
-    return captureId ? { success: true, action, captureId } : { success: true, action };
+    return captureId ? { success: true, action, captureId, notice } : { success: true, action, notice };
   } catch (error) {
     console.error('Region capture failed:', error);
     return { success: false, error: error.message };
@@ -673,6 +654,27 @@ async function blobToDataURL(blob) {
 }
 
 /**
+ * Copies the image or downloads it, as the Output setting says. A copy that the
+ * page can't do (no clipboard on http:// pages, or the page lost focus during a
+ * countdown) is downloaded instead, so the capture isn't lost.
+ * @returns {Promise<{action: 'copy'|'download', notice?: string}>}
+ */
+async function saveOrCopy(copy, blob, filename, dataUrl) {
+  if (copy) {
+    try {
+      await copyImageToClipboard(blob, dataUrl);
+      return { action: 'copy' };
+    } catch (error) {
+      console.warn(error);
+      await downloadImage(blob, filename, dataUrl);
+      return { action: 'download', notice: `Couldn't copy: ${error.reason || 'the page blocked the clipboard'}. Saved to Downloads instead` };
+    }
+  }
+  await downloadImage(blob, filename, dataUrl);
+  return { action: 'download' };
+}
+
+/**
  * Copy image blob to clipboard
  * Uses Clipboard API to write image data
  * @param {Blob} blob - Image blob
@@ -705,12 +707,12 @@ async function copyImageToClipboard(blob, precomputedDataUrl) {
 
     // Check if the copy operation was successful
     if (!response || !response.success) {
-      throw new Error(response?.error || 'Failed to copy to clipboard');
+      throw Object.assign(new Error(response?.error || 'Failed to copy to clipboard'), { reason: response?.reason });
     }
 
     console.log('Image copied to clipboard');
   } catch (error) {
-    throw new Error(`Clipboard copy failed: ${error.message}`);
+    throw Object.assign(new Error(`Clipboard copy failed: ${error.message}`), { reason: error.reason });
   }
 }
 

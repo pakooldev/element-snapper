@@ -336,7 +336,7 @@ class ElementSelector {
       chrome.runtime.sendMessage({ action: 'captureStarted' });
 
       const text = buildElementPromptText(element);
-      await navigator.clipboard.writeText(text);
+      await copyText(text);
 
       chrome.runtime.sendMessage({
         action: 'captureSuccess',

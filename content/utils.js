@@ -361,6 +361,30 @@ function removeHighlightStyles() {
  * Create the fixed-position highlight overlay element (and its badge child).
  * @returns {HTMLElement} The overlay div
  */
+/**
+ * Copies text. http:// pages have no navigator.clipboard, but the extension's
+ * clipboardWrite permission still lets the older copy command work there.
+ * @param {string} text
+ */
+async function copyText(text) {
+  if (navigator.clipboard && document.hasFocus()) {
+    try {
+      return await navigator.clipboard.writeText(text);
+    } catch (error) {
+      console.warn('Element Snapper: clipboard API failed, trying the copy command', error);
+    }
+  }
+  const field = document.createElement('textarea');
+  field.value = text;
+  field.setAttribute('readonly', '');
+  field.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;';
+  (document.body || document.documentElement).appendChild(field);
+  field.select();
+  const copied = document.execCommand('copy');
+  field.remove();
+  if (!copied) throw new Error('The browser refused to copy');
+}
+
 const TOP_LAYER_ATTR = 'data-element-snapper-top';
 // Popovers get default margins, borders and a centered position; ours keep their own styles.
 const TOP_LAYER_CSS = `[${TOP_LAYER_ATTR}]:popover-open {

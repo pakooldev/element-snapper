@@ -36,20 +36,25 @@ const server = createServer(async (req, res) => {
 });
 await new Promise((r) => server.listen(0, r));
 const ORIGIN = `http://localhost:${server.address().port}`;
+// Any http:// host but localhost is not a secure context, so it has no navigator.clipboard.
+const INSECURE_ORIGIN = `http://snapper.test:${server.address().port}`;
 
 const DPR = Number(process.env.DPR || 2);
 const ctx = await chromium.launchPersistentContext('', {
   ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : { channel: 'chromium' }),
   headless: true,
   viewport: null,
-  args: [`--disable-extensions-except=${ext}`, `--load-extension=${ext}`, '--window-size=1280,860', `--force-device-scale-factor=${DPR}`],
+  args: [`--disable-extensions-except=${ext}`, `--load-extension=${ext}`, '--window-size=1280,860', `--force-device-scale-factor=${DPR}`, '--host-resolver-rules=MAP snapper.test 127.0.0.1'],
 });
 const sw = ctx.serviceWorkers()[0] || (await ctx.waitForEvent('serviceworker'));
 await sw.evaluate(() => {
   self.__result = null;
   // Keep the bytes instead of really downloading.
   downloadImage = async (blob, _filename, dataUrl) => { self.__result = { dataUrl: dataUrl || (await blobToDataURL(blob)) }; };
-  chrome.runtime.onMessage.addListener((m) => { if (m.action === 'captureError') self.__result = { error: m.error }; });
+  chrome.runtime.onMessage.addListener((m) => {
+    if (m.action === 'captureError') self.__result = { error: m.error };
+    if (m.action === 'captureSuccess' && m.message) self.__result = { message: m.message };
+  });
   return chrome.storage.local.set({ outputMode: 'download', showPreview: false, format: 'png', delay: 0 });
 });
 
@@ -145,8 +150,8 @@ function checkRuler(line, cssHeight, scale = DPR, label = 'ruler') {
 const ok = (cond, message) => { if (!cond) throw new Error(message); };
 const closeTo = (a, b, what, tolerance = 4) => ok(Math.abs(a - b) <= tolerance, `${what}: ${a}, expected ${b}`);
 
-async function open(path) {
-  await page.goto(ORIGIN + path, { waitUntil: 'load' });
+async function open(path, origin = ORIGIN) {
+  await page.goto(origin + path, { waitUntil: 'load' });
   await page.waitForTimeout(300);
 }
 
@@ -170,6 +175,7 @@ async function captureElement(locate, { scrollElement = true, arg, keys = [] } =
   return waitForImage();
 }
 const boxOf = (selector) => page.evaluate((s) => { const r = document.querySelector(s).getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }, selector);
+const setOutput = (outputMode) => sw.evaluate((outputMode) => chrome.storage.local.set({ outputMode }), outputMode);
 const stripedPoint = (selector) => {
   const r = document.querySelector(selector).getBoundingClientRect();
   return { x: Math.min(r.right, innerWidth) - 40, y: Math.min(Math.max(r.top, 0) + 150, innerHeight - 20) };
@@ -321,6 +327,43 @@ const CASES = {
     closeTo(img.h, height * DPR, 'height');
     checkRuler(await img.column(img.w - 80), 3000);
   },
+  async 'copy image on an http page'() {
+    await open('/playground/graphics', INSECURE_ORIGIN);
+    await setOutput('copyImage');
+    try {
+      await send({ action: 'captureViewport' });
+      const img = await waitForImage();
+      ok(img.w > 0, 'no image');
+      await page.waitForTimeout(300);
+      const note = await page.evaluate(() => document.getElementById('element-screenshot-notification')?.textContent.trim());
+      ok(/Saved to Downloads instead/.test(note || ''), `notice: ${note}`);
+    } finally {
+      await setOutput('download');
+    }
+  },
+  async 'copy as prompt on an http page'() {
+    await open('/playground/filled-parent', INSECURE_ORIGIN);
+    await setOutput('copyPrompt');
+    try {
+      await send({ action: 'startSelection' });
+      await page.waitForTimeout(250);
+      const link = await boxOf('.pg-filled-link');
+      await page.mouse.move(link.x + 40, link.y + 40);
+      await page.mouse.click(link.x + 40, link.y + 40);
+      let result;
+      for (let i = 0; i < 20 && !result; i++) { await page.waitForTimeout(100); result = await sw.evaluate(() => self.__result); }
+      ok(result && !result.error, `copy failed: ${result?.error || 'no answer'}`);
+      // Read it back from a secure page.
+      await ctx.grantPermissions(['clipboard-read'], { origin: ORIGIN });
+      await pixels.bringToFront();
+      const text = await pixels.evaluate(() => navigator.clipboard.readText());
+      await page.bringToFront();
+      ok(text.includes('pg-filled-link'), `clipboard holds: ${text.slice(0, 80)}`);
+    } finally {
+      await setOutput('download');
+    }
+  },
+
   async 'main page, page mode'() {
     await open('/playground');
     const height = await page.evaluate(() => document.documentElement.scrollHeight);
