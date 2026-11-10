@@ -58,7 +58,10 @@
     }
 
     /* Second bar: tools, then the style of the selection or of what the tool draws. */
-    .options { height: 48px; gap: 10px; }
+    .options { height: 48px; gap: 8px; }
+    .options #imageBtn { padding: 7px 9px; font-size: 13px; }
+    /* Too narrow for the words: the tools keep their icons, names stay in the tooltips. */
+    @media (max-width: 1359px) { .tools button span { display: none; } }
     .tools {
       display: flex;
       gap: 2px;
@@ -67,7 +70,7 @@
       border: 1px solid var(--border-light);
       border-radius: var(--radius-sm);
     }
-    .tools button { padding: 5px 7px; background: transparent; border-color: transparent; }
+    .tools button { gap: 4px; padding: 5px 7px; font-size: 13px; background: transparent; border-color: transparent; }
     .tools button:hover:not(:disabled) { background: var(--bg-hover); border-color: transparent; }
     .tools button[aria-pressed="true"] { background: var(--accent-primary); }
     .tools button[aria-pressed="true"]:hover { background: var(--accent-hover); }
@@ -123,11 +126,11 @@
     }
     .hint:empty { display: none; }
 
-    .swatches { display: flex; gap: 6px; }
+    .swatches { display: flex; gap: 5px; }
     .swatch {
       position: relative;
-      width: 22px;
-      height: 22px;
+      width: 20px;
+      height: 20px;
       padding: 0;
       border-radius: 50%;
       border: 2px solid var(--border-hover);
@@ -151,7 +154,7 @@
     .segmented button { min-width: 30px; padding: 3px 6px; background: transparent; border-color: transparent; }
     .segmented button:hover:not(:disabled) { background: var(--bg-hover); border-color: transparent; }
     .segmented button[aria-pressed="true"] { background: var(--accent-primary); }
-    .segmented svg.icon { width: 28px; }
+    .segmented svg.icon { width: 24px; }
 
     .text-input {
       position: absolute;
@@ -198,30 +201,38 @@
     <div class="tools" role="toolbar" aria-label="Tools">
       <button data-tool="select" aria-pressed="true" title="Select and move (V)" aria-label="Select">
         <svg class="icon" viewBox="0 0 24 24"><path d="M6 3l12 9-5.5 1-3 6z"/></svg>
+        <span>Select</span>
       </button>
       <button data-tool="hand" aria-pressed="false" title="Move the board (H, or hold Space)" aria-label="Hand">
         <svg class="icon" viewBox="0 0 24 24"><path d="M8 12V6a1.5 1.5 0 0 1 3 0v5M11 11V4.5a1.5 1.5 0 0 1 3 0V11M14 11V6a1.5 1.5 0 0 1 3 0v7c0 4-2.5 7-6 7-2.4 0-3.8-1.1-5.2-3.2L3.6 13.4a1.5 1.5 0 0 1 2.5-1.7L8 14"/></svg>
+        <span>Hand</span>
       </button>
       <span class="divider"></span>
       <button data-tool="crop" aria-pressed="false" title="Crop: drag to set the frame (C)" aria-label="Crop">
         <svg class="icon" viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M2 6h14a2 2 0 0 1 2 2v14"/></svg>
+        <span>Crop</span>
       </button>
       <span class="divider"></span>
       <button data-tool="box" aria-pressed="false" title="Box (R)" aria-label="Box">
         <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1.5"/></svg>
+        <span>Box</span>
       </button>
       <button data-tool="arrow" aria-pressed="false" title="Arrow: drag from the tail to the tip (A)" aria-label="Arrow">
         <svg class="icon" viewBox="0 0 24 24"><path d="M5 19L19 5M10 5h9v9"/></svg>
+        <span>Arrow</span>
       </button>
       <button data-tool="text" aria-pressed="false" title="Text: click to type (T)" aria-label="Text">
         <svg class="icon" viewBox="0 0 24 24"><path d="M5 7V4h14v3M12 4v16M9 20h6"/></svg>
+        <span>Text</span>
       </button>
       <span class="divider"></span>
       <button data-tool="blur" aria-pressed="false" title="Blur: pixelate an area (B)" aria-label="Blur">
         <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12h16M12 4v16"/><rect x="4" y="4" width="8" height="8" fill="currentColor" stroke="none" opacity=".45"/><rect x="12" y="12" width="8" height="8" fill="currentColor" stroke="none" opacity=".45"/></svg>
+        <span>Blur</span>
       </button>
       <button data-tool="redact" aria-pressed="false" title="Redact: black out an area (X)" aria-label="Redact">
         <svg class="icon" viewBox="0 0 24 24"><path d="M4 5h10M4 19h13"/><rect x="3" y="9" width="18" height="6" rx="1" fill="currentColor"/></svg>
+        <span>Redact</span>
       </button>
     </div>
     <button id="imageBtn" aria-expanded="false" title="Add an image (or paste / drop one)" aria-label="Add an image" class="ghost">
@@ -259,9 +270,8 @@
     </section>
     <span class="spacer"></span>
     <p class="info"><strong id="designTitle">Select</strong><span id="designInfo"></span></p>
-    <button id="deleteBtn" class="delete ghost" hidden>
+    <button id="deleteBtn" class="delete ghost icon-only" title="Delete (⌫)" aria-label="Delete" hidden>
       <svg class="icon" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
-      Delete
     </button>
   </div>
 
