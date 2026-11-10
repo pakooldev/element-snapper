@@ -187,14 +187,14 @@ The thumbnail's Edit button (pencil) sits left of its close button and shares it
 
 ### Editor (`editor/`)
 
-A full tab, laid out like a design tool. Tokens are in `editor/editor.css` (a fourth copy, see [Known Duplication](#known-duplication)) plus `--canvas: #1e1e1e`, the neutral gray board, so a capture's own colors stand out from the UI's navy.
+A full tab in the extension's own look (navy, cards, blue accent), not a design tool's: two bars on top, the board below. Tokens are in `editor/editor.css` (a fourth copy, see [Known Duplication](#known-duplication)) plus `--canvas`, the board, which is `--bg-dark`.
 
 - **Top bar** on `--bg-card`: the My edits grid button, the doc name (an input that looks like a title until hovered), then Undo/Redo, the zoom control (− / percent, which fits / +), Copy and the primary gradient Download.
-- **Board**: the frame shows its label above it (`Frame  W × H`, gray, blue when hovered or selected) and a faint outline; transparent parts show a neutral dark checkerboard. Selection is `--accent-primary`: a 1px outline, white square handles with a blue border (round ones for an arrow's ends) and a blue size badge under it; hover shows a 1.5px outline. A new frame being dragged dims everything outside it.
-- **Dock**: floating at the bottom center on `--bg-card` with a shadow, icon buttons (18px stroke icons, drawn for this page) grouped by dividers: Select, Hand | Crop | Box, Arrow, Text | Blur, Redact | Image. The active tool is filled with `--accent-primary`. The Image button opens a popover above the dock with the history thumbnails and "Choose a file…".
-- **Design panel** (232px, right, `--bg-card`): the selection's or tool's name and size, then Color (8 round swatches: red `#ef4444`, orange `#f97316`, yellow `#facc15`, green `#22c55e`, blue `#3b82f6`, purple `#a855f7`, black, white, and a conic-gradient swatch for any color; the picked one gets a white border and blue ring), Stroke or Text size (S/M/L: 2/4/8px lines, 16/24/40px text) and Line style (solid/dashed/dotted), each a segmented control like the dock. Then Delete and a one-line hint for the tool.
+- **Board**: the frame shows its label above it (`Frame  W × H`, gray, blue when hovered or selected) and a faint outline; transparent parts show the navy checkerboard (`--bg-dark` / `--bg-card`). Selection is `--accent-primary`: a 1px outline, white square handles with a blue border (round ones for an arrow's ends) and a blue size badge under it; hover shows a 1.5px outline. A new frame being dragged dims everything outside it.
+- **Tool bar** (second bar, 48px, `--bg-card`): the tools as one segmented group like the panel's (`--bg-dark` track, icon buttons with 18px stroke icons drawn for this page, the active one filled with `--accent-primary`, dividers between Select, Hand | Crop | Box, Arrow, Text | Blur, Redact), then the Image button, whose popover (history thumbnails and "Choose a file…") opens at the board's top-left. After a divider come the style controls of the selection or of the tool, shown only where they apply: Color (8 round 22px swatches: red `#ef4444`, orange `#f97316`, yellow `#facc15`, green `#22c55e`, blue `#3b82f6`, purple `#a855f7`, black, white, and a conic-gradient swatch for any color; the picked one gets a white border and blue ring), Stroke or Text size (S/M/L: 2/4/8px lines, 16/24/40px text) and Line style (solid/dashed/dotted), each a segmented control. On the right: the selection's or tool's name and size, and Delete (red on hover).
+- **Hint**: a one-line pill at the bottom center of the board saying what the tool does.
 - Text is 600 weight with an outline in black or white, whichever stands out from its color. Redact is solid black.
-- A toast above the dock reports copy/download results and save failures.
+- A toast at the bottom reports copy/download results and save failures.
 
 ### My edits (`editor/home.html`)
 

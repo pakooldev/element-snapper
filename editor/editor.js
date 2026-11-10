@@ -21,7 +21,7 @@ const STROKE = { s: 2, m: 4, l: 8 };
 const FONT = { s: 16, m: 24, l: 40 };
 const BLOCK = 12; // Blur block size in CSS px: large, so text under it can't be read back
 const FAMILY = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-const CANVAS_BG = getComputedStyle(document.documentElement).getPropertyValue('--canvas').trim() || '#1e1e1e';
+const CANVAS_BG = getComputedStyle(document.documentElement).getPropertyValue('--canvas').trim() || '#0f172a';
 const ACCENT = '#3b82f6';
 const TOOL_KEYS = { v: 'select', h: 'hand', c: 'crop', r: 'box', a: 'arrow', t: 'text', b: 'blur', x: 'redact' };
 const NAMES = {
@@ -289,9 +289,9 @@ function checkerPattern(ctx) {
   const size = Math.round(8 * SCREEN);
   const tile = new OffscreenCanvas(size * 2, size * 2);
   const t = tile.getContext('2d');
-  t.fillStyle = '#2b2b2b';
+  t.fillStyle = '#0f172a';
   t.fillRect(0, 0, size * 2, size * 2);
-  t.fillStyle = '#363636';
+  t.fillStyle = '#1e293b';
   t.fillRect(0, 0, size, size);
   t.fillRect(size, size, size, size);
   return (checker = ctx.createPattern(tile, 'repeat'));
@@ -543,7 +543,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden' && dirty) save();
 });
 
-// ─── Selection, tools, design panel ─────────────────────────────────────────
+// ─── Selection, tools, style controls ────────────────────────────────────────
 
 function select(id) {
   selectedId = id;
@@ -556,7 +556,7 @@ function setTool(name) {
   if (editing) editing.finish(true);
   tool = name;
   for (const button of document.querySelectorAll('[data-tool]')) button.setAttribute('aria-pressed', String(button.dataset.tool === name));
-  // A drawing tool shows its own style in the design panel, not the last selection's.
+  // A drawing tool shows its own style in the tool bar, not the last selection's.
   if (name === 'crop') selectedId = 'frame';
   else if (name !== 'select' || selectedId === 'frame') selectedId = null;
   updateUi();

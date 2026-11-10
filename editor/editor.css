@@ -14,8 +14,8 @@
   --radius-sm: 6px;
   --radius-md: 12px;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  /* The board behind the frame: neutral gray like a design tool's canvas, so a capture's own colors stand out. */
-  --canvas: #1e1e1e;
+  /* The board behind the frame. */
+  --canvas: #0f172a;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
