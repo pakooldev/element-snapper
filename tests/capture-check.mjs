@@ -2,8 +2,8 @@
 //
 //   (cd website && npm run build) && cd tests && npm install && npm run check [case,case...]
 //
-// Set CHROMIUM_PATH to use an existing Chromium instead of Playwright's own, and SHOTS_DIR to
-// keep the images. It loads a temp copy of the extension with host_permissions <all_urls>,
+// Set CHROMIUM_PATH to use an existing Chromium instead of Playwright's own, SHOTS_DIR to keep
+// the images, and DPR to try another screen scale (browser zoom changes it the same way, e.g. 1.25). It loads a temp copy of the extension with host_permissions <all_urls>,
 // standing in for the activeTab grant of a toolbar click, and starts captures through the same
 // messages the panel sends.
 import { chromium } from 'playwright';
@@ -37,7 +37,7 @@ const server = createServer(async (req, res) => {
 await new Promise((r) => server.listen(0, r));
 const ORIGIN = `http://localhost:${server.address().port}`;
 
-const DPR = 2;
+const DPR = Number(process.env.DPR || 2);
 const ctx = await chromium.launchPersistentContext('', {
   ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : { channel: 'chromium' }),
   headless: true,
@@ -353,8 +353,9 @@ const CASES = {
     const img = await capturePage();
     ok(img.h <= 16384, `image is ${img.h}px tall`);
     const height = await page.evaluate(() => document.documentElement.scrollHeight);
-    closeTo(img.h, 16384, 'height');
-    checkRuler(await img.column(img.w - 80), 12000, 16384 / height, 'ruler');
+    const scale = Math.min(DPR, 16384 / height); // Scaled down only past the canvas limit
+    closeTo(img.h, Math.round(height * scale), 'height');
+    checkRuler(await img.column(img.w - 80), 12000, scale, 'ruler');
   },
   async 'page mode starting from the bottom of the page'() {
     await open('/playground/sticky-sections');

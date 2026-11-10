@@ -870,7 +870,11 @@ const nextFrame = () => new Promise((resolve) => {
  */
 async function positionTile({ x, y, index, settleMs }) {
   const session = captureSession;
-  revealContentPoint(session, x, y);
+  // Aim a device pixel early: at a fractional scale (browser zoom) the edge it
+  // lands on can be half a pixel, which snapCutEdges drops, leaving a gap.
+  // Starting early overlaps the last tile instead, with the same pixels.
+  const early = Math.max(1, 1 / (window.devicePixelRatio || 1));
+  revealContentPoint(session, x > 0 ? x - early : 0, y > 0 ? y - early : 0);
   await new Promise((resolve) => setTimeout(resolve, settleMs));
   await waitForSettledContent(SETTLE_LIMIT_MS);
 
