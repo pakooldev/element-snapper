@@ -51,6 +51,8 @@ Every on-page surface sits at (or near) the browser's max z-index (`2147483647`)
 3. Floating panel host (`2147483647`, inserted on icon click)
 4. Preview host (`2147483647`, inserted on first capture, so it renders above the panel)
 
+A modal `<dialog>` or an open popover sits in the browser's top layer, above every z-index. While one is open, `raiseToTopLayer()` (`content/utils.js`) puts each surface into the top layer too, as a popover inside the topmost modal dialog (outside it everything is inert), in creation order, so the same last-inserted-wins order holds. Its `:popover-open` reset strips the browser's default popover margin, border, padding and centering so each surface keeps its own look.
+
 This ordering is why `panel.js` explicitly hides itself before capture and before opening history (`content/panel.js:1088-1106`) — it can't rely on z-index to stay out of the screenshot or below the preview modal.
 
 ---
@@ -65,6 +67,7 @@ This ordering is why `panel.js` explicitly hides itself before capture and befor
 | Countdown | `content/utils.js` (`showCountdownOverlay`) | Any capture with `delay > 0` | Circular countdown badge, top-right |
 | Toast | `content/utils.js` (`showNotification`) | Any capture result outside the preview flow | Top-center status pill |
 | Preview (thumb + modal + history) | `content/preview.js` | After every successful capture | macOS-style thumbnail → full preview → history strip |
+| Editor | `editor/editor.html`, `editor/editor.js` | Edit button on the preview thumbnail or modal (new tab) | Crop, annotate, blur/redact a capture, then copy or download |
 | Website | `website/app/**/page.tsx`, `app/globals.css` | Next.js static export served at element-snapper.pakool.com | Landing, manual, playground, releases, privacy pages |
 
 ---
@@ -154,7 +157,7 @@ A single fixed-position `div` (`#element-screenshot-highlight-overlay`) is moved
 | `mode-full-extends` | "Scroll Element" on AND element exceeds viewport | Dashed **indigo**, badge with `↕`/`↔` arrows + "Full Element" label — overrides `mode-download`/`mode-image` regardless of which is selected |
 | `mode-prompt` | Output mode is "Copy as Prompt" | Dashed **purple**, badge always reads "Copy as Prompt" — overrides everything else since scroll/full-capture is meaningless when nothing is screenshotted |
 
-A dimension label (`123 × 456`) follows the bottom-right of the hovered element, flipping above when it would clip off the bottom edge.
+A dimension label (`123 × 456 · ↑ parent`) follows the bottom-right of the hovered element, flipping above when it would clip off the bottom edge. The `↑ parent` hint is there because the panel is hidden while selecting; after stepping up it reads `article · 606 × 232 · ↑↓`.
 
 ### Region Selector Overlay (`content/region_selector.js`)
 
@@ -176,6 +179,12 @@ The most elaborate surface. Flow:
 3. **History strip** — horizontal scroll of recent captures inside the modal, backed by `chrome.storage.session`. Its background is a blurred, saturated copy of the current image (`--strip-bg`) so the strip visually echoes whatever's on screen — a nice touch, purely decorative.
 
 Uses a shared `.checker` background (CSS `linear-gradient` checkerboard) for transparent PNG regions, reused across thumb/modal/history tiles.
+
+The thumbnail's Edit button (pencil) sits left of its close button and shares its round style, turning blue on hover instead of red. The modal toolbar has an Edit button after Copy.
+
+### Editor (`editor/`)
+
+A full tab, the same tokens as the preview (copied into `editor.html`'s `:root`, a fourth copy, see [Known Duplication](#known-duplication)). One top bar on `--bg-card`: title, the tool group (a segmented control on `--bg-dark`, the active tool filled with `--accent-primary`), Undo, the image size in muted tabular numbers, then Copy and the primary gradient Download at the far right. Below, the image is centered on `--bg-dark` over the checkerboard, shown at its CSS size and shrunk to the window width, scrolling when tall. Annotations are `--error` red (3px lines, 600-weight text with a white outline so it reads on any background); Redact is solid black. The shape being dragged is previewed on an overlay canvas, crop with a 55% dark scrim outside it. A toast at the bottom center reports copy/download results.
 
 ---
 

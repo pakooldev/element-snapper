@@ -18,13 +18,15 @@
 - **Area Capture**: Click-and-drag region selection with live pixel-dimension label
 - **Quick Actions**: One-click **Area**, **Screen** (viewport), and **Page** (full scrollable page) buttons
 - **Cancel with Escape**: Press `Esc` during element selection to cancel and return to idle
-- **Clipboard Support**: Copy screenshots directly to clipboard instead of downloading
+- **Step to the Parent**: While selecting, press `↑` to highlight the parent of the hovered element (for a box its child fills completely) and `↓` to go back
+- **Edit Before Sharing**: The preview's **Edit** button opens the capture in an editor tab: crop, boxes, arrows, text, blur and redact, then copy or download
+- **Clipboard Support**: Copy screenshots directly to clipboard instead of downloading. On `http://` pages, where browsers block copying images, the capture is downloaded instead
 - **Capture Notifications**: Toast feedback for successful captures and errors
 - **Delayed Capture**: Configurable countdown timer (0–10 s) for capturing hover states, menus, and dynamic content
 - **Sliding Settings Panel**: Format, Quality, Delay, and Scroll Element options tucked in a dedicated settings view
 - **Format Options**: Save as PNG (lossless) or JPEG (with quality control 1–100 %)
 - **Debug Mode**: Visual tile borders during multi-tile capture
-- **Edge Case Handling**: Handles fixed elements, scrollable containers, and cross-origin iframes
+- **Edge Case Handling**: Handles fixed elements, scrollable containers, modal dialogs, lazy-loaded images, fade-ins on scroll and looping animations
 - **Flexible Output**: Download to the default downloads folder or copy to clipboard
 
 ## Installation

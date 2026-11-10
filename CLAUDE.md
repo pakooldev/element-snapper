@@ -29,7 +29,7 @@ After any code change, click the refresh icon on the extension card in `chrome:/
 (cd website && npm run build) && cd tests && npm install && npm run check   # or: npm run check "app-shell,long-page"
 ```
 
-The ruler stripes on the playground's case pages make repeats, seams, gaps and stretching show up as wrong run lengths. Set `CHROMIUM_PATH` to reuse an installed Chromium, `SHOTS_DIR` to keep the images. A new playground case should get a check here. Confirm a new check fails on the broken code: one here passed on the old stitching until it was rewritten.
+The ruler stripes on the playground's case pages make repeats, seams, gaps and stretching show up as wrong run lengths. Set `CHROMIUM_PATH` to reuse an installed Chromium, `SHOTS_DIR` to keep the images, `DPR` to run at another screen scale (default 2; browser zoom changes the scale the same way, so `DPR=1.25` and `DPR=1.5` stand in for zoomed pages). The browser shows real scrollbars that take up space, as on Windows. `http://snapper.test:<port>` reaches the same server as a page that is not a secure context, for the clipboard cases. It also covers the editor: it puts a test image in the history, uses every tool and reads the downloaded file. A new playground case should get a check here. Confirm a new check fails on the broken code: one here passed on the old stitching until it was rewritten.
 
 ## Promo Video (`promo-video/`)
 
@@ -61,14 +61,16 @@ content/panel.js → content/content-main.js, element_selector.js, region_select
 
 The service worker injects `utils.js` → `element_selector.js` → `region_selector.js` → `content-main.js` → `preview.js` → `panel.js`. On later clicks it toggles the existing panel.
 
+The editor (`editor/editor.html` + `editor.js`) is an extension page, not a content script. The preview's **Edit** button (thumbnail and modal) sends `openEditor`, and the service worker opens `editor/editor.html#<captureId>` in a tab next to the page.
+
 ### Content Scripts (`content/`)
 
 Load order is significant: `utils.js` → `element_selector.js` → `region_selector.js` → `content-main.js` → `preview.js` → `panel.js`
 
 - **`content-main.js`**: Global message handler and orchestrator. Manages capture flows for all modes (element, viewport, full-page, region). Handles delay countdown UI, toast notifications, and scroll-lock/restore during multi-tile capture.
-- **`element_selector.js`**: `ElementSelector` class — fixed-position overlay that highlights hovered elements. Highlight turns blue→indigo (dashed) when the element extends past what's visible, signalling that fullCapture mode will stitch it. It selects on `pointerup` because disabled controls never get `mousedown`, `mouseup` or `click`, and stops presses on `window` so the page never sees them. Hover still reaches the page on purpose, so a hover-opened menu stays open while you pick from it.
+- **`element_selector.js`**: `ElementSelector` class — fixed-position overlay that highlights hovered elements. `↑` highlights the parent of the highlighted element and `↓` goes back down (`trail`), for a parent its child fills completely; a click captures the highlighted element as long as the pointer stays on the same hovered one. Highlight turns blue→indigo (dashed) when the element extends past what's visible, signalling that fullCapture mode will stitch it. It selects on `pointerup` because disabled controls never get `mousedown`, `mouseup` or `click`, and stops presses on `window` so the page never sees them. Hover still reaches the page on purpose, so a hover-opened menu stays open while you pick from it.
 - **`region_selector.js`**: `RegionSelector` class — full-screen semi-transparent overlay for click-and-drag area selection, over a transparent layer that takes the pointer so the page gets no hover or press. Shows live pixel dimensions. Sends `captureRegion` message with the selected rect on mouse up.
-- **`utils.js`**: DOM helpers, overlay styles, and the page side of stitched capture (`prepareCapture`, `positionTile`, `finishCapture`): which elements scroll or clip the target, and what's visible of it.
+- **`utils.js`**: DOM helpers, overlay styles, and the page side of stitched capture (`prepareCapture`, `positionTile`, `finishCapture`): which elements scroll or clip the target, and what's visible of it. Also `raiseToTopLayer()`, which every on-page element of ours goes through: while a modal `<dialog>` or a popover is open (the browser's top layer, above any z-index), the element becomes a popover inside the topmost modal dialog, because a modal dialog makes everything outside it inert (unclickable). It moves back to the page when the dialog closes. And `copyText()`, the text copy with an `execCommand('copy')` fallback for `http://` pages, which have no `navigator.clipboard`.
 - **`panel.js`**: The extension's UI, a floating in-page panel injected via Shadow DOM for CSS isolation, with Home and Settings views that slide. Settings persist to `chrome.storage.local` on every change. Holds the capture state machine (`STATE_CONFIG`). Toggled via extension icon click; uses element ID `__element-snapper-panel-host__` to detect if already present.
 
 ### Service Worker (`background/service_worker.js`)
@@ -76,15 +78,20 @@ Load order is significant: `utils.js` → `element_selector.js` → `region_sele
 Handles `captureElement`, `captureViewportOrPage`, and `captureRegion` messages.
 
 - **DPR-aware cropping**: All canvas math multiplies coordinates by `devicePixelRatio` to support Retina/HiDPI displays without blur. Content scripts report CSS pixels; the service worker converts to physical pixels.
-- **Stitching** (`captureStitched`, used by Scroll Element and Page mode): asks the page for one tile at a time (`tilePrepare`, `tilePosition`, `tileFinish`). The page scrolls whatever the target depends on, waits 600ms (lazy content, and Chrome's limit on captures per second), then reports the visible part and which content position it starts at. Nothing is computed ahead, so nested scrollers, app-shell panes and layout changes all go through the same path. Sticky elements become `position: relative` and other fixed elements are hidden, re-checked before each tile. Everything goes back at the end, including scroll positions. Past the canvas limit the image is scaled down.
+- **Stitching** (`captureStitched`, used by Scroll Element and Page mode): asks the page for one tile at a time (`tilePrepare`, `tilePosition`, `tileFinish`). The page scrolls whatever the target depends on, waits 600ms (Chrome's limit on captures per second), then up to 3s more (`waitForSettledContent`) while an image on screen is still loading or a one-off animation on screen (a fade-in on scroll) is still running, then reports the visible part and which content position it starts at. Animations that never end are paused for the capture (`freezeLoops`), so a spinner or CSS carousel shows the same frame in every tile. The size is measured once at the start, so content added while scrolling (infinite scroll) is left out and the capture always ends. Nothing is computed ahead, so nested scrollers, app-shell panes and layout changes all go through the same path. Sticky elements become `position: relative` and other fixed elements are hidden, re-checked before each tile. Everything goes back at the end, including scroll positions. Past the canvas limit the image is scaled down.
 - **Status relay**: After capture, the service worker sends `captureSuccess`/`captureError` back to the content script in the same tab so the floating panel can update.
-- Output is converted to PNG or JPEG, then either downloaded via `chrome.downloads.download()` or copied to clipboard via the Clipboard API.
+- Output is converted to PNG or JPEG, then either downloaded via `chrome.downloads.download()` or copied to clipboard via the Clipboard API (`saveOrCopy`). The copy happens in the content script, so it fails on `http://` pages (not a secure context) or when the page lost focus during a countdown; the image is then downloaded instead, with a notice saying why.
+
+### Editor (`editor/`)
+
+Plain JS, no build step, like the rest of the extension. Reads `capture:<id>` from `chrome.storage.session` (so it only works for captures in the preview history, which the browser clears on close) and the format/quality settings. Tools: Crop, Box, Arrow, Text, Blur (pixelates in 12px blocks), Redact (solid black). Every edit is an operation in the capture's own pixels and the canvas is redrawn from the original each time, so Undo (`⌘Z`/`Ctrl+Z`) drops the last one; a second canvas (`#sketch`) shows the shape being dragged. Line widths and text size are multiplied by the screen's `devicePixelRatio`, since captures come from the same screen. Download uses the format setting; Copy is always PNG (the only image type the clipboard takes). The history entry is not changed. Leaving with edits that were not copied or downloaded asks first.
 
 ### Key Constraints
 
 - Max canvas size: 16,384px per dimension (browser hard limit); larger captures are scaled to fit
 - Full-page capture rate-limited to ~2 captures/second
 - Cannot select inside iframes (content scripts are injected into the top frame only), or capture Chrome system pages (`chrome://`, Web Store)
+- Known gaps, not handled: GIFs and JS-driven carousels keep moving between tiles (only CSS/Web Animations are paused); DRM video captures black (Chrome blanks it); pinch zoom is not accounted for; Page mode can't scroll a PDF in Chrome's viewer; an SVG file opened directly in a tab has no `<body>` and fails (images like PNG work); on an app shell (sidebar + scrolling main pane) the sidebar's background stops after the first screen, on purpose, since that is what the stretched page really looks like
 - `debugMode` flag (hidden from settings UI) draws red/green tile borders during multi-tile stitching
 
 ## Message Types
@@ -98,6 +105,7 @@ Handles `captureElement`, `captureViewportOrPage`, and `captureRegion` messages.
 | `captureRegion` | content → service worker | Capture a dragged rectangle |
 | `captureStarted` / `captureSuccess` / `captureError` | service worker → content | Status relay to update panel UI |
 | `selectionCancelled` | content → panel | User pressed Escape |
+| `openEditor` | preview → service worker | Open `editor/editor.html#<captureId>` in a new tab |
 
 ## Storage Schema
 
