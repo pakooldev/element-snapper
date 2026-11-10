@@ -29,7 +29,7 @@ After any code change, click the refresh icon on the extension card in `chrome:/
 (cd website && npm run build) && cd tests && npm install && npm run check   # or: npm run check "app-shell,long-page"
 ```
 
-The ruler stripes on the playground's case pages make repeats, seams, gaps and stretching show up as wrong run lengths. Set `CHROMIUM_PATH` to reuse an installed Chromium, `SHOTS_DIR` to keep the images, `DPR` to run at another screen scale (default 2; browser zoom changes the scale the same way, so `DPR=1.25` and `DPR=1.5` stand in for zoomed pages). The browser shows real scrollbars that take up space, as on Windows. `http://snapper.test:<port>` reaches the same server as a page that is not a secure context, for the clipboard cases. It also covers the editor: it puts a test image in the history, uses every tool and reads the downloaded file. A new playground case should get a check here. Confirm a new check fails on the broken code: one here passed on the old stitching until it was rewritten.
+The ruler stripes on the playground's case pages make repeats, seams, gaps and stretching show up as wrong run lengths. Set `CHROMIUM_PATH` to reuse an installed Chromium, `SHOTS_DIR` to keep the images, `DPR` to run at another screen scale (default 2; browser zoom changes the scale the same way, so `DPR=1.25` and `DPR=1.5` stand in for zoomed pages). The browser shows real scrollbars that take up space, as on Windows. `http://snapper.test:<port>` reaches the same server as a page that is not a secure context, for the clipboard cases. It also covers the editor: it puts a test image in the history, uses every tool and style, drops in a second image and moves it, undoes and redoes, reads the downloaded file, then checks the edit was saved, opens it again from My edits and deletes it. A new playground case should get a check here. Confirm a new check fails on the broken code: one here passed on the old stitching until it was rewritten.
 
 ## Promo Video (`promo-video/`)
 
@@ -61,7 +61,7 @@ content/panel.js → content/content-main.js, element_selector.js, region_select
 
 The service worker injects `utils.js` → `element_selector.js` → `region_selector.js` → `content-main.js` → `preview.js` → `panel.js`. On later clicks it toggles the existing panel.
 
-The editor (`editor/editor.html` + `editor.js`) is an extension page, not a content script. The preview's **Edit** button (thumbnail and modal) sends `openEditor`, and the service worker opens `editor/editor.html#<captureId>` in a tab next to the page.
+The editor (`editor/editor.html` + `editor.js`) and My edits (`editor/home.html` + `home.js`) are extension pages, not content scripts. The preview's **Edit** button (thumbnail and modal) sends `openEditor`, and the service worker opens `editor/editor.html#capture=<captureId>` in a tab next to the page; the panel's **My edits** link sends `openHome`.
 
 ### Content Scripts (`content/`)
 
@@ -84,7 +84,13 @@ Handles `captureElement`, `captureViewportOrPage`, and `captureRegion` messages.
 
 ### Editor (`editor/`)
 
-Plain JS, no build step, like the rest of the extension. Reads `capture:<id>` from `chrome.storage.session` (so it only works for captures in the preview history, which the browser clears on close) and the format/quality settings. Tools: Crop, Box, Arrow, Text, Blur (pixelates in 12px blocks), Redact (solid black). Every edit is an operation in the capture's own pixels and the canvas is redrawn from the original each time, so Undo (`⌘Z`/`Ctrl+Z`) drops the last one; a second canvas (`#sketch`) shows the shape being dragged. Line widths and text size are multiplied by the screen's `devicePixelRatio`, since captures come from the same screen. Download uses the format setting; Copy is always PNG (the only image type the clipboard takes). The history entry is not changed. Leaving with edits that were not copied or downloaded asks first.
+Plain JS, no build step, like the rest of the extension. `editor.css` is shared by both pages; `store.js` is the IndexedDB store both use.
+
+- **Board**: a canvas like a design tool's (neutral gray, pan with scroll / Space-drag / the Hand tool, zoom with ⌘/Ctrl + scroll or pinch, ⇧1 fits, ⇧0 is 100%). Board units are the capture's own pixels, so 100% shows a capture at the size it had on the page; `doc.unit` is the screen scale it was taken at, and line widths and text sizes (S/M/L) are CSS px times that. The capture starts as an image item inside the **frame**; only what is inside the frame is copied or downloaded, and Crop just sets the frame (drag a new one or drag its handles; the frame label drags it). Items: `image`, `box`, `arrow`, `text`, `blur` (pixelates whatever is drawn under it, 12px blocks), `redact`. Each is selected by clicking (a box only on its line, so what it surrounds stays clickable), then moved, resized with handles (images keep their shape), restyled or deleted. More images come from the Image button (preview history or a file), paste or drop.
+- **Style**: color (8 presets + any color), size and line style (solid / dashed / dotted) in the design panel on the right. With a drawing tool on, they set the next shape and the tool stays on; with the Select tool, they change the selected item. The last style is kept in `chrome.storage.local` (`editorStyle`).
+- **Undo**: every edit pushes a JSON snapshot of the frame and items (⌘Z / ⇧⌘Z, last 200). Image bytes stay in memory for the whole session, so undoing a deleted image works.
+- **Saving**: nothing is stored until the first edit. Then the doc goes to IndexedDB (`element-snapper` database: `docs` with a small WebP thumbnail of the frame, `assets` with each image's bytes, written once) 400ms after every edit, the URL becomes `#doc=<id>`, and Edit on the same capture again opens that doc instead of a new one. Docs stay until deleted on My edits, unlike the preview history, which the browser clears on close. Leaving while a save is still pending asks first.
+- **Output**: Download uses the format/quality settings (JPEG gets a white background where nothing covers the frame); Copy is always PNG (the only image type the clipboard takes).
 
 ### Key Constraints
 
@@ -105,7 +111,8 @@ Plain JS, no build step, like the rest of the extension. Reads `capture:<id>` fr
 | `captureRegion` | content → service worker | Capture a dragged rectangle |
 | `captureStarted` / `captureSuccess` / `captureError` | service worker → content | Status relay to update panel UI |
 | `selectionCancelled` | content → panel | User pressed Escape |
-| `openEditor` | preview → service worker | Open `editor/editor.html#<captureId>` in a new tab |
+| `openEditor` | preview → service worker | Open `editor/editor.html#capture=<captureId>` in a new tab |
+| `openHome` | panel → service worker | Open My edits (`editor/home.html`) in a new tab |
 
 ## Storage Schema
 
@@ -119,6 +126,9 @@ Plain JS, no build step, like the rest of the extension. Reads `capture:<id>` fr
 | `fullCapture` | boolean | `false` | Scroll element to capture beyond viewport |
 | `outputMode` | `'download'`\|`'copyImage'`\|`'copyPrompt'` | `'copyImage'` | Download the image, copy it to clipboard, or (element capture only) skip the screenshot and copy a text description of the element instead. Migrated from the old `copyToClipboard` boolean if unset. |
 | `debugMode` | boolean | `false` | Hidden dev flag, not shown in settings UI |
+| `editorStyle` | `{ color, size, dash }` | red, `'m'`, `'solid'` | Last style picked in the editor |
+
+Saved edits are in IndexedDB, not `chrome.storage` (see [Editor](#editor-editor)).
 
 ## Website (`website/`)
 

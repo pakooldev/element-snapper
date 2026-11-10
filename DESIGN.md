@@ -67,7 +67,8 @@ This ordering is why `panel.js` explicitly hides itself before capture and befor
 | Countdown | `content/utils.js` (`showCountdownOverlay`) | Any capture with `delay > 0` | Circular countdown badge, top-right |
 | Toast | `content/utils.js` (`showNotification`) | Any capture result outside the preview flow | Top-center status pill |
 | Preview (thumb + modal + history) | `content/preview.js` | After every successful capture | macOS-style thumbnail → full preview → history strip |
-| Editor | `editor/editor.html`, `editor/editor.js` | Edit button on the preview thumbnail or modal (new tab) | Crop, annotate, blur/redact a capture, then copy or download |
+| Editor | `editor/editor.html`, `editor/editor.js`, `editor/editor.css` | Edit button on the preview thumbnail or modal (new tab) | Board: crop, annotate, blur/redact, add images, then copy or download |
+| My edits | `editor/home.html`, `editor/home.js` | My edits link in the panel, grid button in the editor | Saved edits, newest first |
 | Website | `website/app/**/page.tsx`, `app/globals.css` | Next.js static export served at element-snapper.pakool.com | Landing, manual, playground, releases, privacy pages |
 
 ---
@@ -180,11 +181,24 @@ The most elaborate surface. Flow:
 
 Uses a shared `.checker` background (CSS `linear-gradient` checkerboard) for transparent PNG regions, reused across thumb/modal/history tiles.
 
+The panel's footer row has two link buttons side by side: View history and My edits.
+
 The thumbnail's Edit button (pencil) sits left of its close button and shares its round style, turning blue on hover instead of red. The modal toolbar has an Edit button after Copy.
 
 ### Editor (`editor/`)
 
-A full tab, the same tokens as the preview (copied into `editor.html`'s `:root`, a fourth copy, see [Known Duplication](#known-duplication)). One top bar on `--bg-card`: title, the tool group (a segmented control on `--bg-dark`, the active tool filled with `--accent-primary`), Undo, the image size in muted tabular numbers, then Copy and the primary gradient Download at the far right. Below, the image is centered on `--bg-dark` over the checkerboard, shown at its CSS size and shrunk to the window width, scrolling when tall. Annotations are `--error` red (3px lines, 600-weight text with a white outline so it reads on any background); Redact is solid black. The shape being dragged is previewed on an overlay canvas, crop with a 55% dark scrim outside it. A toast at the bottom center reports copy/download results.
+A full tab, laid out like a design tool. Tokens are in `editor/editor.css` (a fourth copy, see [Known Duplication](#known-duplication)) plus `--canvas: #1e1e1e`, the neutral gray board, so a capture's own colors stand out from the UI's navy.
+
+- **Top bar** on `--bg-card`: the My edits grid button, the doc name (an input that looks like a title until hovered), then Undo/Redo, the zoom control (− / percent, which fits / +), Copy and the primary gradient Download.
+- **Board**: the frame shows its label above it (`Frame  W × H`, gray, blue when hovered or selected) and a faint outline; transparent parts show a neutral dark checkerboard. Selection is `--accent-primary`: a 1px outline, white square handles with a blue border (round ones for an arrow's ends) and a blue size badge under it; hover shows a 1.5px outline. A new frame being dragged dims everything outside it.
+- **Dock**: floating at the bottom center on `--bg-card` with a shadow, icon buttons (18px stroke icons, drawn for this page) grouped by dividers: Select, Hand | Crop | Box, Arrow, Text | Blur, Redact | Image. The active tool is filled with `--accent-primary`. The Image button opens a popover above the dock with the history thumbnails and "Choose a file…".
+- **Design panel** (232px, right, `--bg-card`): the selection's or tool's name and size, then Color (8 round swatches: red `#ef4444`, orange `#f97316`, yellow `#facc15`, green `#22c55e`, blue `#3b82f6`, purple `#a855f7`, black, white, and a conic-gradient swatch for any color; the picked one gets a white border and blue ring), Stroke or Text size (S/M/L: 2/4/8px lines, 16/24/40px text) and Line style (solid/dashed/dotted), each a segmented control like the dock. Then Delete and a one-line hint for the tool.
+- Text is 600 weight with an outline in black or white, whichever stands out from its color. Redact is solid black.
+- A toast above the dock reports copy/download results and save failures.
+
+### My edits (`editor/home.html`)
+
+The same top bar with the title and a count, then a grid of cards (min 240px): the thumbnail on `--canvas`, the name, "Edited …" and the frame size. A card lifts 2px and brightens its border on hover, which also shows a round delete button in its corner (red on hover, asks first). An empty state explains that a capture shows up here once something in it is edited.
 
 ---
 
@@ -253,7 +267,7 @@ Plain typographic reading layout, `max-width: 800px`, no custom components.
 
 ## Known Duplication
 
-The inline `PANEL_CSS` in `panel.js`, the inline `PREVIEW_CSS` in `preview.js`, and `website/app/globals.css` each redeclare the same ~15 color/radius/motion tokens and several component patterns (toggle switch, toolbar button, status dot, logo animation). They've already drifted slightly — e.g. `--text-muted` and `--warning` exist in the panel's token block but not preview's (preview doesn't need a status dot), and the website uses its own radius scale (`16px`/`8px`) instead of `--radius-sm`/`--radius-md`. This is fine as three-copies-in-sync today, but is the first thing to watch if the palette ever changes.
+The inline `PANEL_CSS` in `panel.js`, the inline `PREVIEW_CSS` in `preview.js`, and `website/app/globals.css` each redeclare the same ~15 color/radius/motion tokens and several component patterns (toggle switch, toolbar button, status dot, logo animation). They've already drifted slightly — e.g. `--text-muted` and `--warning` exist in the panel's token block but not preview's (preview doesn't need a status dot), and the website uses its own radius scale (`16px`/`8px`) instead of `--radius-sm`/`--radius-md`. `editor/editor.css` is a fourth copy, shared by the editor and My edits. This is fine as copies-in-sync today, but is the first thing to watch if the palette ever changes.
 
 ---
 
