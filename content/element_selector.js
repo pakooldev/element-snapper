@@ -6,7 +6,9 @@
 class ElementSelector {
   constructor() {
     this.isActive = false;
-    this.currentElement = null;
+    this.currentElement = null;      // highlighted: the hovered element or one of its ancestors
+    this.hoveredElement = null;      // under the pointer
+    this.trail = [];                 // children stepped up from with ArrowUp, for ArrowDown
     this.highlightOverlay = null;
     this.fullCapture = false;        // cached setting, updated on start()
     this.isPromptMode = false;       // cached setting, updated on start()
@@ -86,6 +88,8 @@ class ElementSelector {
 
     // Clear current element reference
     this.currentElement = null;
+    this.hoveredElement = null;
+    this.trail = [];
 
     // Remove dimension label
     if (this.dimensionLabel) {
@@ -107,8 +111,18 @@ class ElementSelector {
 
     // Get element under cursor
     const element = deepElementFromPoint(event.clientX, event.clientY);
-    if (!element || element === this.currentElement) return;
+    if (!element || element === this.hoveredElement) return;
 
+    this.hoveredElement = element;
+    this.trail = [];
+    this.highlight(element);
+  }
+
+  /**
+   * Highlights an element and shows the size its image will have.
+   * @param {Element} element
+   */
+  highlight(element) {
     this.currentElement = element;
 
     // Update fixed-position highlight overlay
@@ -129,7 +143,10 @@ class ElementSelector {
       const labelW = Math.round(size.width);
       const labelH = Math.round(size.height);
 
-      this.dimensionLabel.textContent = `${labelW} × ${labelH}`;
+      // A parent that its child fills can't be hovered, hence the arrow keys.
+      const name = this.trail.length ? `${element.tagName.toLowerCase()} · ` : '';
+      const keys = this.trail.length ? '↑↓' : '↑ parent';
+      this.dimensionLabel.textContent = `${name}${labelW} × ${labelH} · ${keys}`;
       this.dimensionLabel.style.display = 'block';
 
       // Measure label after making it visible
@@ -174,6 +191,19 @@ class ElementSelector {
 
       // Notify popup so it resets its UI back to idle
       chrome.runtime.sendMessage({ action: 'selectionCancelled' });
+      return;
+    }
+
+    // ArrowUp highlights the parent, ArrowDown goes back to the child it came from.
+    if (!this.currentElement || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return;
+    blockEvent(event); // Keep the page from scrolling
+    if (event.key === 'ArrowUp') {
+      const parent = composedParent(this.currentElement);
+      if (!parent || parent === document.documentElement || parent === document.body) return;
+      this.trail.push(this.currentElement);
+      this.highlight(parent);
+    } else if (this.trail.length) {
+      this.highlight(this.trail.pop());
     }
   }
 
@@ -199,7 +229,9 @@ class ElementSelector {
     blockEvent(event);
     swallowEndOfPress();
 
-    const element = deepElementFromPoint(event.clientX, event.clientY);
+    // The highlighted element, which arrow keys may have moved up from the one under the pointer.
+    const under = deepElementFromPoint(event.clientX, event.clientY);
+    const element = under && under === this.hoveredElement ? this.currentElement : under;
     if (!element) return;
 
     // Stop selection mode

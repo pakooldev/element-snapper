@@ -508,3 +508,18 @@ html:has(.pg-smooth) {
   font-weight: 600;
 }
 
+.pg-filled {
+  width: 600px;
+  max-width: calc(100% - 48px);
+  margin: 0 24px;
+  border: 6px solid #f59e0b;
+}
+
+.pg-filled-link {
+  display: block;
+  height: 220px;
+  padding: 16px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+

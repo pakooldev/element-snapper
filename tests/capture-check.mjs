@@ -152,8 +152,11 @@ async function open(path) {
 
 const capturePage = async () => { await send({ action: 'captureFullPage' }); return waitForImage(); };
 
-/** Clicks a point through the real selection flow. `locate` runs in the page and returns a rect. */
-async function captureElement(locate, { scrollElement = true, arg } = {}) {
+/**
+ * Clicks a point through the real selection flow. `locate` runs in the page and returns a rect.
+ * `keys` are pressed while hovering, before the click.
+ */
+async function captureElement(locate, { scrollElement = true, arg, keys = [] } = {}) {
   await sw.evaluate((v) => chrome.storage.local.set({ fullCapture: v }), scrollElement);
   await send({ action: 'startSelection' });
   await page.waitForTimeout(250);
@@ -162,6 +165,7 @@ async function captureElement(locate, { scrollElement = true, arg } = {}) {
   await page.mouse.move(x - 2, y);
   await page.mouse.move(x, y);
   await page.waitForTimeout(100);
+  for (const key of keys) await page.keyboard.press(key);
   await page.mouse.click(x, y);
   return waitForImage();
 }
@@ -215,6 +219,22 @@ const CASES = {
     ok((await presses()) === 0, `the page saw ${await presses()} presses`);
   },
 
+  async 'filled parent: arrow up selects the parent'() {
+    await open('/playground/filled-parent');
+    const card = await boxOf('.pg-filled');
+    const img = await captureElement(() => { const r = document.querySelector('.pg-filled-link').getBoundingClientRect(); return { x: r.left + 40, y: r.top + 40 }; }, { scrollElement: false, keys: ['ArrowUp'] });
+    closeTo(img.w, card.w * DPR, 'width');
+    closeTo(img.h, card.h * DPR, 'height');
+    ok(near((await img.row(img.h / 2))[2], AMBER), 'the card border is missing');
+    ok(new URL(page.url()).hash === '', 'the link navigated');
+  },
+  async 'filled parent: arrow down goes back to the child'() {
+    await open('/playground/filled-parent');
+    const link = await boxOf('.pg-filled-link');
+    const img = await captureElement(() => { const r = document.querySelector('.pg-filled-link').getBoundingClientRect(); return { x: r.left + 40, y: r.top + 40 }; }, { scrollElement: false, keys: ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown'] });
+    closeTo(img.w, link.w * DPR, 'width');
+    closeTo(img.h, link.h * DPR, 'height');
+  },
   async 'fade-in'() {
     await open('/playground/fade-in');
     const img = await capturePage();

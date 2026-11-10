@@ -105,6 +105,24 @@ export const CASES: PlaygroundCase[] = [
     ),
   },
   {
+    slug: "filled-parent",
+    group: "Selecting",
+    title: "Parent filled by its child",
+    mode: "Element. Hover the card, then press ↑ to step up to the parent and ↓ to step back",
+    expected:
+      "Pressing ↑ moves the highlight to the bordered card around the link, and clicking captures the whole card, border included.",
+    render: (intro) => (
+      <div className="pg-case">
+        {intro}
+        <article className="pg-filled">
+          <a href="#followed" className="pg-filled-link">
+            A link that fills its card
+          </a>
+        </article>
+      </div>
+    ),
+  },
+  {
     slug: "app-shell",
     group: "Scroll owners",
     title: "App shell",
