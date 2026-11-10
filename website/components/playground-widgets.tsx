@@ -122,3 +122,31 @@ export function ModalDialog({ children }: { children: ReactNode }) {
   );
 }
 
+/** A 2D canvas, a WebGL canvas and an inline SVG, each a solid color. */
+export function Graphics() {
+  const flat = useRef<HTMLCanvasElement>(null);
+  const gl = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const ctx = flat.current?.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#ef4444";
+      ctx.fillRect(0, 0, 240, 160);
+    }
+    const webgl = gl.current?.getContext("webgl");
+    if (webgl) {
+      webgl.clearColor(59 / 255, 130 / 255, 246 / 255, 1);
+      webgl.clear(webgl.COLOR_BUFFER_BIT);
+    }
+  }, []);
+
+  return (
+    <div className="pg-graphics">
+      <canvas ref={flat} width={240} height={160} aria-label="2D canvas" />
+      <canvas ref={gl} width={240} height={160} aria-label="WebGL canvas" />
+      <svg width="240" height="160" aria-label="SVG">
+        <rect width="240" height="160" fill="#10b981" />
+      </svg>
+    </div>
+  );
+}

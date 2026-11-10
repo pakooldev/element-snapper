@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import {
   FadeInBlocks,
+  Graphics,
   InfiniteFeed,
   LateFixed,
   ModalDialog,
@@ -34,6 +35,33 @@ const SHADOW_BUTTON = `
   <button style="width:260px;height:48px;font:600 14px sans-serif">Button inside a shadow root</button>`;
 
 const TABLE_COLUMNS = ["Start", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "End"];
+
+function WideTable() {
+  return (
+    <div className="pg-table-wrap">
+      <table className="pg-table">
+        <thead>
+          <tr>
+            {TABLE_COLUMNS.map((column) => (
+              <th key={column}>{column}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {[1, 2, 3].map((row) => (
+            <tr key={row}>
+              {TABLE_COLUMNS.map((column) => (
+                <td key={column}>
+                  {column} · row {row}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 /** Striped column with labels at their true offset, so seams and repeats are easy to spot. */
 function Ruler({ height, step = 500 }: { height: number; step?: number }) {
@@ -214,28 +242,7 @@ export const CASES: PlaygroundCase[] = [
     render: (intro) => (
       <div className="pg-case">
         {intro}
-        <div className="pg-table-wrap">
-          <table className="pg-table">
-            <thead>
-              <tr>
-                {TABLE_COLUMNS.map((column) => (
-                  <th key={column}>{column}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {[1, 2, 3].map((row) => (
-                <tr key={row}>
-                  {TABLE_COLUMNS.map((column) => (
-                    <td key={column}>
-                      {column} · row {row}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <WideTable />
         <div style={{ height: 1000 }} />
       </div>
     ),
@@ -395,6 +402,52 @@ export const CASES: PlaygroundCase[] = [
         {intro}
         <Ruler height={3000} />
         <InfiniteFeed />
+      </div>
+    ),
+  },
+  {
+    slug: "rtl-table",
+    group: "Coordinates",
+    title: "Wide table on a right-to-left page",
+    mode: "Element, with Scroll Element on (click a gap between cells, which selects the table)",
+    expected: "Every column from Start through End, right to left, with no repeated column.",
+    render: (intro) => (
+      <div className="pg-case">
+        {intro}
+        <div dir="rtl">
+          <WideTable />
+        </div>
+        <div style={{ height: 1000 }} />
+      </div>
+    ),
+  },
+  {
+    slug: "classic-scrollbars",
+    group: "Coordinates",
+    title: "Scrollbars that take up space",
+    mode: "Element (the red-edged box) with Scroll Element off, and Page",
+    expected:
+      "The box with both red edges and nothing beside them, as on Windows or with macOS set to always show scroll bars. The page's stripes stay unbroken.",
+    render: (intro) => (
+      <div className="pg-case pg-classic-scroll">
+        {intro}
+        <div id="edge-box" className="pg-edge-box">
+          Red edge on both sides
+        </div>
+        <Ruler height={3000} />
+      </div>
+    ),
+  },
+  {
+    slug: "graphics",
+    group: "Environment",
+    title: "Canvas, WebGL and SVG",
+    mode: "Screen or Page",
+    expected: "A red, a blue and a green block. A blank block is a fail.",
+    render: (intro) => (
+      <div className="pg-case">
+        {intro}
+        <Graphics />
       </div>
     ),
   },

@@ -545,3 +545,32 @@ html:has(.pg-smooth) {
   font-weight: 600;
 }
 
+:root:has(.pg-classic-scroll)::-webkit-scrollbar {
+  width: 16px;
+  background: #334155;
+}
+
+:root:has(.pg-classic-scroll)::-webkit-scrollbar-thumb {
+  background: #64748b;
+}
+
+.pg-edge-box {
+  width: 360px;
+  height: 160px;
+  margin: 0 24px 24px auto;
+  padding: 16px;
+  border-left: 6px solid #ef4444;
+  border-right: 6px solid #ef4444;
+  background: var(--bg-card);
+}
+
+.pg-graphics {
+  display: flex;
+  gap: 24px;
+  margin: 0 24px;
+}
+
+.pg-graphics > * {
+  display: block;
+  flex: none;
+}

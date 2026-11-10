@@ -44,6 +44,8 @@ const ctx = await chromium.launchPersistentContext('', {
   ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : { channel: 'chromium' }),
   headless: true,
   viewport: null,
+  // Real scrollbars, as on Windows: headless hides them by default.
+  ignoreDefaultArgs: ['--hide-scrollbars'],
   args: [`--disable-extensions-except=${ext}`, `--load-extension=${ext}`, '--window-size=1280,860', `--force-device-scale-factor=${DPR}`, '--host-resolver-rules=MAP snapper.test 127.0.0.1'],
 });
 const sw = ctx.serviceWorkers()[0] || (await ctx.waitForEvent('serviceworker'));
@@ -326,6 +328,45 @@ const CASES = {
     const img = await capturePage();
     closeTo(img.h, height * DPR, 'height');
     checkRuler(await img.column(img.w - 80), 3000);
+  },
+  async 'rtl-table'() {
+    await open('/playground/rtl-table');
+    const expected = await page.evaluate(() => { const r = document.querySelector('.pg-table').getBoundingClientRect(); const th = document.querySelector('.pg-table th').getBoundingClientRect(); return { w: r.width, h: r.height, thY: th.top - r.top + th.height / 2 }; });
+    const img = await captureElement(() => { const r = document.querySelector('.pg-table-wrap').getBoundingClientRect(); return { x: r.right - 5, y: r.top + 5 }; });
+    closeTo(img.w, expected.w * DPR, 'width');
+    closeTo(img.h, expected.h * DPR, 'height');
+    const cells = bands(await img.row(expected.thY * DPR - 16), [30, 41, 59]);
+    ok(cells.length === 12, `${cells.length} columns, expected 12`);
+    const widths = cells.map((c) => c[1]);
+    ok(Math.max(...widths) / Math.min(...widths) < 1.4, `column widths differ too much: ${widths}`);
+  },
+  async 'classic scrollbars: element'() {
+    await open('/playground/classic-scrollbars');
+    const box = await boxOf('#edge-box');
+    const img = await captureElement(() => { const r = document.querySelector('#edge-box').getBoundingClientRect(); return { x: r.left + 60, y: r.top + 60 }; }, { scrollElement: false });
+    closeTo(img.w, box.w * DPR, 'width');
+    const row = await img.row(img.h / 2);
+    ok(near(row[1], RED) && near(row[row.length - 2], RED), `edges are ${row[1]} and ${row[row.length - 2]}, expected red`);
+  },
+  async 'classic scrollbars: page'() {
+    await open('/playground/classic-scrollbars');
+    const img = await capturePage();
+    checkRuler(await img.column(img.w / 2), 3000); // Clear of the red-edged box
+  },
+  async 'graphics'() {
+    await open('/playground/graphics');
+    const y = (await boxOf('.pg-graphics')).y + 80;
+    const img = await capturePage();
+    const row = await img.row(y * DPR);
+    for (const [name, color] of [['canvas', RED], ['WebGL', [59, 130, 246]], ['SVG', [16, 185, 129]]]) {
+      ok(bands(row, color).some(([, w]) => Math.abs(w - 240 * DPR) <= 4), `the ${name} block is missing`);
+    }
+  },
+  async 'image opened directly'() {
+    await open('/playground/amber.png');
+    const img = await capturePage();
+    // Chrome centers an image opened on its own.
+    ok(near((await img.row(img.h / 2))[img.w / 2], AMBER), 'the image is not in the capture');
   },
   async 'copy image on an http page'() {
     await open('/playground/graphics', INSECURE_ORIGIN);
