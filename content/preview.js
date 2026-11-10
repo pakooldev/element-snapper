@@ -115,6 +115,8 @@
     }
     .thumb:hover .thumb-close { opacity: 1; }
     .thumb-close:hover { background: var(--error); border-color: var(--error); }
+    .thumb-edit { right: 36px; }
+    .thumb-edit:hover { background: var(--accent-primary); border-color: var(--accent-primary); }
 
     .thumb-progress {
       position: absolute;
@@ -510,6 +512,11 @@
     thumb.className = 'thumb';
     thumb.innerHTML = `
       <img class="thumb-img checker" alt="Preview" />
+      <button class="thumb-close thumb-edit" aria-label="Edit capture" title="Edit">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
       <button class="thumb-close" aria-label="Dismiss preview">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
@@ -525,7 +532,12 @@
       openModal();
       dismissThumb();
     });
-    thumb.querySelector('.thumb-close').addEventListener('click', (e) => {
+    thumb.querySelector('.thumb-edit').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEditor();
+      dismissThumb();
+    });
+    thumb.querySelector('.thumb-close:not(.thumb-edit)').addEventListener('click', (e) => {
       e.stopPropagation();
       dismissThumb();
     });
@@ -538,6 +550,14 @@
     requestAnimationFrame(() => {
       thumb.classList.add('visible');
       startTimer(AUTO_DISMISS_MS);
+    });
+  }
+
+  /** Opens the current capture in the editor, in a new tab next to this one. */
+  function openEditor() {
+    if (!currentAsset) return;
+    chrome.runtime.sendMessage({ action: 'openEditor', captureId: currentAsset.id }).catch((err) => {
+      showShadowToast('Could not open the editor: ' + err.message, 'error');
     });
   }
 
@@ -743,6 +763,12 @@
             </svg>
             Copy
           </button>
+          <button class="toolbar-btn" data-act="edit">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Edit
+          </button>
           <button class="toolbar-btn destructive" data-act="remove">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -803,6 +829,9 @@
       }
       const act = btn.getAttribute('data-act');
       if (act === 'close') {
+        closeModal();
+      } else if (act === 'edit') {
+        openEditor();
         closeModal();
       } else if (act === 'download') {
         downloadAsset();

@@ -76,6 +76,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch(error => sendResponse({ success: false, error: error.message }));
 
     return true; // Keep channel open for async response
+  } else if (message.action === 'openEditor') {
+    // Opened next to the page, from the preview's Edit button.
+    chrome.tabs.create({
+      url: `${chrome.runtime.getURL('editor/editor.html')}#${encodeURIComponent(message.captureId)}`,
+      index: sender.tab ? sender.tab.index + 1 : undefined,
+      openerTabId: sender.tab?.id,
+    });
   } else if (['captureStarted', 'captureSuccess', 'captureError', 'selectionCancelled'].includes(message.action)) {
     // Relay status notifications from content scripts back to the floating panel in the same tab
     if (sender.tab && sender.tab.id) {

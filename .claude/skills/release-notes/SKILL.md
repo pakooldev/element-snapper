@@ -118,13 +118,14 @@ Create a distributable zip from the repository root that includes exactly these 
 
 - `background/`
 - `content/`
+- `editor/`
 - `icons/`
 - `manifest.json`
 
 Use a versioned filename:
 
 ```bash
-zip -r element-snapper-vX.X.X.zip background content icons manifest.json
+zip -r element-snapper-vX.X.X.zip background content editor icons manifest.json
 ```
 
 If a zip with that name already exists, replace it so the archive matches the current release files.

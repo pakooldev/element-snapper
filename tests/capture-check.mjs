@@ -17,7 +17,7 @@ const site = join(repo, 'website/out');
 if (!existsSync(site)) throw new Error('Build the site first: cd website && npm run build');
 
 const ext = mkdtempSync(join(tmpdir(), 'snapper-ext-'));
-for (const p of ['manifest.json', 'background', 'content', 'icons']) cpSync(join(repo, p), join(ext, p), { recursive: true });
+for (const p of ['manifest.json', 'background', 'content', 'editor', 'icons']) cpSync(join(repo, p), join(ext, p), { recursive: true });
 const manifest = JSON.parse(readFileSync(join(ext, 'manifest.json')));
 writeFileSync(join(ext, 'manifest.json'), JSON.stringify({ ...manifest, host_permissions: ['<all_urls>'] }));
 const CONTENT_FILES = manifest.content_scripts?.[0]?.js ??
@@ -90,6 +90,11 @@ async function waitForImage() {
     mkdirSync(process.env.SHOTS_DIR, { recursive: true });
     writeFileSync(join(process.env.SHOTS_DIR, `${name}.png`), Buffer.from(dataUrl.split(',')[1], 'base64'));
   }
+  return readImage(dataUrl);
+}
+
+/** Decodes an image so its pixels can be read. */
+async function readImage(dataUrl) {
   const size = await pixels.evaluate(async (url) => {
     window.bitmap?.close();
     window.bitmap = await createImageBitmap(await (await fetch(url)).blob());
@@ -402,6 +407,61 @@ const CASES = {
       ok(text.includes('pg-filled-link'), `clipboard holds: ${text.slice(0, 80)}`);
     } finally {
       await setOutput('download');
+    }
+  },
+
+  async 'editor: each tool then undo and download'() {
+    // A 400 × 300 CSS px capture, amber on the left half and blue on the right.
+    await sw.evaluate(async (dpr) => {
+      const canvas = new OffscreenCanvas(400 * dpr, 300 * dpr);
+      const c = canvas.getContext('2d');
+      c.fillStyle = '#f59e0b';
+      c.fillRect(0, 0, 200 * dpr, 300 * dpr);
+      c.fillStyle = '#3b82f6';
+      c.fillRect(200 * dpr, 0, 200 * dpr, 300 * dpr);
+      await chrome.storage.session.set({ 'capture:edit-check': await blobToDataURL(await canvas.convertToBlob({ type: 'image/png' })) });
+    }, DPR);
+    const editor = await ctx.newPage();
+    try {
+      await editor.goto(`chrome-extension://${new URL(sw.url()).host}/editor/editor.html#edit-check`);
+      await editor.waitForSelector('#frame:not([hidden])');
+      const at = await editor.locator('#sketch').boundingBox();
+      ok(Math.abs(at.width - 400) < 1, `shown ${at.width}px wide, expected 400`);
+      const dragOn = async (tool, x1, y1, x2, y2) => {
+        await editor.click(`[data-tool="${tool}"]`);
+        await editor.mouse.move(at.x + x1, at.y + y1);
+        await editor.mouse.down();
+        await editor.mouse.move(at.x + x2, at.y + y2, { steps: 4 });
+        await editor.mouse.up();
+      };
+      await dragOn('redact', 20, 20, 80, 80);
+      await dragOn('blur', 170, 150, 230, 210);
+      await dragOn('box', 260, 40, 340, 120);
+      await dragOn('arrow', 300, 250, 360, 200);
+      await editor.click('[data-tool="text"]');
+      await editor.mouse.click(at.x + 30, at.y + 230);
+      await editor.keyboard.type('Hello');
+      await editor.keyboard.press('Enter');
+      if (process.env.SHOTS_DIR) await editor.screenshot({ path: join(process.env.SHOTS_DIR, 'editor-before-undo.png') });
+      ok(await editor.evaluate(() => !document.querySelector('.text-input')), 'the text field stayed open');
+      await editor.keyboard.press(process.platform === 'darwin' ? 'Meta+z' : 'Control+z'); // Takes the text away again
+      await dragOn('crop', 10, 10, 390, 290);
+      if (process.env.SHOTS_DIR) await editor.screenshot({ path: join(process.env.SHOTS_DIR, 'editor-page.png') });
+      const [download] = await Promise.all([editor.waitForEvent('download'), editor.click('#download')]);
+      if (process.env.SHOTS_DIR) await download.saveAs(join(process.env.SHOTS_DIR, 'editor-download.png'));
+      const img = await readImage(`data:image/png;base64,${readFileSync(await download.path()).toString('base64')}`);
+      const px = async (x, y) => (await img.row((y - 10) * DPR))[Math.round((x - 10) * DPR)];
+      closeTo(img.w, 380 * DPR, 'cropped width');
+      closeTo(img.h, 280 * DPR, 'cropped height');
+      ok(near(await px(50, 50), [0, 0, 0]), `redacted area is ${await px(50, 50)}`);
+      const mixed = await px(200, 180);
+      ok(!near(mixed, AMBER, 30) && !near(mixed, [59, 130, 246], 30), `blurred edge is ${mixed}, not blended`);
+      ok(near(await px(260, 80), RED, 30), `box edge is ${await px(260, 80)}`);
+      ok(near(await px(32, 240), AMBER), 'the undone text is still there');
+      ok(near(await px(120, 150), AMBER) && near(await px(320, 150), [59, 130, 246]), 'the image around the edits changed');
+    } finally {
+      await editor.close();
+      await page.bringToFront();
     }
   },
 
