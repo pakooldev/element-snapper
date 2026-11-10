@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 /** Chrome that only turns fixed or appears once the page has been scrolled. */
 export function LateFixed() {
@@ -104,6 +104,21 @@ export function InfiniteFeed() {
         </div>
       ))}
     </>
+  );
+}
+
+/** Opens its children in a modal <dialog>, which the browser draws in the top layer. */
+export function ModalDialog({ children }: { children: ReactNode }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    if (!dialog.current?.open) dialog.current?.showModal();
+  }, []);
+
+  return (
+    <dialog ref={dialog} className="pg-dialog" aria-label="Top layer test">
+      {children}
+    </dialog>
   );
 }
 

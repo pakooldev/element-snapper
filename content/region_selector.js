@@ -63,6 +63,7 @@ class RegionSelector {
     this.hint.id = 'region-selector-hint';
     this.hint.textContent = 'Click and drag to select area · Esc to cancel';
     document.body.appendChild(this.hint);
+    for (const element of [this.layer, this.overlay, this.selection, this.dimensionLabel, this.hint]) raiseToTopLayer(element);
 
     // Add listeners on window's capture phase, ahead of the page's own
     window.addEventListener('mousedown', this.boundMouseDown, true);

@@ -723,6 +723,7 @@
   shadow.appendChild(tmp.firstElementChild);
 
   document.documentElement.appendChild(host);
+  raiseToTopLayer(host);
 
   // ─── DOM References ───────────────────────────────────────────────────────
   const $  = (id)  => shadow.getElementById(id);
@@ -767,7 +768,7 @@
   };
 
   // ─── UI helpers ───────────────────────────────────────────────────────────
-  function showPanel() { host.style.display = 'block'; }
+  function showPanel() { host.style.display = 'block'; raiseToTopLayer(host); }
   function hidePanel() { host.style.display = 'none'; }
 
   function updateUI(state, message) {

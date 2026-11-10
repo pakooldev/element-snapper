@@ -361,6 +361,47 @@ function removeHighlightStyles() {
  * Create the fixed-position highlight overlay element (and its badge child).
  * @returns {HTMLElement} The overlay div
  */
+const TOP_LAYER_ATTR = 'data-element-snapper-top';
+// Popovers get default margins, borders and a centered position; ours keep their own styles.
+const TOP_LAYER_CSS = `[${TOP_LAYER_ATTR}]:popover-open {
+  margin: 0; inset: auto; padding: 0; border: 0; background: none; color: inherit;
+  overflow: visible; width: auto; height: auto;
+}`;
+
+/**
+ * Keeps one of our elements visible and usable over a modal <dialog> or an open
+ * popover, which the browser draws in the top layer, above any z-index. The
+ * element joins the top layer too, inside the topmost modal dialog if one is
+ * open, because a modal dialog makes everything outside it inert. It goes back
+ * to the body when that dialog closes. Does nothing if neither is open.
+ * @param {HTMLElement} element
+ */
+function raiseToTopLayer(element) {
+  try {
+    const modal = [...document.querySelectorAll('dialog')].reverse().find((dialog) => dialog.matches(':modal'));
+    if (!modal && !document.querySelector(`:popover-open:not([${TOP_LAYER_ATTR}])`)) return;
+
+    if (!document.getElementById('element-screenshot-top-layer-styles')) {
+      const style = document.createElement('style');
+      style.id = 'element-screenshot-top-layer-styles';
+      style.textContent = TOP_LAYER_CSS;
+      (document.head || document.documentElement).appendChild(style);
+    }
+    if (modal && element.parentNode !== modal) {
+      modal.appendChild(element);
+      // Moving it out also takes it off the top layer.
+      modal.addEventListener('close', () => { if (element.parentNode === modal) document.documentElement.appendChild(element); }, { once: true });
+    }
+    element.setAttribute(TOP_LAYER_ATTR, '');
+    element.popover = 'manual';
+    // Re-showing puts it above whatever joined the top layer since.
+    if (element.matches(':popover-open')) element.hidePopover();
+    element.showPopover();
+  } catch (error) {
+    console.warn('Element Snapper: could not show above the page\'s dialog', error);
+  }
+}
+
 function createHighlightOverlay() {
   const existing = document.getElementById('element-screenshot-highlight-overlay');
   if (existing) existing.remove();
@@ -373,6 +414,7 @@ function createHighlightOverlay() {
   overlay.appendChild(badge);
 
   document.body.appendChild(overlay);
+  raiseToTopLayer(overlay);
   return overlay;
 }
 
@@ -989,6 +1031,7 @@ function showCountdownOverlay(seconds) {
     overlay.textContent = seconds;
 
     document.body.appendChild(overlay);
+    raiseToTopLayer(overlay);
 
     // Countdown logic
     let remaining = seconds;
@@ -1191,6 +1234,7 @@ function showNotification(message, type = 'success') {
   `;
 
   document.body.appendChild(notification);
+  raiseToTopLayer(notification);
 
   // Trigger animation
   requestAnimationFrame(() => {

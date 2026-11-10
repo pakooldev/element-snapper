@@ -59,6 +59,7 @@ class ElementSelector {
     this.dimensionLabel.id = 'element-screenshot-dimensions';
     this.dimensionLabel.style.display = 'none';
     document.body.appendChild(this.dimensionLabel);
+    raiseToTopLayer(this.dimensionLabel);
 
     // Change cursor
     document.body.style.cursor = 'crosshair';

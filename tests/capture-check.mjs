@@ -235,6 +235,63 @@ const CASES = {
     closeTo(img.w, link.w * DPR, 'width');
     closeTo(img.h, link.h * DPR, 'height');
   },
+  async 'top layer: highlight shows over a modal dialog'() {
+    await open('/playground/top-layer');
+    const box = await boxOf('#dialog-box');
+    await sw.evaluate(() => chrome.storage.local.set({ fullCapture: false }));
+    await send({ action: 'startSelection' });
+    await page.waitForTimeout(250);
+    const strip = { x: box.x - 4, y: box.y - 4, width: box.w + 8, height: 8 };
+    const before = await page.screenshot({ clip: strip });
+    await page.mouse.move(box.x + 30, box.y + 30);
+    await page.waitForTimeout(200);
+    const after = await page.screenshot({ clip: strip });
+    await page.keyboard.press('Escape');
+    ok(!before.equals(after), 'nothing drawn over the dialog: the highlight is behind it');
+  },
+  async 'top layer: capture a box in a modal dialog'() {
+    await open('/playground/top-layer');
+    const box = await boxOf('#dialog-box');
+    const img = await captureElement(() => { const r = document.querySelector('#dialog-box').getBoundingClientRect(); return { x: r.left + 30, y: r.top + 30 }; }, { scrollElement: false });
+    closeTo(img.w, box.w * DPR, 'width');
+    closeTo(img.h, box.h * DPR, 'height');
+    ok(near((await img.row(img.h - 6))[img.w - 6], AMBER), 'the box is not in the image');
+  },
+  async 'top layer: area selection over a modal dialog'() {
+    await open('/playground/top-layer');
+    const box = await boxOf('#dialog-box');
+    const strip = { x: box.x + 10, y: box.y + 16, width: box.w - 20, height: 8 }; // Across the selection's top edge
+    const before = await page.screenshot({ clip: strip });
+    await send({ action: 'startRegionSelection' });
+    await page.waitForTimeout(250);
+    await page.mouse.move(box.x + 20, box.y + 20);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.w - 20, box.y + box.h - 20, { steps: 6 });
+    const during = await page.screenshot({ clip: strip });
+    await page.mouse.up();
+    ok(!before.equals(during), 'nothing drawn over the dialog: the selection is behind it');
+    const img = await waitForImage();
+    closeTo(img.w, (box.w - 40) * DPR, 'width');
+    closeTo(img.h, (box.h - 40) * DPR, 'height');
+    ok(near((await img.row(img.h / 2))[img.w / 2], AMBER), 'the box is not in the image');
+  },
+  async 'top layer: the panel works while a modal dialog is open'() {
+    await open('/playground/top-layer');
+    await sw.evaluate(async ({ url, files }) => {
+      const [tab] = await chrome.tabs.query({ url });
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: [...files, 'content/panel.js'] });
+      self.__result = null;
+    }, { url: page.url(), files: CONTENT_FILES });
+    await page.waitForTimeout(400);
+    const button = await page.evaluate(() => {
+      const r = document.getElementById('__element-snapper-panel-host__').shadowRoot.getElementById('captureViewportBtn').getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    });
+    await page.mouse.click(button.x, button.y);
+    const img = await waitForImage();
+    ok(img.w > 0, 'no image');
+  },
+
   async 'fade-in'() {
     await open('/playground/fade-in');
     const img = await capturePage();

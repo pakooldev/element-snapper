@@ -3,6 +3,7 @@ import {
   FadeInBlocks,
   InfiniteFeed,
   LateFixed,
+  ModalDialog,
   PressCounter,
   ShadowContent,
 } from "@/components/playground-widgets";
@@ -119,6 +120,25 @@ export const CASES: PlaygroundCase[] = [
             A link that fills its card
           </a>
         </article>
+      </div>
+    ),
+  },
+  {
+    slug: "top-layer",
+    group: "Selecting",
+    title: "Modal dialog in the top layer",
+    mode: "Element (hover and click the amber box in the dialog), and the panel's buttons",
+    expected: "The highlight shows on top of the dialog, the panel can be used while the dialog is open, and the box is captured exactly.",
+    render: (intro) => (
+      <div className="pg-case">
+        {intro}
+        <Ruler height={1500} />
+        <ModalDialog>
+          <p>A modal &lt;dialog&gt;, drawn above everything else on the page.</p>
+          <div id="dialog-box" className="pg-dialog-box">
+            Box inside the dialog
+          </div>
+        </ModalDialog>
       </div>
     ),
   },

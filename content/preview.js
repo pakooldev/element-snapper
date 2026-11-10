@@ -969,6 +969,7 @@
       // Always visible for a freshly-succeeded capture — don't rely on the
       // 'captureSuccess' broadcast (handled separately, may race this call).
       host.style.display = '';
+      raiseToTopLayer(host);
       let asset;
       try {
         asset = await loadAssetById(captureId);
