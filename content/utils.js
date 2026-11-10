@@ -517,6 +517,8 @@ const CAPTURE_CSS = `
   *::-webkit-scrollbar { display: none !important; }
 `;
 
+// Longest wait per tile for loading images and fade-ins, on top of the fixed settle time.
+const SETTLE_LIMIT_MS = 3000;
 let captureTarget = null; // The selected element, set before an element capture is requested.
 let captureSession = null;
 
@@ -761,6 +763,7 @@ function prepareCapture(mode) {
 
   // Element captures have no use for the page's chrome. Page captures keep it for the first tile.
   settleStuckElements(session, mode === 'element');
+  freezeLoops(session);
 
   const viewport = viewportBox();
   const plan = { viewportWidth: window.innerWidth, viewportHeight: window.innerHeight };
@@ -784,6 +787,45 @@ function prepareCapture(mode) {
   const size = session.target ? getCaptureSize(session.target) : getDocumentDimensions();
   session.plan = { ...plan, width: size.width, height: size.height, canvasWidth: size.width, canvasHeight: size.height, offsetX: 0, offsetY: 0 };
   return session.plan;
+}
+
+/**
+ * Pauses animations that never end (spinners, marquees, CSS carousels), so a
+ * moving part shows the same frame in every tile. Runs before every tile, as
+ * pages start new ones while scrolling.
+ */
+function freezeLoops(session) {
+  for (const animation of document.getAnimations()) {
+    if (session.handled.has(animation) || animation.playState !== 'running') continue;
+    if (Number.isFinite(animation.effect?.getComputedTiming().endTime)) continue;
+    session.handled.add(animation);
+    animation.pause();
+    session.restores.push(() => animation.play());
+  }
+}
+
+/**
+ * Waits, up to limitMs, for what the page is still bringing in on screen:
+ * images that are loading, and one-off animations such as fade-ins on scroll.
+ * Animations with more than limitMs left are not waited for.
+ */
+async function waitForSettledContent(limitMs) {
+  const end = Date.now() + limitMs;
+  const onScreen = (element) => {
+    const r = element.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < window.innerHeight && r.left < window.innerWidth;
+  };
+  const busy = () => {
+    for (const image of document.images) if (!image.complete && onScreen(image)) return true;
+    for (const animation of document.getAnimations()) {
+      if (animation.playState !== 'running') continue;
+      const { endTime, localTime } = animation.effect?.getComputedTiming() ?? {};
+      const target = animation.effect?.target;
+      if (Number.isFinite(endTime) && endTime - localTime <= end - Date.now() && target?.isConnected && onScreen(target)) return true;
+    }
+    return false;
+  };
+  while (Date.now() < end && busy()) await new Promise((resolve) => setTimeout(resolve, 100));
 }
 
 /** What shows behind the page where a pane grows past the rest of the layout. */
@@ -830,8 +872,10 @@ async function positionTile({ x, y, index, settleMs }) {
   const session = captureSession;
   revealContentPoint(session, x, y);
   await new Promise((resolve) => setTimeout(resolve, settleMs));
+  await waitForSettledContent(SETTLE_LIMIT_MS);
 
   settleStuckElements(session, session.mode === 'element' || index > 0);
+  freezeLoops(session);
   await nextFrame();
 
   // Scrolling can load content or change the layout, so this has to come last.

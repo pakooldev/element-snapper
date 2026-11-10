@@ -23,8 +23,11 @@ writeFileSync(join(ext, 'manifest.json'), JSON.stringify({ ...manifest, host_per
 const CONTENT_FILES = manifest.content_scripts?.[0]?.js ??
   readFileSync(join(repo, 'background/service_worker.js'), 'utf8').match(/files: \[([^\]]*content\/utils\.js[^\]]*)\]/)[1].match(/content\/[\w-]+\.js/g).filter((f) => f !== 'content/panel.js');
 
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png' };
-const server = createServer((req, res) => {
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png', '.svg': 'image/svg+xml' };
+const server = createServer(async (req, res) => {
+  // ?slow=ms stands in for a slow network, for the lazy image case.
+  const slow = Number(new URL(req.url, 'http://x').searchParams.get('slow'));
+  if (slow) await new Promise((r) => setTimeout(r, slow));
   const path = decodeURIComponent(req.url.split('?')[0]);
   const file = [join(site, path), join(site, path + '.html'), join(site, path, 'index.html')].find((f) => existsSync(f) && extname(f));
   if (!file) { res.statusCode = 404; return res.end(); }
@@ -162,6 +165,7 @@ async function captureElement(locate, { scrollElement = true, arg } = {}) {
   await page.mouse.click(x, y);
   return waitForImage();
 }
+const boxOf = (selector) => page.evaluate((s) => { const r = document.querySelector(s).getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }, selector);
 const stripedPoint = (selector) => {
   const r = document.querySelector(selector).getBoundingClientRect();
   return { x: Math.min(r.right, innerWidth) - 40, y: Math.min(Math.max(r.top, 0) + 150, innerHeight - 20) };
@@ -211,6 +215,35 @@ const CASES = {
     ok((await presses()) === 0, `the page saw ${await presses()} presses`);
   },
 
+  async 'fade-in'() {
+    await open('/playground/fade-in');
+    const img = await capturePage();
+    const blocks = bands(await img.column(img.w - 80), AMBER);
+    ok(blocks.length === 5, `${blocks.length} fully shown blocks, expected 5`);
+    for (const [, h] of blocks) closeTo(h, 300 * DPR, 'block height', 6);
+  },
+  async 'lazy-images'() {
+    await open('/playground/lazy-images');
+    const x = (await boxOf('.pg-lazy')).x + 100;
+    const img = await capturePage();
+    const squares = bands(await img.column(x * DPR), AMBER);
+    ok(squares.length === 5, `${squares.length} loaded images, expected 5`);
+  },
+  async 'looping-animation'() {
+    await open('/playground/looping-animation');
+    const img = await capturePage();
+    const line = await img.column(img.w - 80);
+    const red = line.filter((px) => near(px, RED)).length;
+    const amber = line.filter((px) => near(px, AMBER)).length;
+    ok(red === 0 || amber === 0, `${bands(line, RED).length} red and ${bands(line, AMBER).length} amber bands, expected one color`);
+  },
+  async 'infinite-scroll'() {
+    await open('/playground/infinite-scroll');
+    const height = await page.evaluate(() => document.documentElement.scrollHeight);
+    const img = await capturePage();
+    closeTo(img.h, height * DPR, 'height');
+    checkRuler(await img.column(img.w - 80), 3000);
+  },
   async 'main page, page mode'() {
     await open('/playground');
     const height = await page.evaluate(() => document.documentElement.scrollHeight);

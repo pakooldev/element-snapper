@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
-import { LateFixed, PressCounter, ShadowContent } from "@/components/playground-widgets";
+import {
+  FadeInBlocks,
+  InfiniteFeed,
+  LateFixed,
+  PressCounter,
+  ShadowContent,
+} from "@/components/playground-widgets";
 
 /**
  * Cases that need a whole document to themselves: Page mode captures the
@@ -292,6 +298,65 @@ export const CASES: PlaygroundCase[] = [
       <div className="pg-case">
         {intro}
         <Ruler height={12000} step={1000} />
+      </div>
+    ),
+  },
+  {
+    slug: "fade-in",
+    group: "Changing content",
+    title: "Content that fades in on scroll",
+    mode: "Page",
+    expected: "All five amber blocks fully shown. A faded or missing block is a fail.",
+    render: (intro) => (
+      <div className="pg-case">
+        {intro}
+        <FadeInBlocks count={5} gap={1000} />
+        <div style={{ height: 600 }} />
+      </div>
+    ),
+  },
+  {
+    slug: "lazy-images",
+    group: "Changing content",
+    title: "Slow lazy-loaded images",
+    mode: "Page",
+    expected: "All five amber squares. An empty square is a fail. (Here they load fast; the check serves them slowly.)",
+    render: (intro) => (
+      <div className="pg-case">
+        {intro}
+        {[1, 2, 3, 4, 5].map((n) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={n} className="pg-lazy" loading="lazy" src={`/playground/amber.svg?slow=2500&n=${n}`} width={200} height={200} alt={`Lazy image ${n}`} />
+        ))}
+        <div style={{ height: 600 }} />
+      </div>
+    ),
+  },
+  {
+    slug: "looping-animation",
+    group: "Changing content",
+    title: "Animation that never stops",
+    mode: "Page",
+    expected: "The tall bar is one color from top to bottom. Red and amber bands mixed together are a fail.",
+    render: (intro) => (
+      <div className="pg-case">
+        {intro}
+        <div className="pg-loop" />
+      </div>
+    ),
+  },
+  {
+    slug: "infinite-scroll",
+    group: "Changing content",
+    title: "Infinite scroll",
+    mode: "Page",
+    expected:
+      "The page as it was when the capture started, 0px through End · 3000px. Posts that load while it scrolls are left out, so it always ends.",
+    render: (intro) => (
+      <div className="pg-case">
+        {intro}
+        <Ruler height={3000} />
+        <InfiniteFeed />
       </div>
     ),
   },

@@ -59,3 +59,51 @@ export function PressCounter() {
     </p>
   );
 }
+
+/** Blocks that fade in once they scroll into view, the way many landing pages reveal content. */
+export function FadeInBlocks({ count, gap }: { count: number; gap: number }) {
+  const root = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) if (entry.isIntersecting) entry.target.classList.add("is-shown");
+    });
+    root.current?.querySelectorAll(".pg-fade").forEach((block) => observer.observe(block));
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={root}>
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="pg-fade" style={{ marginTop: gap }}>
+          Fades in · block {i + 1}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** A feed that adds another screen of posts whenever it is scrolled near its end. */
+export function InfiniteFeed() {
+  const [pages, setPages] = useState(0);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const rest = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+      if (rest < 400) setPages((n) => n + 1);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <>
+      {Array.from({ length: pages }, (_, i) => (
+        <div key={i} className="pg-feed-more">
+          Loaded on scroll · page {i + 1}
+        </div>
+      ))}
+    </>
+  );
+}
+

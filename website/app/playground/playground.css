@@ -460,3 +460,51 @@ html:has(.pg-smooth) {
     width: 100%;
   }
 }
+
+/* Changing content, coordinates, environment */
+.pg-fade {
+  height: 300px;
+  margin: 0 24px;
+  padding: 16px;
+  background: #f59e0b;
+  color: #111;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 1.5s ease;
+}
+
+.pg-fade.is-shown {
+  opacity: 1;
+}
+
+.pg-lazy {
+  display: block;
+  margin: 1200px 24px 0;
+}
+
+.pg-loop {
+  height: 3000px;
+  margin: 0 24px;
+  animation: pg-flip 0.4s linear infinite;
+}
+
+@keyframes pg-flip {
+  0%,
+  49.9% {
+    background: #ef4444;
+  }
+  50%,
+  100% {
+    background: #f59e0b;
+  }
+}
+
+.pg-feed-more {
+  height: 1000px;
+  margin: 0 24px;
+  padding: 16px;
+  background: #ef4444;
+  color: #111;
+  font-weight: 600;
+}
+
