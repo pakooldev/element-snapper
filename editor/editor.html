@@ -60,8 +60,8 @@
     /* Second bar: tools, then the style of the selection or of what the tool draws. */
     .options { height: 48px; gap: 8px; }
     .options #imageBtn { padding: 7px 9px; font-size: 13px; }
-    /* Too narrow for the words: the tools keep their icons, names stay in the tooltips. */
-    @media (max-width: 1359px) { .tools button span { display: none; } }
+    /* Only the tool in use shows its name; the others have it in their tooltips. */
+    .tools button:not([aria-pressed="true"]) span { display: none; }
     .tools {
       display: flex;
       gap: 2px;
