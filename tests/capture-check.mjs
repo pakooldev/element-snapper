@@ -410,7 +410,7 @@ const CASES = {
     }
   },
 
-  async 'editor: each tool then undo and download'() {
+  async 'editor: draw and restyle then add and move an image then reopen from My edits'() {
     // A 400 × 300 CSS px capture, amber on the left half and blue on the right.
     await sw.evaluate(async (dpr) => {
       const canvas = new OffscreenCanvas(400 * dpr, 300 * dpr);
@@ -421,44 +421,121 @@ const CASES = {
       c.fillRect(200 * dpr, 0, 200 * dpr, 300 * dpr);
       await chrome.storage.session.set({ 'capture:edit-check': await blobToDataURL(await canvas.convertToBlob({ type: 'image/png' })) });
     }, DPR);
+    const base = `chrome-extension://${new URL(sw.url()).host}/editor`;
     const editor = await ctx.newPage();
+    editor.on('dialog', (dialog) => dialog.accept());
+    const PURPLE = [168, 85, 247];
+    const GREEN = [34, 197, 94];
     try {
-      await editor.goto(`chrome-extension://${new URL(sw.url()).host}/editor/editor.html#edit-check`);
-      await editor.waitForSelector('#frame:not([hidden])');
-      const at = await editor.locator('#sketch').boundingBox();
-      ok(Math.abs(at.width - 400) < 1, `shown ${at.width}px wide, expected 400`);
-      const dragOn = async (tool, x1, y1, x2, y2) => {
-        await editor.click(`[data-tool="${tool}"]`);
+      await editor.goto(`${base}/editor.html#capture=edit-check`);
+      await editor.waitForSelector('body[data-ready]');
+      // Opened at 100%, centered: the capture is 400 × 300 CSS px in the middle of the board.
+      const board = await editor.locator('#board').boundingBox();
+      const at = { x: board.x + board.width / 2 - 200, y: board.y + board.height / 2 - 150 };
+      ok((await editor.textContent('#zoomLabel')) === '100%', `opened at ${await editor.textContent('#zoomLabel')}`);
+      const home = await ctx.newPage();
+      home.on('dialog', (dialog) => dialog.accept()); // Delete asks first
+      await home.goto(`${base}/home.html`);
+      await home.waitForSelector('body[data-ready]');
+      ok(await home.isVisible('#empty'), 'a capture that was only opened is already in My edits');
+      await editor.bringToFront();
+
+      const drag = async (x1, y1, x2, y2) => {
         await editor.mouse.move(at.x + x1, at.y + y1);
         await editor.mouse.down();
         await editor.mouse.move(at.x + x2, at.y + y2, { steps: 4 });
         await editor.mouse.up();
       };
-      await dragOn('redact', 20, 20, 80, 80);
-      await dragOn('blur', 170, 150, 230, 210);
-      await dragOn('box', 260, 40, 340, 120);
-      await dragOn('arrow', 300, 250, 360, 200);
-      await editor.click('[data-tool="text"]');
+      const dragWith = async (tool, ...points) => {
+        await editor.click(`[data-tool="${tool}"]`);
+        await drag(...points);
+      };
+      await dragWith('redact', 20, 20, 80, 80);
+      await dragWith('blur', 170, 150, 230, 210);
+      await editor.click('[data-tool="box"]');
+      await editor.click('[data-color="#22c55e"]');
+      await editor.click('[data-size="l"]');
+      ok(await editor.isVisible('[data-size="l"][aria-pressed="true"]'), 'the size picked is not shown as picked');
+      await drag(260, 40, 340, 120);
+      await editor.click('[data-tool="arrow"]');
+      await editor.click('[data-color="#ef4444"]');
+      await drag(300, 250, 360, 200);
+      // Select the arrow, make it yellow, undo and redo that.
+      const mod = process.platform === 'darwin' ? 'Meta' : 'Control';
+      await editor.keyboard.press('v');
+      await editor.mouse.click(at.x + 320, at.y + 233);
+      ok((await editor.textContent('#designTitle')) === 'Arrow', `clicking the arrow selected: ${await editor.textContent('#designTitle')}`);
+      await editor.click('[data-color="#facc15"]');
+      await editor.keyboard.press(`${mod}+z`);
+      await editor.keyboard.press(`${mod}+Shift+z`);
+      await editor.keyboard.press('t');
       await editor.mouse.click(at.x + 30, at.y + 230);
       await editor.keyboard.type('Hello');
       await editor.keyboard.press('Enter');
-      if (process.env.SHOTS_DIR) await editor.screenshot({ path: join(process.env.SHOTS_DIR, 'editor-before-undo.png') });
       ok(await editor.evaluate(() => !document.querySelector('.text-input')), 'the text field stayed open');
-      await editor.keyboard.press(process.platform === 'darwin' ? 'Meta+z' : 'Control+z'); // Takes the text away again
-      await dragOn('crop', 10, 10, 390, 290);
+      await editor.keyboard.press(`${mod}+z`); // Takes the text away again
+
+      // Drop a 40 × 40 purple image: it lands centered where it is dropped, then gets moved.
+      await editor.evaluate(async ({ dpr, x, y }) => {
+        const canvas = new OffscreenCanvas(40 * dpr, 40 * dpr);
+        const c = canvas.getContext('2d');
+        c.fillStyle = '#a855f7';
+        c.fillRect(0, 0, canvas.width, canvas.height);
+        const data = new DataTransfer();
+        data.items.add(new File([await canvas.convertToBlob({ type: 'image/png' })], 'square.png', { type: 'image/png' }));
+        document.getElementById('stage').dispatchEvent(new DragEvent('drop', { dataTransfer: data, clientX: x, clientY: y, bubbles: true, cancelable: true }));
+      }, { dpr: DPR, x: at.x + 200, y: at.y + 60 });
+      await editor.waitForFunction(() => document.getElementById('designTitle').textContent === 'Image');
+      await drag(200, 60, 100, 200); // The select tool is on after adding an image
+      await dragWith('crop', 10, 10, 390, 290);
       if (process.env.SHOTS_DIR) await editor.screenshot({ path: join(process.env.SHOTS_DIR, 'editor-page.png') });
-      const [download] = await Promise.all([editor.waitForEvent('download'), editor.click('#download')]);
-      if (process.env.SHOTS_DIR) await download.saveAs(join(process.env.SHOTS_DIR, 'editor-download.png'));
-      const img = await readImage(`data:image/png;base64,${readFileSync(await download.path()).toString('base64')}`);
-      const px = async (x, y) => (await img.row((y - 10) * DPR))[Math.round((x - 10) * DPR)];
-      closeTo(img.w, 380 * DPR, 'cropped width');
-      closeTo(img.h, 280 * DPR, 'cropped height');
-      ok(near(await px(50, 50), [0, 0, 0]), `redacted area is ${await px(50, 50)}`);
-      const mixed = await px(200, 180);
-      ok(!near(mixed, AMBER, 30) && !near(mixed, [59, 130, 246], 30), `blurred edge is ${mixed}, not blended`);
-      ok(near(await px(260, 80), RED, 30), `box edge is ${await px(260, 80)}`);
-      ok(near(await px(32, 240), AMBER), 'the undone text is still there');
-      ok(near(await px(120, 150), AMBER) && near(await px(320, 150), [59, 130, 246]), 'the image around the edits changed');
+
+      const download = async (on = editor) => {
+        const [file] = await Promise.all([on.waitForEvent('download'), on.click('#download')]);
+        if (process.env.SHOTS_DIR) await file.saveAs(join(process.env.SHOTS_DIR, 'editor-download.png'));
+        const img = await readImage(`data:image/png;base64,${readFileSync(await file.path()).toString('base64')}`);
+        img.px = async (x, y) => (await img.row(Math.round((y - 10) * DPR)))[Math.round((x - 10) * DPR)];
+        return img;
+      };
+      const check = async (img) => {
+        closeTo(img.w, 380 * DPR, 'cropped width');
+        closeTo(img.h, 280 * DPR, 'cropped height');
+        ok(near(await img.px(50, 50), [0, 0, 0]), `redacted area is ${await img.px(50, 50)}`);
+        const mixed = await img.px(200, 180);
+        ok(!near(mixed, AMBER, 30) && !near(mixed, [59, 130, 246], 30), `blurred edge is ${mixed}, not blended`);
+        ok(near(await img.px(260, 80), GREEN, 30), `box edge is ${await img.px(260, 80)}, expected the green picked`);
+        ok(near(await img.px(263, 80), GREEN, 30), `the thick box line is ${await img.px(263, 80)} 3px in`);
+        ok(near(await img.px(320, 233), [250, 204, 21], 30), `the arrow is ${await img.px(320, 233)}, expected yellow again after undo and redo`);
+        ok(near(await img.px(32, 240), AMBER), 'the undone text is still there');
+        ok(near(await img.px(100, 200), PURPLE, 20), `the moved image is ${await img.px(100, 200)}`);
+        ok(near(await img.px(200, 60), [59, 130, 246], 20) || near(await img.px(200, 60), AMBER, 20), 'the image is still where it was dropped');
+        ok(near(await img.px(120, 150), AMBER) && near(await img.px(320, 150), [59, 130, 246]), 'the image around the edits changed');
+      };
+      await check(await download());
+
+      // Saved on its own: it is in My edits, and opens again from there as it was.
+      await editor.waitForFunction(() => location.hash.startsWith('#doc='));
+      await editor.waitForTimeout(800);
+      await home.bringToFront();
+      await home.reload();
+      await home.waitForSelector('.card');
+      if (process.env.SHOTS_DIR) await home.screenshot({ path: join(process.env.SHOTS_DIR, 'editor-home.png') });
+      ok((await home.locator('.card').count()) === 1, `My edits has ${await home.locator('.card').count()} cards`);
+      await editor.goto('about:blank');
+      await home.click('.card a'); // Opens the editor in the same tab
+      await home.waitForSelector('body[data-ready]');
+      await check(await download(home));
+      // Edit on the same capture goes back to this edit instead of starting over.
+      await editor.goto(`${base}/editor.html#capture=edit-check`);
+      await editor.waitForSelector('body[data-ready]');
+      ok(await editor.evaluate(() => location.hash.startsWith('#doc=')), 'Edit on the same capture started a new edit');
+      await editor.goto('about:blank');
+      await home.goto(`${base}/home.html`);
+      await home.waitForSelector('.card');
+      await home.hover('.card');
+      await home.click('.card .remove');
+      await home.waitForSelector('#empty:not([hidden])');
+      await home.close();
     } finally {
       await editor.close();
       await page.bringToFront();

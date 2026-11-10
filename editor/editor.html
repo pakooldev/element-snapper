@@ -5,52 +5,139 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Edit capture · Element Snapper</title>
   <link rel="icon" href="../icons/icon48.png">
+  <link rel="stylesheet" href="editor.css">
   <style>
-    :root {
-      --bg-dark: #0f172a;
-      --bg-card: #1e293b;
-      --bg-hover: #334155;
-      --text-primary: #f8fafc;
-      --text-secondary: #94a3b8;
-      --accent-primary: #3b82f6;
-      --accent-hover: #2563eb;
-      --success: #10b981;
-      --error: #ef4444;
-      --border-light: rgba(255, 255, 255, 0.1);
-      --border-hover: rgba(255, 255, 255, 0.2);
-      --radius-sm: 6px;
-      --radius-md: 12px;
-      --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-    }
+    body { display: flex; flex-direction: column; overflow: hidden; }
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    html, body { height: 100%; }
-
-    body {
-      display: flex;
-      flex-direction: column;
-      background: var(--bg-dark);
+    .name {
+      width: 260px;
+      min-width: 0;
+      padding: 6px 8px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
       color: var(--text-primary);
-      font: 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      -webkit-font-smoothing: antialiased;
+      font: inherit;
+      font-weight: 600;
+      text-overflow: ellipsis;
+    }
+    .name:hover { border-color: var(--border-light); }
+    .name:focus { border-color: var(--accent-primary); background: var(--bg-dark); outline: none; }
+
+    .zoom { display: flex; align-items: center; gap: 2px; margin: 0 4px; }
+    .zoom button { padding: 6px 8px; }
+    #zoomLabel { min-width: 58px; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+
+    .workspace { flex: 1; display: flex; min-height: 0; }
+
+    .stage { position: relative; flex: 1; min-width: 0; overflow: hidden; background: var(--canvas); }
+    #board { display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
+    .stage.dropping::after {
+      content: 'Drop to add the image';
+      position: absolute;
+      inset: 12px;
+      display: grid;
+      place-items: center;
+      border: 2px dashed var(--accent-primary);
+      border-radius: var(--radius-md);
+      background: rgba(59, 130, 246, 0.08);
+      color: var(--text-primary);
+      font-weight: 600;
+      pointer-events: none;
     }
 
-    .bar {
+    .message {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      color: var(--text-secondary);
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    /* Floating tool dock at the bottom of the board. */
+    .dock {
+      position: absolute;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
       display: flex;
-      flex-wrap: wrap;
       align-items: center;
-      gap: 8px;
-      padding: 10px 16px;
+      gap: 2px;
+      padding: 4px;
       background: var(--bg-card);
-      border-bottom: 1px solid var(--border-light);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
     }
+    .dock button { padding: 8px; background: transparent; border-color: transparent; }
+    .dock button:hover:not(:disabled) { background: var(--bg-hover); border-color: transparent; }
+    .dock button[aria-pressed="true"] { background: var(--accent-primary); }
+    .dock .divider { width: 1px; height: 22px; margin: 0 4px; background: var(--border-light); }
 
-    .brand { font-weight: 600; margin-right: 8px; }
-    .spacer { flex: 1; }
-    .size { color: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+    .picker {
+      position: absolute;
+      left: 50%;
+      bottom: 72px;
+      transform: translateX(-50%);
+      width: min(420px, calc(100% - 32px));
+      padding: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    }
+    .picker h3 { margin-bottom: 8px; }
+    .picker-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      max-height: 220px;
+      overflow: auto;
+      margin-bottom: 10px;
+    }
+    .picker-grid button { padding: 0; aspect-ratio: 4 / 3; overflow: hidden; }
+    .picker-grid img { width: 100%; height: 100%; object-fit: contain; }
+    .picker-empty { color: var(--text-secondary); font-size: 12px; margin-bottom: 10px; }
+    .picker .file { width: 100%; }
 
-    .tools {
+    /* Design panel on the right: what the selection or the tool draws with. */
+    .design {
+      width: 232px;
+      flex: none;
+      overflow-y: auto;
+      padding: 16px;
+      background: var(--bg-card);
+      border-left: 1px solid var(--border-light);
+    }
+    .design h2 { font-size: 13px; font-weight: 600; }
+    .design .info { margin-top: 4px; color: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+    .design section { margin-top: 18px; }
+    h3 { margin-bottom: 8px; color: var(--text-secondary); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+    .design .hint { margin-top: 18px; color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+    .design .delete { width: 100%; margin-top: 18px; }
+    .design .delete:hover:not(:disabled) { color: var(--error); }
+
+    .swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    .swatch {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      padding: 0;
+      border-radius: 50%;
+      border: 2px solid var(--border-hover);
+      background: var(--c);
+    }
+    .swatch:hover:not(:disabled) { background: var(--c); border-color: var(--text-secondary); }
+    .swatch[aria-pressed="true"] { border-color: var(--text-primary); box-shadow: 0 0 0 2px var(--accent-primary); }
+    .swatch.custom { background: conic-gradient(#ef4444, #facc15, #22c55e, #3b82f6, #a855f7, #ef4444); overflow: hidden; cursor: pointer; }
+    .swatch.custom:hover { border-color: var(--text-secondary); }
+    .swatch.custom.picked { border-color: var(--text-primary); box-shadow: 0 0 0 2px var(--accent-primary); }
+    .swatch.custom input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
+    .segmented {
       display: flex;
       gap: 2px;
       padding: 3px;
@@ -58,116 +145,145 @@
       border: 1px solid var(--border-light);
       border-radius: var(--radius-sm);
     }
-
-    button {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 12px;
-      background: var(--bg-card);
-      border: 1px solid var(--border-light);
-      border-radius: var(--radius-sm);
-      color: var(--text-primary);
-      font: inherit;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.2s var(--ease), border-color 0.2s var(--ease);
-    }
-    button:hover:not(:disabled) { background: var(--bg-hover); border-color: var(--border-hover); }
-    button:disabled { opacity: 0.4; cursor: default; }
-    button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
-
-    .tools button { border-color: transparent; background: transparent; padding: 6px 10px; }
-    .tools button[aria-pressed="true"] { background: var(--accent-primary); }
-    .tools button[aria-pressed="true"]:hover { background: var(--accent-hover); }
-
-    button.primary {
-      background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
-      border-color: transparent;
-    }
-    button.primary:hover:not(:disabled) { background: var(--accent-hover); }
-
-    .stage {
-      flex: 1;
-      overflow: auto;
-      display: flex;
-      padding: 24px;
-    }
-
-    /* margin:auto centers it, and still lets a tall image scroll from its top. */
-    .frame { position: relative; margin: auto; min-width: 0; max-width: 100%; line-height: 0; }
-
-    .checker {
-      background:
-        linear-gradient(45deg, #1e293b 25%, transparent 25%),
-        linear-gradient(-45deg, #1e293b 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, #1e293b 75%),
-        linear-gradient(-45deg, transparent 75%, #1e293b 75%);
-      background-size: 16px 16px;
-      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
-    }
-
-    #view { display: block; max-width: 100%; height: auto; }
-    #sketch { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
-    #sketch.text { cursor: text; }
+    .segmented button { flex: 1; padding: 6px 0; background: transparent; border-color: transparent; }
+    .segmented button:hover:not(:disabled) { background: var(--bg-hover); border-color: transparent; }
+    .segmented button[aria-pressed="true"] { background: var(--accent-primary); }
+    .segmented svg.icon { width: 28px; }
 
     .text-input {
       position: absolute;
-      min-width: 120px;
-      padding: 0 2px;
-      background: rgba(15, 23, 42, 0.6);
+      padding: 0;
+      background: rgba(15, 23, 42, 0.35);
       border: 1px dashed var(--text-primary);
-      color: var(--error);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       font-weight: 600;
       line-height: 1.2;
       outline: none;
     }
 
-    .message { margin: auto; color: var(--text-secondary); text-align: center; line-height: 1.6; }
-
-    .toast {
-      position: fixed;
-      left: 50%;
-      bottom: 24px;
-      transform: translate(-50%, 12px);
-      padding: 10px 16px;
-      background: rgba(15, 23, 42, 0.95);
-      border: 1px solid var(--border-light);
-      border-radius: var(--radius-md);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s var(--ease), transform 0.3s var(--ease);
-    }
-    .toast.visible { opacity: 1; transform: translate(-50%, 0); }
-    .toast.error { border-color: var(--error); }
+    .toast { bottom: 84px; }
   </style>
 </head>
 <body>
   <header class="bar">
-    <span class="brand">Edit capture</span>
-    <div class="tools" role="group" aria-label="Tool">
-      <button data-tool="crop" aria-pressed="true" title="Drag to keep only that part">Crop</button>
-      <button data-tool="box" aria-pressed="false" title="Drag to draw a box">Box</button>
-      <button data-tool="arrow" aria-pressed="false" title="Drag from the tail to the tip">Arrow</button>
-      <button data-tool="text" aria-pressed="false" title="Click to type a label">Text</button>
-      <button data-tool="blur" aria-pressed="false" title="Drag to pixelate an area">Blur</button>
-      <button data-tool="redact" aria-pressed="false" title="Drag to black out an area">Redact</button>
-    </div>
-    <button id="undo" disabled title="Undo (Ctrl+Z / ⌘Z)">Undo</button>
-    <span id="size" class="size"></span>
+    <button id="homeBtn" class="ghost icon-only" title="My edits" aria-label="My edits">
+      <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>
+    </button>
+    <input id="name" class="name" aria-label="Name" spellcheck="false" disabled>
     <span class="spacer"></span>
-    <button id="copy" disabled>Copy</button>
-    <button id="download" class="primary" disabled>Download</button>
-  </header>
-  <main class="stage">
-    <div id="frame" class="frame checker" hidden>
-      <canvas id="view"></canvas>
-      <canvas id="sketch" aria-label="Capture being edited"></canvas>
+    <button id="undo" class="ghost icon-only" disabled title="Undo (⌘Z / Ctrl+Z)" aria-label="Undo">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+    </button>
+    <button id="redo" class="ghost icon-only" disabled title="Redo (⇧⌘Z / Ctrl+Shift+Z)" aria-label="Redo">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>
+    </button>
+    <div class="zoom">
+      <button id="zoomOut" class="ghost" title="Zoom out (⌘−)" aria-label="Zoom out">−</button>
+      <button id="zoomLabel" class="ghost" title="Zoom to fit (⇧1)">100%</button>
+      <button id="zoomIn" class="ghost" title="Zoom in (⌘+)" aria-label="Zoom in">+</button>
     </div>
-    <p id="message" class="message">Loading…</p>
-  </main>
+    <button id="copy" disabled>
+      <svg class="icon" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+      Copy
+    </button>
+    <button id="download" class="primary" disabled>
+      <svg class="icon" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+      Download
+    </button>
+  </header>
+
+  <div class="workspace">
+    <main class="stage" id="stage">
+      <canvas id="board" aria-label="Board: the frame is what gets copied or downloaded" tabindex="-1"></canvas>
+      <p id="message" class="message">Loading…</p>
+
+      <div class="dock" role="toolbar" aria-label="Tools">
+        <button data-tool="select" aria-pressed="true" title="Select and move (V)" aria-label="Select">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M6 3l12 9-5.5 1-3 6z"/></svg>
+        </button>
+        <button data-tool="hand" aria-pressed="false" title="Move the board (H, or hold Space)" aria-label="Hand">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M8 12V6a1.5 1.5 0 0 1 3 0v5M11 11V4.5a1.5 1.5 0 0 1 3 0V11M14 11V6a1.5 1.5 0 0 1 3 0v7c0 4-2.5 7-6 7-2.4 0-3.8-1.1-5.2-3.2L3.6 13.4a1.5 1.5 0 0 1 2.5-1.7L8 14"/></svg>
+        </button>
+        <span class="divider"></span>
+        <button data-tool="crop" aria-pressed="false" title="Crop: drag to set the frame (C)" aria-label="Crop">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M2 6h14a2 2 0 0 1 2 2v14"/></svg>
+        </button>
+        <span class="divider"></span>
+        <button data-tool="box" aria-pressed="false" title="Box (R)" aria-label="Box">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1.5"/></svg>
+        </button>
+        <button data-tool="arrow" aria-pressed="false" title="Arrow: drag from the tail to the tip (A)" aria-label="Arrow">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M5 19L19 5M10 5h9v9"/></svg>
+        </button>
+        <button data-tool="text" aria-pressed="false" title="Text: click to type (T)" aria-label="Text">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M5 7V4h14v3M12 4v16M9 20h6"/></svg>
+        </button>
+        <span class="divider"></span>
+        <button data-tool="blur" aria-pressed="false" title="Blur: pixelate an area (B)" aria-label="Blur">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12h16M12 4v16"/><rect x="4" y="4" width="8" height="8" fill="currentColor" stroke="none" opacity=".45"/><rect x="12" y="12" width="8" height="8" fill="currentColor" stroke="none" opacity=".45"/></svg>
+        </button>
+        <button data-tool="redact" aria-pressed="false" title="Redact: black out an area (X)" aria-label="Redact">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 5h10M4 19h13"/><rect x="3" y="9" width="18" height="6" rx="1" fill="currentColor"/></svg>
+        </button>
+        <span class="divider"></span>
+        <button id="imageBtn" aria-expanded="false" title="Add an image (or paste / drop one)" aria-label="Add an image">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-9 9"/></svg>
+        </button>
+      </div>
+
+      <div id="picker" class="picker" hidden>
+        <h3>From history</h3>
+        <div id="pickerGrid" class="picker-grid"></div>
+        <p id="pickerEmpty" class="picker-empty" hidden>No captures in history. You can also paste (⌘V) or drop an image on the board.</p>
+        <button id="pickFile" class="file">Choose a file…</button>
+        <input id="fileInput" type="file" accept="image/*" multiple hidden>
+      </div>
+    </main>
+
+    <aside class="design" aria-label="Design">
+      <h2 id="designTitle">Select</h2>
+      <p id="designInfo" class="info"></p>
+
+      <section id="colorSection">
+        <h3>Color</h3>
+        <div class="swatches">
+          <button class="swatch" data-color="#ef4444" style="--c:#ef4444" title="Red" aria-label="Red"></button>
+          <button class="swatch" data-color="#f97316" style="--c:#f97316" title="Orange" aria-label="Orange"></button>
+          <button class="swatch" data-color="#facc15" style="--c:#facc15" title="Yellow" aria-label="Yellow"></button>
+          <button class="swatch" data-color="#22c55e" style="--c:#22c55e" title="Green" aria-label="Green"></button>
+          <button class="swatch" data-color="#3b82f6" style="--c:#3b82f6" title="Blue" aria-label="Blue"></button>
+          <button class="swatch" data-color="#a855f7" style="--c:#a855f7" title="Purple" aria-label="Purple"></button>
+          <button class="swatch" data-color="#000000" style="--c:#000000" title="Black" aria-label="Black"></button>
+          <button class="swatch" data-color="#ffffff" style="--c:#ffffff" title="White" aria-label="White"></button>
+          <label class="swatch custom" title="Other color" id="customSwatch"><input id="customColor" type="color" value="#ef4444" aria-label="Other color"></label>
+        </div>
+      </section>
+
+      <section id="sizeSection">
+        <h3 id="sizeLabel">Stroke</h3>
+        <div class="segmented">
+          <button data-size="s" title="Thin">S</button>
+          <button data-size="m" title="Medium">M</button>
+          <button data-size="l" title="Thick">L</button>
+        </div>
+      </section>
+
+      <section id="dashSection">
+        <h3>Line style</h3>
+        <div class="segmented">
+          <button data-dash="solid" title="Solid" aria-label="Solid"><svg class="icon" viewBox="0 0 28 24"><path d="M3 12h22"/></svg></button>
+          <button data-dash="dashed" title="Dashed" aria-label="Dashed"><svg class="icon" viewBox="0 0 28 24"><path d="M3 12h22" stroke-linecap="butt" stroke-dasharray="5 3"/></svg></button>
+          <button data-dash="dotted" title="Dotted" aria-label="Dotted"><svg class="icon" viewBox="0 0 28 24"><path d="M3 12h22" stroke-dasharray="0 5"/></svg></button>
+        </div>
+      </section>
+
+      <button id="deleteBtn" class="delete ghost" hidden>Delete</button>
+      <p id="designHint" class="hint"></p>
+    </aside>
+  </div>
+
   <div id="toast" class="toast" role="status"></div>
+  <script src="store.js"></script>
   <script src="editor.js"></script>
 </body>
 </html>

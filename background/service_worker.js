@@ -79,7 +79,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.action === 'openEditor') {
     // Opened next to the page, from the preview's Edit button.
     chrome.tabs.create({
-      url: `${chrome.runtime.getURL('editor/editor.html')}#${encodeURIComponent(message.captureId)}`,
+      url: `${chrome.runtime.getURL('editor/editor.html')}#capture=${encodeURIComponent(message.captureId)}`,
+      index: sender.tab ? sender.tab.index + 1 : undefined,
+      openerTabId: sender.tab?.id,
+    });
+  } else if (message.action === 'openHome') {
+    // "My edits", from the panel.
+    chrome.tabs.create({
+      url: chrome.runtime.getURL('editor/home.html'),
       index: sender.tab ? sender.tab.index + 1 : undefined,
       openerTabId: sender.tab?.id,
     });

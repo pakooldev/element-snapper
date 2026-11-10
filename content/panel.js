@@ -259,6 +259,7 @@
     .switch-input { display: none; }
 
     /* ── Link-style button (subtle, footer-row affordance) ── */
+    .link-row { display: flex; gap: 4px; }
     .link-btn {
       display: flex;
       align-items: center;
@@ -568,13 +569,24 @@
                 </div>
               </div>
 
-              <button class="link-btn" id="historyBtn" type="button">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
-                  <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-                <span>View history</span>
-              </button>
+              <div class="link-row">
+                <button class="link-btn" id="historyBtn" type="button">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+                    <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                  <span>View history</span>
+                </button>
+                <button class="link-btn" id="editsBtn" type="button">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/>
+                    <rect x="13" y="4" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/>
+                    <rect x="4" y="13" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/>
+                    <rect x="13" y="13" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/>
+                  </svg>
+                  <span>My edits</span>
+                </button>
+              </div>
             </main>
           </div>
 
@@ -1147,6 +1159,9 @@
   // and the panel host is later). preview.js dispatches modal-closed when the
   // user dismisses it; we restore the panel only if we were the ones who hid it.
   let panelHiddenForHistory = false;
+  $('editsBtn').addEventListener('click', () => {
+    chrome.runtime.sendMessage({ action: 'openHome' }).catch(() => {});
+  });
   historyBtn.addEventListener('click', async () => {
     if (typeof window.elementSnapperPreview === 'undefined') return;
     const opened = await window.elementSnapperPreview.openHistory();

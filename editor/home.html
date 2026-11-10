@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My edits · Element Snapper</title>
+  <link rel="icon" href="../icons/icon48.png">
+  <link rel="stylesheet" href="editor.css">
+  <style>
+    body { overflow-y: auto; }
+    .bar h1 { font-size: 15px; font-weight: 600; }
+    .bar .count { color: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+    main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+
+    .card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      transition: border-color 0.2s var(--ease), transform 0.2s var(--ease);
+    }
+    .card:hover, .card:focus-within { border-color: var(--border-hover); transform: translateY(-2px); }
+
+    .card a { color: inherit; text-decoration: none; outline: none; }
+    .card a:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+    .thumb { display: block; aspect-ratio: 4 / 3; background: var(--canvas); }
+    .thumb img { width: 100%; height: 100%; object-fit: contain; display: block; padding: 12px; }
+    .meta { display: block; padding: 10px 12px 12px; }
+    .meta strong { display: block; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .meta span { display: block; margin-top: 2px; color: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+    .card .remove {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 6px;
+      background: rgba(15, 23, 42, 0.85);
+      opacity: 0;
+    }
+    .card:hover .remove, .card .remove:focus-visible { opacity: 1; }
+    .card .remove:hover:not(:disabled) { background: var(--error); border-color: transparent; }
+
+    .empty { margin: 80px auto; max-width: 360px; color: var(--text-secondary); text-align: center; line-height: 1.6; }
+    .empty strong { display: block; margin-bottom: 6px; color: var(--text-primary); font-size: 15px; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>
+    <h1>My edits</h1>
+    <span id="count" class="count"></span>
+  </header>
+  <main>
+    <div id="grid" class="grid"></div>
+    <p id="empty" class="empty" hidden>
+      <strong>No edits yet</strong>
+      Take a capture and press Edit on its preview. Once you change something it is kept here, on this computer, until you delete it.
+    </p>
+  </main>
+  <div id="toast" class="toast" role="status"></div>
+  <script src="store.js"></script>
+  <script src="home.js"></script>
+</body>
+</html>
