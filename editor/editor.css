@@ -111,3 +111,7 @@ button.primary:hover:not(:disabled) { background: var(--accent-hover); border-co
 }
 .toast.visible { opacity: 1; transform: translate(-50%, 0); }
 .toast.error { border-color: var(--error); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
