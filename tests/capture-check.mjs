@@ -488,6 +488,13 @@ const CASES = {
       await editor.waitForFunction(() => document.getElementById('designTitle').textContent === 'Image');
       await drag(200, 60, 100, 200); // The select tool is on after adding an image
       await dragWith('crop', 10, 10, 390, 290);
+      // Dragging the frame by its label takes what is in it along; one left outside stays put.
+      await dragWith('box', -150, 20, -100, 70);
+      await editor.keyboard.press('v');
+      const outsideX = () => editor.evaluate(() => Math.min(...doc.items.filter((item) => item.type === 'box').map((item) => item.x)));
+      const before = await outsideX();
+      await drag(30, -2, 130, 48); // The frame label, 100 × 50 to the right and down
+      ok((await outsideX()) === before, 'the box outside the frame moved with it');
       if (process.env.SHOTS_DIR) await editor.screenshot({ path: join(process.env.SHOTS_DIR, 'editor-page.png') });
 
       const download = async (on = editor) => {

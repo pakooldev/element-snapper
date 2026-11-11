@@ -213,6 +213,10 @@ function distanceToSegment(p, a, b) {
   return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
 }
 
+const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+const shifted = (o, dx, dy) => o.type === 'arrow'
+  ? { x1: o.x1 + dx, y1: o.y1 + dy, x2: o.x2 + dx, y2: o.y2 + dy }
+  : { x: o.x + dx, y: o.y + dy };
 const inside = (p, r, pad = 0) => p.x >= r.x - pad && p.x <= r.x + r.w + pad && p.y >= r.y - pad && p.y <= r.y + r.h + pad;
 
 /** The topmost item under a board point. A box is hit on its line only, so whatever it surrounds stays clickable. */
@@ -648,7 +652,9 @@ board.addEventListener('pointerdown', (event) => {
       draft = { type: 'crop', x: at.x, y: at.y, w: 0, h: 0 };
     } else if (onLabel(css)) {
       select('frame');
-      gesture = { kind: 'move', from: at, orig: { type: 'frame', ...doc.frame }, before };
+      // Like a design tool's frame, what is in it (even partly) moves with it.
+      const kids = doc.items.filter((item) => overlaps(bounds(item), doc.frame)).map((item) => ({ ...item }));
+      gesture = { kind: 'move', from: at, orig: { type: 'frame', ...doc.frame }, kids, before };
     } else {
       const item = hitItem(at);
       select(item ? item.id : null);
@@ -696,12 +702,16 @@ board.addEventListener('pointermove', (event) => {
       const end2 = g.kind === 'move' || g.handle === 'p2';
       next = { x1: o.x1 + (end1 ? d.x : 0), y1: o.y1 + (end1 ? d.y : 0), x2: o.x2 + (end2 ? d.x : 0), y2: o.y2 + (end2 ? d.y : 0) };
     } else if (g.kind === 'move') {
-      next = { x: o.x + d.x, y: o.y + d.y };
+      next = shifted(o, d.x, d.y);
     } else {
       next = resized(o, g.handle, d, o.type === 'image');
     }
-    if (o.type === 'frame') doc.frame = roundRect({ ...doc.frame, ...next });
-    else Object.assign(findItem(o.id), next);
+    if (o.type === 'frame') {
+      doc.frame = roundRect({ ...doc.frame, ...next });
+      for (const kid of g.kids || []) Object.assign(findItem(kid.id), shifted(kid, doc.frame.x - o.x, doc.frame.y - o.y));
+    } else {
+      Object.assign(findItem(o.id), next);
+    }
     updateUi();
   }
   requestRender();
