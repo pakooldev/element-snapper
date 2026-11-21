@@ -12,7 +12,7 @@ export default function Privacy() {
       <GlowCursor />
       <div className="privacy-container glass-panel">
         <h1>Privacy Policy</h1>
-        <div className="update-date">Last updated: March 2, 2026</div>
+        <div className="update-date">Last updated: November 21, 2026</div>
 
         <p>
           Element Snapper (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) is committed to
@@ -38,6 +38,15 @@ export default function Privacy() {
         <ul>
           <li>Screenshots are never uploaded to our servers.</li>
           <li>Screenshots are saved directly to your local device.</li>
+          <li>
+            Your recent captures are kept in the browser&apos;s session storage so you can reopen them
+            from View history. The browser clears them when it closes.
+          </li>
+          <li>
+            Captures you edit are saved in your browser&apos;s local database (IndexedDB) on this
+            computer, so you can find them again under My edits. They stay until you delete them
+            there, and never leave your device.
+          </li>
           <li>No analytics or telemetry are gathered about your browsing habits.</li>
         </ul>
 
@@ -62,8 +71,9 @@ export default function Privacy() {
             <strong>
               <code>storage</code>
             </strong>
-            : To save your local preferences (like output mode, format, and keyboard shortcuts).
-            This data stays locally on your device.
+            : To save your local preferences (like output mode, format, keyboard shortcuts, and the
+            editor&apos;s last color and line style) and to keep your recent captures for View
+            history during the browsing session. This data stays locally on your device.
           </li>
           <li>
             <strong>
