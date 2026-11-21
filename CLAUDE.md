@@ -33,7 +33,7 @@ The ruler stripes on the playground's case pages make repeats, seams, gaps and s
 
 ## Site Video (`site-video/`)
 
-The 30s product loop on the landing page, built as code with the `saas-animation` skill: `ad.html` draws every frame (canvas + `gl3d.js` for the 3D page), with all beat times in the `B` block at the top; the last frame is the first, so it loops with no cut. The UI in it is real: `grab2.mjs` runs the extension on a made-up sample page (`scene/page.html`, "Fieldnote") and saves the page, the list, the editor and its tool bars to `assets/`, `grab-prompt.mjs` saves the real Copy as Prompt text. Storyboard in `storyboard/`.
+The 30s product loop on the landing page, built as code with the `saas-animation` skill: `ad.html` draws every frame (canvas + `gl3d.js` for the 3D page), with all beat times in the `B` block at the top; the last frame is the first, so it loops with no cut. The UI in it is real: `grab2.mjs` runs the extension on a made-up sample page (`scene/page.html`, "Fieldnote") and saves the page, the list, the editor and its tool bars to `assets/`, `grab-prompt.mjs` saves the real Copy as Prompt text. Storyboard in `storyboard/`. `grab-manual.mjs` makes the editor screenshot on the manual page (`website/public/manual/editor.jpg`, then saved as JPEG); `vcheck.mjs` and `manual-check.mjs` check the built site's video and manual.
 
 ```bash
 cd site-video

@@ -91,6 +91,7 @@ const HOME_BADGES = {
   "#captureFullPageBtn": "G",
   "#homeView .setting-group": "H",
   "#historyBtn": "I",
+  "#editsBtn": "J",
 };
 
 const SETTINGS_BADGES = {
@@ -132,12 +133,40 @@ const TIPS = [
     <>Images can be up to 16,384 pixels each way, a browser limit. Anything larger is scaled down to fit.</>,
   ],
   [
+    "⬆️",
+    "Step to the Parent",
+    <>
+      While selecting, press <kbd>↑</kbd> to highlight the element around the one under the
+      pointer, and <kbd>↓</kbd> to go back. It reaches boxes that their child fills completely.
+    </>,
+  ],
+  [
+    "💾",
+    "Where Edits Are Kept",
+    <>
+      My edits are stored in this browser on this computer, until you delete them. They are not
+      synced or uploaded anywhere.
+    </>,
+  ],
+  [
     "🔒",
     "Limitations",
     <>
-      Cannot capture cross-origin iframes or Chrome system pages (<code>chrome://</code>).
+      Cannot select elements inside iframes, or capture Chrome system pages (<code>chrome://</code>).
     </>,
   ],
+] as const;
+
+// The editor's tools, keyed by their shortcut letter.
+const EDITOR_TOOLS = [
+  ["V", "Select", <>Click an item to move it, resize it from its handles, restyle or delete it.</>],
+  ["H", "Hand", <>Move the board around. Holding <kbd>Space</kbd> or scrolling does the same.</>],
+  ["C", "Crop", <>Drag to set the frame. Only what is inside the frame is copied or downloaded.</>],
+  ["R", "Box", <>Draw a rectangle around something. It is picked only on its line, so what it surrounds stays clickable.</>],
+  ["A", "Arrow", <>Drag from the tail to the tip.</>],
+  ["T", "Text", <>Click where the text goes and type. Double-click text to change it.</>],
+  ["B", "Blur", <>Pixelates whatever is under the area you drag, such as emails or names.</>],
+  ["X", "Redact", <>Covers the area you drag with solid black.</>],
 ] as const;
 
 function LegendItem({
@@ -170,7 +199,7 @@ export default function Manual() {
           <h1 className="manual-title">
             User <span className="text-gradient">Manual</span>
           </h1>
-          <p className="manual-subtitle">Learn how to use Element Snapper in three simple steps.</p>
+          <p className="manual-subtitle">Learn how to use Element Snapper in four simple steps.</p>
         </div>
 
         {/* Step 1: Opening the Extension */}
@@ -266,12 +295,18 @@ export default function Manual() {
                 </LegendItem>
               ))}
 
-              <LegendItem badge="I" title="View History" fullWidth>
+              <LegendItem badge="I" title="View History">
                 <span>
-                  Below the Output setting, click <strong>View history</strong> to reopen the
-                  preview for any capture made this browsing session — redownload or re-copy it,
-                  remove a single capture, or use <strong>Remove All</strong> to clear the whole
-                  list.
+                  Reopen the preview for any capture made this browsing session — redownload,
+                  re-copy or <strong>Edit</strong> it, remove a single capture, or use{" "}
+                  <strong>Remove All</strong> to clear the whole list.
+                </span>
+              </LegendItem>
+
+              <LegendItem badge="J" title="My edits">
+                <span>
+                  Opens every capture you have edited, newest first. Click one to keep editing it,
+                  or delete it from its card.
                 </span>
               </LegendItem>
             </div>
@@ -300,6 +335,46 @@ export default function Manual() {
                   <span>{body}</span>
                 </LegendItem>
               ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Step 4: Editing a capture */}
+        <div className="manual-step glass-panel">
+          <div className="step-number">4</div>
+          <h2 className="step-title">Edit Before Sharing</h2>
+          <p className="step-desc">
+            Press <strong>Edit</strong> on a capture&apos;s preview (or in View history) to open it in
+            the editor. Pick a tool from the bar or press its letter, then choose the color (8
+            presets or any color), size and line style for it. Paste (<kbd>⌘V</kbd>), drop or add
+            more images with the <strong>Image</strong> button to put them together. Zoom with{" "}
+            <kbd>⌘</kbd> + scroll or a pinch, undo with <kbd>⌘Z</kbd>, then <strong>Copy</strong> or{" "}
+            <strong>Download</strong>.
+          </p>
+
+          <div className="labeled-diagram">
+            <img
+              className="manual-shot"
+              src="/manual/editor.jpg"
+              width={1280}
+              height={720}
+              loading="lazy"
+              alt="The editor with a list of customers: emails blurred, a red box around a Trial label and an arrow pointing to it"
+            />
+
+            <div className="legend-grid">
+              {EDITOR_TOOLS.map(([key, title, body]) => (
+                <LegendItem key={key} badge={key} title={title}>
+                  <span>{body}</span>
+                </LegendItem>
+              ))}
+              <LegendItem badge="✓" title="Saved as you go" fullWidth>
+                <span>
+                  The first change saves the capture to <strong>My edits</strong>, and every change
+                  after that is saved too. Pressing Edit on the same capture again opens your edit
+                  instead of starting over.
+                </span>
+              </LegendItem>
             </div>
           </div>
         </div>

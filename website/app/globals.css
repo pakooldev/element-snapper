@@ -1054,6 +1054,15 @@ body {
 }
 
 /* Legend grid below the popup */
+.manual-shot {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+}
+
 .legend-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1198,7 +1207,8 @@ body {
   line-height: 1.5;
 }
 
-.tip-card kbd {
+.tip-card kbd,
+.manual-step kbd {
   background: var(--bg-hover);
   border: 1px solid var(--border-light);
   border-radius: 4px;
