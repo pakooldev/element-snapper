@@ -5,6 +5,7 @@ import {
   Screenshot2Scroll,
   Screenshot3Settings,
   Screenshot4Clipboard,
+  ScreenshotEditor,
   StorePromoTile,
 } from "./StoreScreenshots";
 import {
@@ -43,6 +44,14 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="Screenshot3Settings"
         component={Screenshot3Settings}
+        durationInFrames={1}
+        fps={30}
+        width={1280}
+        height={800}
+      />
+      <Composition
+        id="ScreenshotEditor"
+        component={ScreenshotEditor}
         durationInFrames={1}
         fps={30}
         width={1280}

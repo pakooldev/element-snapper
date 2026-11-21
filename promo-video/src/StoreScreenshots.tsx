@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill } from "remotion";
+import { AbsoluteFill, Img, staticFile } from "remotion";
 import { ModeControl } from "./Outputs";
 
 // Wrapper for all screenshots to maintain consistent layout
@@ -980,6 +980,29 @@ export const Screenshot3Settings: React.FC = () => {
 };
 
 // --- Screenshot 4: Direct to Clipboard ---
+// The real editor (website/public/manual/editor.jpg, made by site-video/grab-manual.mjs), in its own window.
+export const ScreenshotEditor: React.FC = () => {
+  return (
+    <ScreenshotLayout
+      title="Mark it up before you share."
+      subtitle="Crop, box, arrow, text and blur, then copy or download."
+    >
+      <div
+        style={{
+          width: "1060px",
+          height: "540px",
+          borderTopLeftRadius: "16px",
+          borderTopRightRadius: "16px",
+          overflow: "hidden",
+          boxShadow: "0 0 0 1px rgba(255,255,255,0.12), 0 40px 80px rgba(0,0,0,0.6)",
+        }}
+      >
+        <Img src={staticFile("editor.jpg")} style={{ width: "100%", display: "block" }} />
+      </div>
+    </ScreenshotLayout>
+  );
+};
+
 export const Screenshot4Clipboard: React.FC = () => {
   return (
     <ScreenshotLayout
