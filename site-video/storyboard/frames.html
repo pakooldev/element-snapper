@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Storyboard frames</title>
+<style>
+  @font-face { font-family: Inter; src: url("../assets/inter.woff2") format("woff2"); font-weight: 100 900; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { width: 1600px; height: 900px; overflow: hidden; font-family: Inter, sans-serif; color: #f8fafc;
+    background: radial-gradient(900px 600px at 50% 45%, rgba(59,130,246,.22), transparent 70%), #0f172a; }
+  .f { position: absolute; inset: 0; display: none; }
+  .hl { position: absolute; left: 0; right: 0; top: 64px; text-align: center; font-size: 56px; font-weight: 600; letter-spacing: -0.03em; }
+  .hl em { font-style: normal; background: linear-gradient(#60a5fa, #3b82f6); -webkit-background-clip: text; color: transparent; }
+  .center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  .stage { perspective: 2400px; position: absolute; inset: 0; }
+  .shot { position: absolute; border-radius: 18px; box-shadow: 0 40px 120px rgba(0,0,0,.55); overflow: hidden; }
+  .shot img { display: block; width: 100%; }
+  .sel { position: absolute; border: 4px dashed #818cf8; background: rgba(129,140,248,.08); border-radius: 8px; }
+  .tag { position: absolute; right: -4px; bottom: -40px; background: #818cf8; color: #fff; font-size: 22px; font-weight: 600; padding: 4px 10px; border-radius: 6px; white-space: nowrap; }
+  .cursor { position: absolute; width: 34px; height: 34px; }
+  .card { background: #fff; color: #0f172a; border-radius: 22px; padding: 30px; width: 520px; }
+  .card h2 { font-size: 22px; color: #64748b; margin-bottom: 10px; }
+  .row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-top: 1px solid #f1f5f9; font-size: 22px; }
+  .row b { display: block; } .row small { color: #64748b; font-size: 18px; }
+  .pill { font-size: 16px; font-weight: 600; padding: 4px 12px; border-radius: 99px; background: #dcfce7; color: #15803d; }
+  .pill.a { background: #fef3c7; color: #b45309; }
+  .seam { position: absolute; left: -30px; right: -30px; height: 0; border-top: 3px dashed #22c55e; }
+  .seg { display: flex; gap: 4px; padding: 6px; background: #0f172a; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; font-size: 22px; color: #94a3b8; }
+  .seg span { padding: 10px 22px; border-radius: 8px; }
+  .seg .on { color: #fff; }
+  .blur { filter: blur(5px); }
+</style></head><body>
+
+<!-- 1. Logo: the loop point -->
+<div class="f" id="f1">
+  <div class="center" style="text-align:center">
+    <img src="../assets/logo.svg" style="width:300px">
+    <div style="margin-top:26px;font-size:44px;font-weight:600;letter-spacing:-0.03em">Element Snapper</div>
+  </div>
+</div>
+
+<!-- 2. Pick any element -->
+<div class="f" id="f2">
+  <div class="hl">Pick any element.</div>
+  <div class="stage"><div class="shot" style="left:190px;top:190px;width:1220px;transform:rotateX(10deg) rotateY(-8deg)">
+    <img src="../ref/page.png">
+    <div class="sel" style="left:66.2%;top:21.4%;width:31%;height:41.6%"><span class="tag">445 × 340 · ↑ parent</span></div>
+  </div></div>
+  <svg class="cursor" viewBox="0 0 24 24" style="left:1150px;top:430px"><path d="M5 3l14 9-6 1.5L10 20z" fill="#fff" stroke="#0f172a" stroke-width="1.5"/></svg>
+</div>
+
+<!-- 3. Even the part that scrolls -->
+<div class="f" id="f3">
+  <div class="hl">Even the part <em>that scrolls.</em></div>
+  <div class="stage"><div style="position:absolute;left:540px;top:170px;transform:rotateX(14deg)">
+    <div class="card" style="position:relative">
+      <h2>New customers</h2>
+      <div class="row"><div><b>Mira Chen</b><small>mira.chen@example.com</small></div><span class="pill">Paid</span></div>
+      <div class="row"><div><b>Jonas Weber</b><small>jonas.w@example.com</small></div><span class="pill a">Trial</span></div>
+      <div class="row"><div><b>Ada Okafor</b><small>ada@example.com</small></div><span class="pill">Paid</span></div>
+      <div class="seam" style="top:330px"></div>
+      <div class="row"><div><b>Leo Martins</b><small>leo.m@example.com</small></div><span class="pill">Paid</span></div>
+      <div class="row"><div><b>Sana Iqbal</b><small>sana@example.com</small></div><span class="pill a">Trial</span></div>
+      <div class="row"><div><b>Tom Becker</b><small>tom.b@example.com</small></div><span class="pill">Paid</span></div>
+      <div class="seam" style="top:600px"></div>
+      <div class="row"><div><b>Yuki Sato</b><small>yuki@example.com</small></div><span class="pill">Paid</span></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- 4. Outputs -->
+<div class="f" id="f4">
+  <div class="hl">Save it, copy it, or copy it <em>as a prompt.</em></div>
+  <div class="center" style="top:56%;text-align:center">
+    <div class="card" style="width:460px;padding:24px;outline:5px solid #a855f7;outline-offset:10px;transform:scale(.9)">
+      <h2>New customers</h2>
+      <div class="row"><div><b>Mira Chen</b><small>mira.chen@example.com</small></div><span class="pill">Paid</span></div>
+      <div class="row"><div><b>Jonas Weber</b><small>jonas.w@example.com</small></div><span class="pill a">Trial</span></div>
+      <div class="row"><div><b>Ada Okafor</b><small>ada@example.com</small></div><span class="pill">Paid</span></div>
+    </div>
+    <div class="seg" style="margin-top:44px;display:inline-flex">
+      <span>Download</span><span>Copy Image</span><span class="on" style="background:#a855f7">Copy as Prompt</span>
+    </div>
+  </div>
+</div>
+
+<!-- 5. Mark it up -->
+<div class="f" id="f5">
+  <div class="hl" style="top:40px">Mark it up <em>before you share.</em></div>
+  <div class="shot" style="left:170px;top:150px;width:1260px"><img src="../ref/editor.png"></div>
+</div>
+
+<!-- 6. My edits -->
+<div class="f" id="f6">
+  <div class="hl" style="top:40px">Every edit, kept.</div>
+  <div class="shot" style="left:170px;top:150px;width:1260px;height:640px"><img src="../ref/my-edits.png"></div>
+</div>
+
+<!-- 7. Back into the logo -->
+<div class="f" id="f7">
+  <div class="center" style="width:900px;height:560px;border-radius:26px;background:#1e293b;border:2px solid rgba(255,255,255,.12);overflow:hidden">
+    <div style="height:420px;display:grid;place-items:center;background:#0f172a"><img src="../assets/logo.svg" style="width:220px"></div>
+    <div style="padding:22px 30px;font-size:28px;font-weight:600">Logo capture<div style="font-size:22px;color:#94a3b8;font-weight:400;margin-top:6px">Edited just now · 1200 × 1200</div></div>
+  </div>
+</div>
+
+<script>
+  const n = new URLSearchParams(location.search).get('f') || '1';
+  document.getElementById('f' + n).style.display = 'block';
+</script>
+</body></html>

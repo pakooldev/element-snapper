@@ -1,0 +1,34 @@
+Attached browser context from https://app.fieldnote.example/overview
+
+Selected element:
+section
+Role: section
+Selector: #customers
+Dimensions: 447x341
+
+Text content:
+New customers Mira Chenmira.chen@example.comPaid Jonas Weberjonas.w@example.comTrial Ada Okaforada@example.comPaid Leo Martinsleo.m@example.comPaid Sana Iqbalsana@example.comTrial Tom Beckertom.b@example.comPaid Yuki Satoyuki@example.comPaid Elena Rossielena.r@example.comTrial
+
+Computed styles:
+  display: block
+  font-size: 15px
+  color: rgb(15, 23, 42)
+  background-color: rgb(255, 255, 255)
+
+HTML:
+<section class="card" id="customers">
+          <h2>New customers</h2>
+          <div class="list">
+            <div class="row"><div><b>Mira Chen</b><div class="email">mira.chen@example.com</div></div><span class="pill ">Paid</span></div>
+            <div class="row"><div><b>Jonas Weber</b><div class="email">jonas.w@example.com</div></div><span class="pill amber">Trial</span></div>
+            <div class="row"><div><b>Ada Okafor</b><div class="email">ada@example.com</div></div><span class="pill ">Paid</span></div>
+            <div class="row"><div><b>Leo Martins</b><div class="email">leo.m@example.com</div></div><span class="pill ">Paid</span></div>
+            <div class="row"><div><b>Sana Iqbal</b><div class="email">sana@example.com</div></div><span class="pill amber">Trial</span></div>
+            <div class="row"><div><b>Tom Becker</b><div class="email">tom.b@example.com</div></div><span class="pill ">Paid</span></div>
+            <div class="row"><div><b>Yuki Sato</b><div class="email">yuki@example.com</div></div><span class="pill ">Paid</span></div>
+            <div class="row"><div><b>Elena Rossi</b><div class="email">elena.r@example.com</div></div><span class="pill amber">Trial</span></div>
+          </div>
+        </section>
+
+Ancestor path: div > div > main > body
+Full DOM path: body > main > div.grid > div.stack > section.card

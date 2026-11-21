@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Storyboard</title>
+<style>
+  /* Use the brand's own font for the whole board. */
+  @font-face { font-family: Brand; src: url("../assets/inter.woff2") format("woff2"); font-weight: 100 900; }
+  * { box-sizing: border-box; } html, body { margin: 0; background: #0f172a; color: #f2f2f4; font-family: Brand, system-ui, sans-serif; }
+  .board { width: 1920px; padding: 40px 30px; } h1 { margin: 0 0 6px; font-size: 42px; font-weight: 600; letter-spacing: -1.2px; } h1 span { color: #8a8a94; font-weight: 400; }
+  .sub { font-size: 18px; color: #b9b9c1; margin-bottom: 26px; max-width: 1700px; line-height: 1.45; }
+  .grid { display: grid; grid-template-columns: repeat(4, 450px); gap: 30px 26px; }
+  .frame { position: relative; width: 450px; height: 253px; border-radius: 10px; overflow: hidden; background: #111; }
+  .frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .num { position: absolute; left: 12px; top: 10px; width: 44px; height: 44px; border-radius: 50%; background: #fff; color: #000; font-weight: 700; font-size: 22px; display: flex; align-items: center; justify-content: center; z-index: 2; }
+  .hl { position: absolute; left: 0; right: 0; top: 16px; text-align: center; font-weight: 600; font-size: 24px; letter-spacing: -0.8px; }
+  .t { font-size: 13px; color: #7d7d87; margin-top: 10px; } .b { font-size: 19px; font-weight: 600; margin: 2px 0 4px; }
+  .vo { margin-top: 6px; font-size: 14.5px; color: #8BA5FD; } .d { font-size: 14.5px; color: #b9b9c1; line-height: 1.45; }
+  .mv { margin-top: 7px; font-size: 13.5px; color: #F5D04E; line-height: 1.4; } .tr { margin-top: 7px; font-size: 13.5px; color: #1FE39A; line-height: 1.4; }
+</style></head><body>
+<div class="board"><h1>Element Snapper <span>· website loop · storyboard v1</span></h1>
+  <div class="sub">A 20s seamless loop for the website (plays muted, so no voiceover: the words are on screen). One camera that only ever moves forward; every shot turns into the next; the last frame is the first frame. Real extension UI (panel, highlight, Output control, editor, My edits) on a made-up sample dashboard. Navy, blue accent, Inter. Yellow = what moves, green = how this shot becomes the next.</div>
+  <div class="grid" id="g"></div></div>
+<script>
+// [time, frame image (or ''), field colour, headline on the frame, title, VO line, description, motion, transition]
+const S = [
+  ['0.0–2.5s', 'frames/1.jpg', '#0f172a', '', 'Logo', '', 'The logo on navy with a soft blue glow, wordmark under it. This is also the last frame, so the loop has no seam.', 'Slow push in. The dashed outline crawls like marching ants; the lens pulses once.', 'The four blue crop corners squash slightly, then fly outward and become the corners of the selection highlight on a web page that eases in behind.'],
+  ['2.5–6.0s', 'frames/2.jpg', '#0f172a', '', 'Pick any element', '', 'A sample dashboard (light, made up for the ad) tilted in 3D. The real hover highlight hops from card to card with its real size label, then lands on the customer list.', 'Cursor glides, highlight hops revenue card → stat card → customer list. Camera drifts right and slowly pushes in. Background soft (depth of field).', 'On the list the highlight turns indigo and dashed (the real "this scrolls" signal). Click: the list lifts off the page toward us.'],
+  ['6.0–9.5s', 'frames/3.jpg', '#0f172a', '', 'Even the part that scrolls', '', 'The list unrolls to its full length, tile by tile, rows that were hidden behind the scroll appearing.', 'Camera tilts down along it as each tile slides in under the last. Green seam lines flash where tiles meet, then fade to nothing (no seams).', 'The finished strip tips up to face the camera and shrinks into a card, centred.'],
+  ['9.5–12.5s', 'frames/4.jpg', '#0f172a', '', 'Three outputs', '', 'The capture card with the real Output control under it: Download, Copy Image, Copy as Prompt.', 'The selection slides along the control; the card’s outline takes each mode’s colour (green, blue, purple). A small tick, a clipboard, then prompt text lines type under the card.', 'The card grows and the editor’s two bars slide in from the top around it: the card is now the frame in the editor.'],
+  ['12.5–16.0s', 'frames/5.jpg', '#0f172a', '', 'Mark it up before you share', '', 'The real editor. A green box draws round the number, a red arrow up the chart, and the emails pixelate.', 'Each mark draws on in turn (box traced, arrow grows tip-first, blur blocks resolve). Slow push toward the frame.', 'Camera locks on the frame while the editor UI falls away and the My edits cards arrive from the edges; the frame shrinks into its tile slot.'],
+  ['16.0–18.5s', 'frames/6.jpg', '#0f172a', '', 'Every edit, kept', '', 'The real My edits grid: our capture plus a few more saved edits.', 'Tiles finish cascading in, gentle drift. Then a slow push toward one tile whose thumbnail is the logo.', 'Push straight into that tile.'],
+  ['18.5–20.0s', 'frames/7.jpg', '#0f172a', '', 'Back to the start', '', 'The tile with the logo fills the frame; its card edges pass off screen.', 'Continuous push, easing out exactly to frame 1’s size and position.', 'Lands on frame 1: the video loops with no cut.'],
+];
+document.getElementById('g').innerHTML = S.map(([t, img, bg, hl, b, vo, d, mv, tr], i) => `<div><div class="frame" style="background:${bg}"><div class="num">${i + 1}</div>${img ? `<img src="${img}">` : ''}${hl ? `<div class="hl">${hl}</div>` : ''}</div>
+  <div class="t">${t}</div><div class="b">${b}</div>${vo ? `<div class="vo">${vo}</div>` : ''}<div class="d">${d}</div>${mv ? `<div class="mv">${mv}</div>` : ''}<div class="tr">→ ${tr}</div></div>`).join('');
+</script></body></html>

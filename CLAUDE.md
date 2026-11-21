@@ -31,6 +31,18 @@ After any code change, click the refresh icon on the extension card in `chrome:/
 
 The ruler stripes on the playground's case pages make repeats, seams, gaps and stretching show up as wrong run lengths. Set `CHROMIUM_PATH` to reuse an installed Chromium, `SHOTS_DIR` to keep the images, `DPR` to run at another screen scale (default 2; browser zoom changes the scale the same way, so `DPR=1.25` and `DPR=1.5` stand in for zoomed pages). The browser shows real scrollbars that take up space, as on Windows. `http://snapper.test:<port>` reaches the same server as a page that is not a secure context, for the clipboard cases. It also covers the editor: it puts a test image in the history, uses every tool and style, drops in a second image and moves it, drags the frame (what is in it must follow, a box outside must not), undoes and redoes, reads the downloaded file, then checks the edit was saved, opens it again from My edits and deletes it. A new playground case should get a check here. Confirm a new check fails on the broken code: one here passed on the old stitching until it was rewritten.
 
+## Site Video (`site-video/`)
+
+The 30s product loop on the landing page, built as code with the `saas-animation` skill: `ad.html` draws every frame (canvas + `gl3d.js` for the 3D page), with all beat times in the `B` block at the top; the last frame is the first, so it loops with no cut. The UI in it is real: `grab2.mjs` runs the extension on a made-up sample page (`scene/page.html`, "Fieldnote") and saves the page, the list, the editor and its tool bars to `assets/`, `grab-prompt.mjs` saves the real Copy as Prompt text. Storyboard in `storyboard/`.
+
+```bash
+cd site-video
+CHROMIUM_PATH=... node grab2.mjs && CHROMIUM_PATH=... node grab-prompt.mjs   # re-grab after a UI change
+node render.mjs stills ad.html out/stills 5 12 20 --gpu                      # check frames
+node render.mjs video ad.html "out/Element Snapper loop - 4K.mp4" --fps 25 --scale 2 --gpu
+ffmpeg -i "out/Element Snapper loop - 4K.mp4" -an -vf scale=1600:900:flags=lanczos -c:v libx264 -preset slow -crf 24 -pix_fmt yuv420p -movflags +faststart ../website/public/demo-loop.mp4
+```
+
 ## Promo Video (`promo-video/`)
 
 React + Remotion project for generating the Chrome Web Store assets.
@@ -144,9 +156,9 @@ npm run build   # static export → out/
 - Routes: `app/page.tsx` (landing), `app/manual`, `app/playground`, `app/releases`, `app/privacy`
 - Playground: `app/playground/page.tsx` holds cases that can share a page; anything that changes the document (scroll owner, fixed chrome, very long) goes in `app/playground/cases.tsx`, one entry per `/playground/<slug>`, with the mode and expected result. Keep the main page under 8,192 CSS px, or Page mode hits the canvas limit on a 2x screen
 - `app/globals.css` holds the whole design system (the old `styles.css`); `app/playground/playground.css` is imported by that route only
-- Everything is a Server Component except small client islands: `components/navbar.tsx` (mobile menu), `hero-mockup.tsx` (parallax + playable panel), `real-panel.tsx`, `playground-widgets.tsx`, `demo-video.tsx` (loader fade), `floating-ad.tsx`, `glow-cursor.tsx`
+- Everything is a Server Component except small client islands: `components/navbar.tsx` (mobile menu), `hero-mockup.tsx` (parallax + playable panel), `real-panel.tsx`, `playground-widgets.tsx`, `demo-video.tsx` (loads and plays the loop only while it is on screen), `floating-ad.tsx`, `glow-cursor.tsx`
 - The panel on the hero and manual pages is the real one: `scripts/sync-panel.mjs` (runs before `dev` and `build`) copies `PANEL_HTML`, `PANEL_CSS` and the default shortcuts from `content/panel.js` to the git-ignored `generated/panel-ui.json`, and `components/real-panel.tsx` renders them in a shadow root. Change the panel in `content/panel.js` and the site follows on its next build, even before that version reaches the Web Store. The script fails the build if the panel changes shape. The manual's letter callouts are `HOME_BADGES` / `SETTINGS_BADGES` in `app/manual/page.tsx` (CSS selector -> letter; a selector with no match logs a console error)
 - The changelog is `import`ed from `data/releases.json` at build time and pre-rendered — no runtime fetch. To add a release, append an entry to `data/releases.json`
-- `public/` holds `demo.mp4` and `favicon.png`; Inter is self-hosted via `next/font`
+- `public/` holds `demo-loop.mp4` (the product loop, 1600x900, from `site-video/`), its poster `demo-loop-poster.jpg` and `favicon.png`; Inter is self-hosted via `next/font`
 
 Cloudflare Pages serves `out/manual.html` at `/manual` and redirects the old `/manual.html` URLs automatically, so pre-existing inbound links keep working.

@@ -1,0 +1,20 @@
+<svg width="256" height="256" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer dashed bounding box -->
+  <rect x="3" y="3" width="22" height="22" rx="4" stroke="#e2e8f0" stroke-width="2" stroke-dasharray="4 2" />
+  
+  <!-- Top Left Crop -->
+  <path d="M3 9V7C3 4.79086 4.79086 3 7 3H9" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" />
+  
+  <!-- Top Right Crop -->
+  <path d="M25 9V7C25 4.79086 23.2091 3 21 3H19" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" />
+  
+  <!-- Bottom Left Crop -->
+  <path d="M3 19V21C3 23.2091 4.79086 25 7 25H9" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" />
+  
+  <!-- Bottom Right Crop -->
+  <path d="M25 19V21C25 23.2091 23.2091 25 21 25H19" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" />
+  
+  <!-- Inner Camera Lens -->
+  <circle cx="14" cy="14" r="5" fill="#3b82f6" />
+  <circle cx="14" cy="14" r="2" fill="#0f172a" />
+</svg>

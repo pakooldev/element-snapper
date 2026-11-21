@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Element Snapper loop</title>
+<style>
+  @font-face { font-family: UI; src: url("assets/inter.woff2") format("woff2"); font-weight: 100 900; }
+  html,body{margin:0;background:#000;height:100%} body{display:flex;align-items:center;justify-content:center} canvas{width:min(100vw,calc(100vh*16/9));aspect-ratio:16/9;display:block}
+</style></head><body><canvas id="c"></canvas>
+<script src="gl3d.js"></script>
+<script>
+// Element Snapper, 20s seamless loop for the website (storyboard v1, approved).
+// Page contract: renderAt(t), TOTAL, ready, EVENTS, ?t= still, ?scale=2 for 4K. Render with --gpu.
+'use strict';
+const END = 30, W = 1920, H = 1080, q = new URLSearchParams(location.search), SCALE = parseFloat(q.get('scale') || '1');
+
+// ─── Beats (seconds). Re-time here. ─────────────────────────────────────────
+const B = {
+  pulse: 0.8, wordOut: 1.9, squash: 2.55, fly: 2.8, flyEnd: 3.6,  // 1 logo
+  pageIn: 2.8, pageInEnd: 3.6,
+  hop1: 5.1, hop2: 6.7, hopDur: 0.7, click: 8.3,                 // 2 pick an element
+  lift: 8.6, liftEnd: 9.6,                                        // 3 lift, unroll
+  tile2: 9.95, tile3: 10.85, tileDur: 0.7,
+  modes: 12.9, mode2: 14.95, mode3: 17.0, modesOut: 19.0,         // 4 outputs, each with its result
+  toEditor: 19.05, editorIn: 19.75,                               // 5 editor
+  blur: 20.35, box: 21.45, arrow: 22.1,
+  gridIn: 23.4, gridSettled: 24.8,                                // 6 My edits
+  push: 26.6, pushEnd: 30,                                        // 7 back into the logo
+};
+const HEAD = [   // [words, payoff from word index, in, out, y, size]
+  ['Pick any element.', 99, 3.9, 8.0, 112, 58],
+  ['Even the part that scrolls.', 3, 9.6, 12.35, 112, 58],
+  ['Save it, copy it, or copy it as a prompt.', 6, 12.85, 18.75, 112, 58],
+  ['Mark it up before you share.', 4, 20.05, 23.0, 1046, 42],
+  ['Every edit, kept.', 99, 23.9, 26.4, 112, 58],
+];
+window.EVENTS = [
+  { name: 'corners', t: B.fly }, { name: 'hop', t: B.hop1 }, { name: 'hop', t: B.hop2 }, { name: 'click', t: B.click },
+  { name: 'lift', t: B.lift }, { name: 'tile', t: B.tile2 }, { name: 'tile', t: B.tile3 },
+  { name: 'mode', t: B.modes + 0.35 }, { name: 'mode', t: B.mode2 }, { name: 'mode', t: B.mode3 },
+  { name: 'editor', t: B.toEditor }, { name: 'blur', t: B.blur }, { name: 'box', t: B.box }, { name: 'arrow', t: B.arrow },
+  { name: 'grid', t: B.gridIn }, { name: 'push', t: B.push }, { name: 'loop', t: END },
+];
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+const clamp01 = (v) => Math.max(0, Math.min(1, v)), lerp = (a, b, k) => a + (b - a) * k, prog = (t, a, b) => clamp01((t - a) / (b - a));
+const outExpo = (k) => (k = clamp01(k)) >= 1 ? 1 : 1 - Math.pow(2, -10 * k);
+const outCubic = (k) => 1 - Math.pow(1 - clamp01(k), 3), inOutCubic = (k) => { k = clamp01(k); return k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; };
+const sine = (k) => 0.5 - 0.5 * Math.cos(Math.PI * clamp01(k));
+const L3 = (a, b, k) => [lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)], add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const NAVY = '#0f172a', BLUE = '#3b82f6', INDIGO = '#818cf8', MODE = ['#10b981', '#3b82f6', '#a855f7'];
+const FONT = (w, s) => `${w} ${s}px UI, system-ui, sans-serif`;
+
+const cv = document.getElementById('c'); cv.width = W * SCALE; cv.height = H * SCALE;
+const MAIN = cv.getContext('2d');
+const mk = (w = cv.width, h = cv.height) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+const TMP = mk(), ACC = mk(), S3 = GL3D.create(W * SCALE, H * SCALE);
+const IMG = {}, LAY = {};
+const loadImg = (name, src) => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(IMG[name] = i); i.onerror = no; i.src = src; });
+
+// ─── 1. The logo frame (also the end of the loop) ───────────────────────────
+// Logo from icons/logo.svg (viewBox 28), drawn as vector so it stays sharp.
+function drawLogo(g, cx, cy, size, o = {}) {
+  const s = size / 28;
+  g.save(); g.translate(cx - 14 * s, cy - 14 * s); g.scale(s, s);
+  g.lineWidth = 2; g.lineCap = 'round';
+  if ((o.rect ?? 1) > 0) {
+    g.globalAlpha = o.rect ?? 1; g.strokeStyle = '#e2e8f0'; g.setLineDash([4, 2]); g.lineDashOffset = -(o.ants || 0);
+    g.lineCap = 'butt'; g.beginPath(); g.roundRect(3, 3, 22, 22, 4); g.stroke(); g.setLineDash([]); g.lineCap = 'round';
+  }
+  if ((o.corners ?? 1) > 0) {
+    g.globalAlpha = o.corners ?? 1; g.strokeStyle = BLUE;
+    for (const [x, y, dx, dy] of [[3, 3, 1, 1], [25, 3, -1, 1], [3, 25, 1, -1], [25, 25, -1, -1]]) corner(g, x, y, dx, dy, 6, 4);
+  }
+  if ((o.lens ?? 1) > 0) {
+    const p = o.pulse || 1; g.globalAlpha = o.lens ?? 1;
+    g.fillStyle = BLUE; g.beginPath(); g.arc(14, 14, 5 * p, 0, Math.PI * 2); g.fill();
+    g.fillStyle = NAVY; g.beginPath(); g.arc(14, 14, 2 * p, 0, Math.PI * 2); g.fill();
+  }
+  g.restore();
+}
+// An L bracket at (x, y) whose arms run along +dx and +dy, length `arm`, rounded with radius r.
+function corner(g, x, y, dx, dy, arm, r) {
+  r = Math.min(r, arm);
+  g.beginPath(); g.moveTo(x, y + dy * arm); g.lineTo(x, y + dy * r);
+  g.arcTo(x, y, x + dx * r, y, r); g.lineTo(x + dx * arm, y); g.stroke();
+}
+const LOGO = { cx: 960, cy: 476, size: 300 }, WORD_Y = 664, ZOOM_RATE = 0.04;
+function drawBg(g, zoom = 1) {
+  g.fillStyle = NAVY; g.fillRect(0, 0, W, H);
+  g.save(); g.translate(960, 520); g.scale(zoom, zoom * 470 / 820);
+  const r = g.createRadialGradient(0, 0, 0, 0, 0, 820);
+  r.addColorStop(0, 'rgba(59,130,246,0.24)'); r.addColorStop(0.55, 'rgba(59,130,246,0.09)'); r.addColorStop(1, 'rgba(59,130,246,0)');
+  g.fillStyle = r; g.fillRect(-820, -820, 1640, 1640); g.restore();
+}
+// Frame 1. o: {zoom, ants, pulse, words: [alpha, blur, dy] per word, rect, lens, corners}
+function frame1(g, o = {}) {
+  const z = o.zoom || 1;
+  drawBg(g, z);
+  g.save(); g.translate(960, 540); g.scale(z, z); g.translate(-960, -540);
+  drawLogo(g, LOGO.cx, LOGO.cy, LOGO.size * (o.rectScale || 1), { ants: o.ants, pulse: o.pulse, rect: o.rect, lens: o.lens, corners: o.corners });
+  g.font = FONT(600, 44); g.letterSpacing = '-1.3px'; g.textBaseline = 'alphabetic';
+  const words = ['Element', 'Snapper'], gap = g.measureText(' ').width, ws = words.map((w) => g.measureText(w).width);
+  let x = 960 - (ws[0] + gap + ws[1]) / 2;
+  words.forEach((w, i) => {
+    const [a, blur, dy] = o.words?.[i] || [1, 0, 0];
+    if (a > 0.002) { g.save(); g.globalAlpha = a; if (blur > 0.05) g.filter = `blur(${blur * SCALE * z}px)`; g.fillStyle = '#f8fafc'; g.fillText(w, x, WORD_Y + dy); g.restore(); }
+    x += ws[i] + gap;
+  });
+  g.restore();
+}
+let FR1 = null;   // frame 1 at rest, the thumbnail the camera pushes into at the end
+
+// ─── 2–5. The page and the lifted card, in 3D ───────────────────────────────
+const PAGE_ROT = [-0.2, -0.16, 0], FOV = 36, FY = 540 / Math.tan((FOV / 2) * Math.PI / 180);
+function rotate(v, r) {   // Ry · Rx · Rz, as gl3d's model matrix
+  let [x, y, z] = v; const [rx, ry, rz] = r;
+  let c = Math.cos(rz), s = Math.sin(rz); [x, y] = [c * x - s * y, s * x + c * y];
+  c = Math.cos(rx); s = Math.sin(rx); [y, z] = [c * y - s * z, s * y + c * z];
+  c = Math.cos(ry); s = Math.sin(ry); [x, z] = [c * x + s * z, -s * x + c * z];
+  return [x, y, z];
+}
+const pagePt = (u, v, lift = 0) => rotate([u - 720, 450 - v, lift], PAGE_ROT);
+let F, D, CARD_POS;   // px per unit at the card, camera distance, card centre (set in setup)
+
+// The list card's texture: the unrolled list, revealed tile by tile like a stitched capture.
+const CARD = { c: null, tex: null, key: null };
+function cardState(t) {
+  const a = outCubic(prog(t, B.tile2, B.tile2 + B.tileDur)), b = outCubic(prog(t, B.tile3, B.tile3 + B.tileDur));
+  const seam1 = t < B.tile2 + 0.3 ? 0 : 1 - prog(t, B.tile2 + 1.0, B.tile2 + 1.6);
+  const seam2 = t < B.tile3 + 0.3 ? 0 : 1 - prog(t, B.tile3 + 0.9, B.tile3 + 1.5);
+  const [fw, fh] = LAY.full, T1 = LAY.list[1] - LAY.customers[1] + LAY.list[3], T2 = T1 + LAY.list[3];   // tile edges: 260, 474
+  const h = t < B.tile2 ? LAY.customers[3] : lerp(LAY.customers[3], T2 + (fh - T2) * 0, a) + (fh - T2) * b;
+  return { a, b, seam1, seam2, T1, T2, h: Math.min(fh, Math.max(h, LAY.customers[3])), fw, fh };
+}
+function drawCardTex(st) {
+  const key = [st.a, st.b, st.seam1, st.seam2, st.h].map((v) => Math.round(v * 400)).join();
+  if (key === CARD.key) return;
+  CARD.key = key;
+  const g = CARD.c.getContext('2d'), k = CARD.c.width / st.fw;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, CARD.c.width, CARD.c.height); g.setTransform(k, 0, 0, k, 0, 0);
+  const full = IMG.full, ik = full.width / st.fw;
+  g.save(); g.beginPath(); g.roundRect(0.5, 0.5, st.fw - 1, st.h - 1, 16); g.clip();
+  g.fillStyle = '#fff'; g.fillRect(0, 0, st.fw, st.h);
+  if (st.a < 1) g.drawImage(IMG.top, 0, 0, st.fw, LAY.customers[3]);   // the card as it was on the page
+  const tile = (y0, y1, p) => { if (p <= 0) return; g.save(); g.globalAlpha = Math.min(1, p * 1.6); const dy = (1 - p) * 60;
+    g.drawImage(full, 0, y0 * ik, full.width, (y1 - y0) * ik, 0, y0 + dy, st.fw, y1 - y0); g.restore(); };
+  if (st.a > 0) { g.drawImage(full, 0, 0, full.width, st.T1 * ik, 0, 0, st.fw, st.T1); tile(st.T1, st.T2, st.a); }
+  tile(st.T2, st.fh, st.b);
+  g.restore();
+  g.strokeStyle = '#e2e8f0'; g.lineWidth = 1; g.beginPath(); g.roundRect(0.5, 0.5, st.fw - 1, st.h - 1, 16); g.stroke();
+  // Seams where tiles meet: debug-mode green, gone once they line up.
+  for (const [y, a] of [[st.T1, st.seam1], [st.T2, st.seam2]]) if (a > 0.01) {
+    g.save(); g.globalAlpha = a; g.strokeStyle = '#22c55e'; g.lineWidth = 2.5; g.setLineDash([8, 6]);
+    g.beginPath(); g.moveTo(0, y); g.lineTo(st.fw, y); g.stroke(); g.restore();
+  }
+  if (CARD.tex) CARD.tex.update(); else CARD.tex = S3.texture(CARD.c);
+}
+let PAGE_TEX;
+
+// The card's 3D pose and the camera, as one continuous move.
+function liftK(t) { return sine(prog(t, B.lift, B.liftEnd)); }
+function cardPose(t) {
+  const [fw, fh] = LAY.full, c = LAY.customers;
+  const onPage = { pos: pagePt(c[0] + fw / 2, c[1] + fh / 2, 0.5), rot: PAGE_ROT };
+  const k = liftK(t);
+  // Lift straight off the page first, then turn to face the camera.
+  const up = add(onPage.pos, rotate([0, 0, 140 * sine(prog(t, B.lift, B.lift + 0.45))], PAGE_ROT));
+  const pos = L3(L3(onPage.pos, up, Math.min(1, k * 2.2)), CARD_POS, sine(prog(t, B.lift + 0.12, B.liftEnd)));
+  const rot = L3(PAGE_ROT, [0, 0, 0], sine(prog(t, B.lift + 0.1, B.liftEnd)));
+  return { pos, rot };
+}
+// Where the camera looks: on the page (u, v) during shot 2, then the card's visible centre.
+function camera(t) {
+  const st = cardState(t), [fw, fh] = LAY.full;
+  const hr = highlightRect(t).r;   // the camera holds the highlight dead centre; the page moves under it
+  const pageTarget = pagePt(hr[0] + hr[2] / 2, hr[1] + hr[3] / 2);
+  const pageD = lerp(2150, 1560, sine(prog(t, B.pageIn - 0.3, B.lift + 0.4)));
+  // Screen y of the card centre: centred while it unrolls, 560 for the outputs, the editor's frame after.
+  const sy = lerp(lerp(540, 560, sine(prog(t, B.modes - 0.4, B.modes + 0.2))), LAY.editor.frame[1] * 1.5 + fh * F / 2, sine(prog(t, B.toEditor, B.editorIn)));
+  const visibleCentre = add(CARD_POS, [0, fh / 2 - st.h / 2, 0]);
+  // A slow push from the end of the unroll until the card is exactly the editor's frame.
+  const dist = D / lerp(0.93, 1, sine(prog(t, B.tile3 + 0.5, B.editorIn)));
+  const sx = cardScreenX(t);
+  const cardTarget = add(visibleCentre, [(960 - sx) * dist / FY, t < B.modes - 0.4 ? 0 : (sy - 540) * dist / FY, 0]);
+  const toCard = sine(prog(t, B.lift, B.liftEnd + 0.15));
+  const target = L3(pageTarget, cardTarget, toCard);
+  const eye = add(target, [0, 0, lerp(pageD, dist, toCard)]);
+  return { eye, target, fov: FOV, focus: lerp(pageD, dist, toCard), aperture: 5 * toCard };
+}
+function scene3d(t, cam) {
+  const list = [];
+  const pageA = clamp01(prog(t, B.pageIn, B.pageInEnd) * 1.4) * (1 - prog(t, B.lift + 0.5, B.liftEnd + 0.35));
+  if (pageA > 0) list.push({ tex: PAGE_TEX, w: 1440, h: 900, pos: [0, 0, 0], rot: PAGE_ROT, scale: lerp(0.93, 1, outCubic(prog(t, B.pageIn, B.pageInEnd))),
+    alpha: pageA, light: lerp(1, 0.55, liftK(t)) });
+  if (t >= B.lift - 0.02 && t < B.editorIn + 0.6) {
+    drawCardTex(cardState(t));
+    const p = cardPose(t);
+    list.push({ tex: CARD.tex, w: LAY.full[0], h: LAY.full[1], pos: p.pos, rot: p.rot, bias: 30 });
+  }
+  return list;
+}
+
+// ─── Screen-space overlays ──────────────────────────────────────────────────
+const project = (p, cam) => { const [x, y] = S3.project(p, cam); return [x / SCALE, y / SCALE]; };
+// The real hover highlight (content/utils.js): 2px dashed, 7% fill, 4px ring at 15%; label 12px on blue.
+const RECTS = () => { const u = LAY.users; return [u, [u[0] + u[2] + 20, u[1], u[2], u[3]], LAY.customers]; };   // Active users, Conversion, the list
+function highlightRect(t) {
+  const R = RECTS(), h1 = inOutCubic(prog(t, B.hop1, B.hop1 + B.hopDur)), h2 = inOutCubic(prog(t, B.hop2, B.hop2 + B.hopDur));
+  const r = R[0].map((v, i) => lerp(lerp(v, R[1][i], h1), R[2][i], h2));
+  return { r, onList: h2 > 0.5 };
+}
+function quad(g, pts) { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); }
+function drawHighlight(g, t, cam) {
+  const a = prog(t, B.flyEnd - 0.12, B.flyEnd + 0.12) * (1 - prog(t, B.lift + 0.05, B.lift + 0.3));
+  if (a <= 0) return;
+  const { r, onList } = highlightRect(t), [x, y, w, h] = r;
+  const pts = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]].map(([u, v]) => project(pagePt(u, v), cam));
+  const k = Math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]) / w;   // screen px per page px here
+  const color = onList ? INDIGO : BLUE, rgb = onList ? '129,140,248' : '59,130,246';
+  const flash = 1 + 1.5 * Math.max(0, 1 - Math.abs(t - B.click - 0.08) / 0.12);
+  g.save(); g.globalAlpha = a;
+  quad(g, pts); g.lineJoin = 'round';
+  g.strokeStyle = `rgba(${rgb},${0.15 * flash})`; g.lineWidth = 8 * k * flash; g.stroke();
+  g.fillStyle = `rgba(${rgb},${0.07 * flash})`; g.fill();
+  g.strokeStyle = color; g.lineWidth = 2 * k; g.setLineDash([6 * k, 4 * k]); g.lineDashOffset = 0; g.stroke(); g.setLineDash([]);
+  // Labels: drawn flat, 1.6x the real size so they read in a video.
+  const L = 1.6 * k, size = onList ? `${LAY.full[0]} × ${LAY.full[1]}` : `${Math.round(w)} × ${Math.round(h)}`;
+  const label = (text, bx, by, bg, align) => {
+    g.font = FONT(500, 12 * L); g.letterSpacing = '0px'; const tw = g.measureText(text).width, pw = tw + 12 * L, ph = 20 * L;
+    const lx = align === 'right' ? bx - pw : bx - pw / 2;
+    g.fillStyle = bg; g.beginPath(); g.roundRect(lx, by, pw, ph, 4 * L); g.fill();
+    g.fillStyle = '#fff'; g.textBaseline = 'middle'; g.fillText(text, lx + 6 * L, by + ph / 2 + 0.5 * L);
+  };
+  label(`${size} · ↑ parent`, pts[2][0], pts[2][1] + 4 * L, BLUE, 'right');
+  if (onList) { const bx = (pts[2][0] + pts[3][0]) / 2, by = (pts[2][1] + pts[3][1]) / 2; label('↕ Full Element', bx - 70 * L, by + 4 * L, INDIGO, 'center'); }
+  g.restore();
+}
+// The mouse pointer: rides with the highlight, a little right of its centre, drifting gently.
+function drawCursor(g, t, cam) {
+  const a = prog(t, B.flyEnd, B.flyEnd + 0.3) * (1 - prog(t, B.lift, B.lift + 0.2));
+  if (a <= 0) return;
+  const r = highlightRect(t).r, u = r[0] + r[2] / 2 + 70 + 24 * Math.sin(t * 1.1), v = r[1] + r[3] / 2 + 10 + 12 * Math.sin(t * 0.8 + 1);
+  const [x, y] = project(pagePt(u, v, 2), cam), s = 1.25 * (1 - 0.15 * Math.max(0, 1 - Math.abs(t - B.click) / 0.1));
+  g.save(); g.globalAlpha = a; g.translate(x, y); g.scale(s, s);
+  g.beginPath(); g.moveTo(0, 0); g.lineTo(0, 22); g.lineTo(5.5, 17); g.lineTo(9.5, 26); g.lineTo(13, 24.5); g.lineTo(9, 15.5); g.lineTo(16, 15.5); g.closePath();
+  g.fillStyle = '#fff'; g.strokeStyle = '#0f172a'; g.lineWidth = 1.6; g.lineJoin = 'round'; g.fill(); g.stroke(); g.restore();
+}
+// Logo corners flying out to the first highlight's corners.
+function drawFlyingCorners(g, t, cam) {
+  if (t < B.fly || t > B.flyEnd + 0.15) return;
+  const k = outExpo(prog(t, B.fly, B.flyEnd)), fade = 1 - prog(t, B.flyEnd - 0.05, B.flyEnd + 0.15);
+  const z = Math.exp(ZOOM_RATE * B.fly), s1 = (LOGO.size * 0.92) / 28, s = s1 * z;   // the squashed logo's corners at the moment they leave
+  const from = [[3, 3], [25, 3], [3, 25], [25, 25]].map(([vx, vy]) => [960 + (LOGO.cx + (vx - 14) * s1 - 960) * z, 540 + (LOGO.cy + (vy - 14) * s1 - 540) * z]);
+  const [x, y, w, h] = RECTS()[0];
+  const to = [[x, y], [x + w, y], [x, y + h], [x + w, y + h]].map(([u, v]) => project(pagePt(u, v), cam));
+  const dirs = [[1, 1], [-1, 1], [1, -1], [-1, -1]];
+  g.save(); g.globalAlpha = fade; g.strokeStyle = BLUE; g.lineCap = 'round';
+  from.forEach((f, i) => {
+    const p = [lerp(f[0], to[i][0], k), lerp(f[1], to[i][1], k)];
+    g.lineWidth = lerp(2 * s, 3.2, k);
+    corner(g, p[0], p[1], dirs[i][0], dirs[i][1], lerp(6 * s, 26, k), lerp(4 * s, 3, k));
+  });
+  g.restore();
+}
+
+// Output control under the card (rebuilt from the panel's segmented control).
+function drawOutputs(g, t) {
+  const a = prog(t, B.modes, B.modes + 0.35) * (1 - prog(t, B.modesOut, B.modesOut + 0.3));
+  const cardA = prog(t, B.modes + 0.2, B.modes + 0.45) * (1 - prog(t, B.modesOut + 0.1, B.modesOut + 0.35));
+  const m = inOutCubic(prog(t, B.mode2, B.mode2 + 0.3)) + inOutCubic(prog(t, B.mode3, B.mode3 + 0.3));   // 0..2
+  const k = lerp(0.93, 1, sine(prog(t, B.tile3 + 0.5, B.editorIn)));
+  const fh = LAY.full[1], fw = LAY.full[0], cx = cardScreenX(t), cy = 560, cw = fw * F * k, ch = fh * F * k;
+  if (cardA > 0) {   // the card's outline takes the colour of the picked mode, like the hover highlight
+    const i = Math.floor(m), f = m - i, c0 = MODE[i], c1 = MODE[Math.min(2, i + 1)];
+    const col = f < 0.5 ? c0 : c1, ring = f < 0.5 ? 1 - f * 2 : (f - 0.5) * 2;
+    g.save(); g.globalAlpha = cardA * Math.max(0.35, ring);
+    g.strokeStyle = col; g.lineWidth = 3; g.setLineDash([12, 8]); g.lineDashOffset = -t * 30;
+    g.beginPath(); g.roundRect(cx - cw / 2 - 12, cy - ch / 2 - 12, cw + 24, ch + 24, 22); g.stroke(); g.restore();
+  }
+  if (a <= 0) return;
+  const labels = ['Download', 'Copy Image', 'Copy as Prompt'], s = 1.7, padX = 14 * s, h = 34 * s, y = 940 + (1 - outCubic(prog(t, B.modes, B.modes + 0.45))) * 24;
+  g.save(); g.globalAlpha = a; g.font = FONT(500, 12 * s); g.letterSpacing = '0px';
+  const ws = labels.map((l) => g.measureText(l).width + padX * 2), total = ws.reduce((x, y) => x + y, 0) + 8 * s;
+  let x = cx - total / 2;
+  g.fillStyle = NAVY; g.strokeStyle = 'rgba(255,255,255,0.12)'; g.lineWidth = 1.5; g.beginPath(); g.roundRect(x, y, total, h, 8 * s); g.fill(); g.stroke();
+  const xs = []; let xi = x + 4 * s; ws.forEach((w) => { xs.push(xi); xi += w; });
+  const i = Math.floor(m), f = m - i, px = lerp(xs[i], xs[Math.min(2, i + 1)], f), pw = lerp(ws[i], ws[Math.min(2, i + 1)], f);
+  g.fillStyle = BLUE; g.beginPath(); g.roundRect(px, y + 4 * s, pw, h - 8 * s, 6 * s); g.fill();
+  g.textBaseline = 'middle';
+  labels.forEach((l, j) => { const on = Math.max(0, 1 - Math.abs(m - j)); g.fillStyle = on > 0.5 ? '#fff' : '#94a3b8'; g.fillText(l, xs[j] + padX, y + h / 2 + 1); });
+  g.restore();
+}
+
+// Where the card sits across the screen: centred, then left of centre while the results show beside it.
+const CARD_LEFT = 640, PANEL_X = 1290;
+function cardScreenX(t) {
+  return lerp(960, CARD_LEFT, inOutCubic(prog(t, B.modes - 0.25, B.modes + 0.45)) * (1 - inOutCubic(prog(t, B.toEditor - 0.15, B.editorIn))));
+}
+const FILE = 'screenshot_customers_2026-11-21_09-34-12.png';
+let PROMPT = [];
+// What each output gives you, in a panel beside the card: a saved file, a pasted image, a pasted prompt.
+function drawResults(g, t) {
+  const show = outCubic(prog(t, B.modes + 0.05, B.modes + 0.55)) * (1 - inOutCubic(prog(t, B.modesOut - 0.2, B.modesOut + 0.25)));
+  if (show <= 0) return;
+  const m = inOutCubic(prog(t, B.mode2, B.mode2 + 0.3)) + inOutCubic(prog(t, B.mode3, B.mode3 + 0.3));
+  const PW = 600, PH = 500, px = PANEL_X - PW / 2 + (1 - show) * 60, py = 560 - PH / 2;
+  const k = lerp(0.93, 1, sine(prog(t, B.tile3 + 0.5, B.editorIn)));
+  const [fw, fh] = LAY.full, cw = fw * F * k, ch = fh * F * k, cx = cardScreenX(t);
+  g.save(); g.globalAlpha = show;
+  g.fillStyle = '#1e293b'; g.strokeStyle = 'rgba(255,255,255,0.1)'; g.lineWidth = 1.5;
+  g.shadowColor = 'rgba(0,0,0,0.45)'; g.shadowBlur = 50 * SCALE; g.shadowOffsetY = 18 * SCALE;
+  g.beginPath(); g.roundRect(px, py, PW, PH, 18); g.fill(); g.shadowColor = 'transparent'; g.stroke();
+  // Title rolls from one mode to the next.
+  const titles = ['Downloads', 'Pasted into a chat', 'Pasted into an AI chat'];
+  g.save(); g.beginPath(); g.rect(px, py + 10, PW, 52); g.clip();
+  g.font = FONT(600, 22); g.letterSpacing = '-0.4px'; g.textBaseline = 'middle';
+  titles.forEach((title, i) => { const d = i - m; if (Math.abs(d) >= 1) return; g.globalAlpha = show * (1 - Math.abs(d)); g.fillStyle = '#f8fafc'; g.fillText(title, px + 32, py + 40 + d * 36); });
+  g.restore();
+  g.strokeStyle = 'rgba(255,255,255,0.08)'; g.beginPath(); g.moveTo(px, py + 72); g.lineTo(px + PW, py + 72); g.stroke();
+  const vis = (i) => clamp01(1 - Math.abs(m - i) * 1.6);
+  g.textBaseline = 'alphabetic'; g.letterSpacing = '0px';
+  const img = IMG.full, thumb = (x, y, w, h) => { g.save(); g.beginPath(); g.roundRect(x, y, w, h, 6); g.clip(); g.drawImage(img, x, y, w, h); g.restore(); };
+  const fly = (t0, to) => {   // a copy of the card flying into place
+    const f = outExpo(prog(t, t0, t0 + 0.6)); if (f <= 0 || f >= 1) return f >= 1;
+    const from = [cx - cw / 2, 560 - ch / 2, cw, ch];
+    g.save(); g.globalAlpha = show * clamp01(f * 4); thumb(...from.map((v, i) => lerp(v, to[i], f))); g.restore(); return false;
+  };
+  // 1. Download: the file lands in the downloads list.
+  if (vis(0) > 0) {
+    g.save(); g.globalAlpha = show * vis(0);
+    const rows = [[FILE, `${fw * 3} × ${fh * 3} · PNG`, true], ['screenshot_revenue_2026-11-21_09-12-40.png', '2682 × 1023 · PNG', false], ['screenshot_section_2026-11-20_17-48-03.png', '4080 × 396 · PNG', false]];
+    rows.forEach(([name, meta, isNew], i) => {
+      const ry = py + 100 + i * 110, landed = !isNew || t > B.modes + 0.95;
+      g.fillStyle = isNew ? 'rgba(15,23,42,0.9)' : 'rgba(15,23,42,0.45)'; g.beginPath(); g.roundRect(px + 24, ry, PW - 48, 92, 12); g.fill();
+      if (isNew && t < B.modes + 0.35) return;
+      const tr = [px + 40, ry + 14, 56, 64];
+      if (isNew) { if (landed) thumb(...tr); } else { g.fillStyle = '#334155'; g.beginPath(); g.roundRect(...tr, 6); g.fill(); }
+      const a = isNew ? clamp01(prog(t, B.modes + 0.8, B.modes + 1.1)) : 0.55;
+      g.save(); g.globalAlpha *= a;
+      g.font = FONT(500, 16); g.fillStyle = '#f8fafc'; g.fillText(name, px + 116, ry + 40);
+      g.font = FONT(400, 14); g.fillStyle = '#94a3b8'; g.fillText(meta, px + 116, ry + 64);
+      g.restore();
+      if (isNew) {
+        const done = outCubic(prog(t, B.modes + 1.2, B.modes + 1.45));
+        if (done > 0) { const ccx = px + PW - 64, ccy = ry + 46; g.save(); g.globalAlpha *= done; g.fillStyle = '#10b981'; g.beginPath(); g.arc(ccx, ccy, 15 * (0.7 + 0.3 * done), 0, Math.PI * 2); g.fill();
+          g.strokeStyle = '#fff'; g.lineWidth = 3; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); g.moveTo(ccx - 6, ccy); g.lineTo(ccx - 1.5, ccy + 5); g.lineTo(ccx + 7, ccy - 5); g.stroke(); g.restore(); }
+      }
+    });
+    g.restore();
+    fly(B.modes + 0.35, [px + 40, py + 114, 56, 64]);
+  }
+  const keycap = (x, y, t0) => {   // ⌘V pressed
+    const a = prog(t, t0, t0 + 0.15) * (1 - prog(t, t0 + 0.55, t0 + 0.75)); if (a <= 0) return;
+    const press = 1 - 0.08 * Math.max(0, 1 - Math.abs(t - t0 - 0.25) / 0.1);
+    g.save(); g.globalAlpha *= a; g.translate(x, y); g.scale(press, press);
+    g.font = FONT(600, 22); const w = g.measureText('⌘ V').width + 32;
+    g.fillStyle = '#334155'; g.strokeStyle = 'rgba(255,255,255,0.2)'; g.lineWidth = 1.5; g.beginPath(); g.roundRect(-w / 2, -26, w, 52, 10); g.fill(); g.stroke();
+    g.fillStyle = '#f8fafc'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('⌘ V', 0, 1); g.restore();
+  };
+  const composer = (y, h) => { g.fillStyle = 'rgba(15,23,42,0.9)'; g.strokeStyle = 'rgba(255,255,255,0.12)'; g.lineWidth = 1.5; g.beginPath(); g.roundRect(px + 24, y, PW - 48, h, 14); g.fill(); g.stroke(); };
+  // 2. Copy Image: pasted into a chat, then sent.
+  if (vis(1) > 0) {
+    g.save(); g.globalAlpha = show * vis(1);
+    g.font = FONT(400, 17); const q = 'Can you send me this week’s new customers?', qw = g.measureText(q).width;
+    g.fillStyle = '#334155'; g.beginPath(); g.roundRect(px + 24, py + 100, qw + 32, 48, 16); g.fill(); g.fillStyle = '#f8fafc'; g.fillText(q, px + 40, py + 130);
+    const t0 = B.mode2 + 0.3, sent = sine(prog(t, t0 + 1.05, t0 + 1.45));
+    composer(py + PH - 120, 96);
+    const pasted = t > t0 + 0.3, tw = 118, th = tw * fh / fw;
+    // In the box after the paste, then up into a sent bubble on the right.
+    const inBox = [px + 40, py + PH - 112, 70, 70 * fh / fw], bubble = [px + PW - 24 - tw - 16, py + 170, tw, th];
+    if (pasted) {
+      const r = inBox.map((v, i) => lerp(v, bubble[i], sent)), pop = outCubic(prog(t, t0 + 0.3, t0 + 0.5));
+      if (sent > 0) { g.save(); g.globalAlpha *= sent; g.fillStyle = BLUE; g.beginPath(); g.roundRect(bubble[0] - 8, bubble[1] - 8, tw + 16, th + 16, 16); g.fill(); g.restore(); }
+      g.save(); g.translate(r[0] + r[2] / 2, r[1] + r[3] / 2); g.scale(0.85 + 0.15 * pop, 0.85 + 0.15 * pop); thumb(-r[2] / 2, -r[3] / 2, r[2], r[3]); g.restore();
+    }
+    if (!pasted || sent > 0.5) { g.font = FONT(400, 17); g.fillStyle = '#64748b'; g.fillText('Message', px + 44, py + PH - 64); }
+    keycap(PANEL_X, py + PH - 72, t0);
+    g.restore();
+  }
+  // 3. Copy as Prompt: the element's context, pasted into an AI chat as text.
+  if (vis(2) > 0) {
+    g.save(); g.globalAlpha = show * vis(2);
+    const t0 = B.mode3 + 0.3;
+    composer(py + 96, PH - 120);
+    g.save(); g.beginPath(); g.roundRect(px + 24, py + 96, PW - 48, PH - 120, 14); g.clip();
+    g.font = '400 14.5px ui-monospace, Menlo, monospace'; g.fillStyle = '#cbd5e1';
+    PROMPT.forEach((line, i) => {
+      const a = prog(t, t0 + 0.3 + i * 0.045, t0 + 0.42 + i * 0.045); if (a <= 0) return;
+      let text = line; const max = PW - 92;
+      while (g.measureText(text).width > max && text.length > 4) text = text.slice(0, -2);
+      if (text !== line) text = text.slice(0, -1) + '…';
+      g.save(); g.globalAlpha *= a; g.fillStyle = /^(Selected element|Text content|Computed styles|HTML):?$/.test(line) ? '#93c5fd' : '#cbd5e1'; g.fillText(text, px + 46, py + 130 + i * 22 + (1 - a) * 6); g.restore();
+    });
+    g.restore();
+    keycap(PANEL_X, py + PH / 2 + 20, t0);
+    g.restore();
+  }
+  g.restore();
+}
+
+// Marks on the list, in list CSS px, mapped by m(u, v) -> [x, y] and scale ms (target px per list px).
+const BOX = () => { const [x, y, w, h] = LAY.trial; return [x - 9, y - 8, w + 18, h + 16]; };
+const ARROW = [[232, 214], [365, 138]];
+function drawMarks(g, map, ms, t) {
+  const full = IMG.full, ik = full.width / LAY.full[0];
+  // Blur: the editor's pixelate, 12px blocks, resolving email by email.
+  LAY.emails.forEach(([x, y, w, h], i) => {
+    const p = prog(t, B.blur + i * 0.06, B.blur + i * 0.06 + 0.28);
+    if (p <= 0) return;
+    const r = [x - 4, y - 4, w + 8, h + 8], block = lerp(3, 12, outCubic(p));
+    const tw = Math.max(1, Math.round(r[2] / block)), th = Math.max(1, Math.round(r[3] / block));
+    const small = PIX.getContext('2d'); small.imageSmoothingEnabled = true; small.imageSmoothingQuality = 'high';
+    small.clearRect(0, 0, PIX.width, PIX.height); small.drawImage(full, r[0] * ik, r[1] * ik, r[2] * ik, r[3] * ik, 0, 0, tw, th);
+    const [sx, sy] = map(r[0], r[1]);
+    g.save(); g.imageSmoothingEnabled = false; g.globalAlpha = clamp01(p * 3); g.drawImage(PIX, 0, 0, tw, th, sx, sy, r[2] * ms, r[3] * ms); g.restore();
+  });
+  const lw = 4 * ms;
+  // Box: traced round, red, M size.
+  const pb = inOutCubic(prog(t, B.box, B.box + 0.45));
+  if (pb > 0) {
+    const [x, y, w, h] = BOX(), pts = [[x, y], [x + w, y], [x + w, y + h], [x, y + h], [x, y]].map(([u, v]) => map(u, v));
+    let left = pb * 2 * (w + h) * ms;
+    g.save(); g.strokeStyle = '#ef4444'; g.lineWidth = lw; g.lineJoin = 'round'; g.lineCap = 'butt'; g.beginPath(); g.moveTo(...pts[0]);
+    for (let i = 1; i < pts.length && left > 0; i++) { const d = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]), k = Math.min(1, left / d);
+      g.lineTo(lerp(pts[i - 1][0], pts[i][0], k), lerp(pts[i - 1][1], pts[i][1], k)); left -= d; }
+    g.stroke(); g.restore();
+  }
+  // Arrow: grows tip-first from the tail, the editor's head shape.
+  const pa = outCubic(prog(t, B.arrow, B.arrow + 0.42));
+  if (pa > 0) {
+    const [a0, a1] = ARROW.map(([u, v]) => map(u, v)), x2 = lerp(a0[0], a1[0], pa), y2 = lerp(a0[1], a1[1], pa);
+    const ang = Math.atan2(y2 - a0[1], x2 - a0[0]), len = Math.hypot(x2 - a0[0], y2 - a0[1]), head = Math.min((10 + 4 * 2.75) * ms, len), shaft = Math.max(0, len - head * 0.8);
+    g.save(); g.strokeStyle = g.fillStyle = '#ef4444'; g.lineWidth = lw; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(a0[0], a0[1]); g.lineTo(a0[0] + Math.cos(ang) * shaft, a0[1] + Math.sin(ang) * shaft); g.stroke();
+    g.beginPath(); g.moveTo(x2, y2); g.lineTo(x2 - head * Math.cos(ang - 0.45), y2 - head * Math.sin(ang - 0.45)); g.lineTo(x2 - head * Math.cos(ang + 0.45), y2 - head * Math.sin(ang + 0.45)); g.closePath(); g.fill();
+    g.restore();
+  }
+}
+let PIX;
+
+// The real editor (assets/editor-clean.png, 1280x720 at 3x): top bars slide in, the board fades in under the card.
+const BARS = 155, HINT = 1000;   // in 1920 px: bottom of the two bars, top of the hint row
+function drawEditor(g, t) {
+  const inK = outCubic(prog(t, B.toEditor + 0.25, B.editorIn)), outK = sine(prog(t, B.gridIn, B.gridIn + 0.45));
+  const board = prog(t, B.editorIn - 0.1, B.editorIn + 0.25) * (1 - prog(t, B.gridIn - 0.05, B.gridIn + 0.2));
+  const ed = IMG.editor, k = ed.width / W;
+  if (board > 0) { g.save(); g.globalAlpha = board; g.drawImage(ed, 0, BARS * k, ed.width, (HINT - BARS) * k, 0, BARS, W, HINT - BARS); g.restore(); }
+  const marksK = t < B.gridIn ? 1 : 0;
+  if (marksK && t > B.blur - 0.1) {
+    const [fx, fy, fw] = LAY.editor.frame.map((v) => v * 1.5), ms = fw / LAY.full[0];
+    drawMarks(g, (u, v) => [fx + u * ms, fy + v * ms], ms, t);
+  }
+  const y = lerp(-BARS - 20, 0, inK) - (BARS + 20) * outK;
+  if (inK > 0 && outK < 1) {
+    g.save(); g.globalAlpha = Math.min(inK * 1.5, 1 - outK); g.drawImage(ed, 0, 0, ed.width, BARS * k, 0, y, W, BARS);
+    // The tool in use, picked just before each mark (real bars: blur, then box and arrow in red).
+    const picks = [['blur', B.blur - 0.35], ['box', B.box - 0.35], ['arrow', B.arrow - 0.35]];
+    const base = g.globalAlpha;
+    picks.forEach(([tool, t0], i) => {
+      const a = prog(t, t0, t0 + 0.08) * (i < picks.length - 1 ? 1 - prog(t, picks[i + 1][1] + 0.08, picks[i + 1][1] + 0.16) : 1);
+      if (a > 0) { const bar = IMG[`bar-${tool}`]; g.globalAlpha = base * a; g.drawImage(bar, 0, y, W, BARS); }
+    });
+    g.restore();
+  }
+}
+
+// ─── 6–7. My edits ──────────────────────────────────────────────────────────
+// Cards as on editor/home.html: 280 wide, a 4:3 thumb on navy with 12px padding, name and meta under it.
+const CW = 280, TH = 210, CH = 264, GAP = 16, GRID_W = CW * 3 + GAP * 2, GRID_H = CH * 2 + GAP;
+const G = 1.5, GRID_Y = 600;
+const CARDS = [
+  { img: 'marked', name: 'New customers', meta: 'Edited just now · 1341 × 1548' },
+  { img: 'revenue', name: 'Revenue', meta: 'Edited 3 min ago · 2682 × 1023' },
+  { img: 'stats', name: 'Weekly stats', meta: 'Edited 8 min ago · 4080 × 396' },
+  { img: 'page', name: 'Fieldnote overview', meta: 'Edited 14 min ago · 2880 × 1800' },
+  { img: 'logo', name: 'Element Snapper logo', meta: 'Edited 21 min ago · 3840 × 2160' },
+  { img: 'home', name: 'Landing page', meta: 'Edited 35 min ago · 2560 × 1600' },
+];
+const slot = (i) => [(i % 3) * (CW + GAP), Math.floor(i / 3) * (CH + GAP)];
+const contain = (iw, ih, bw, bh) => { const s = Math.min(bw / iw, bh / ih); return [(bw - iw * s) / 2, (bh - ih * s) / 2, iw * s, ih * s]; };
+function thumbRect(i) {   // the image inside card i, in grid units
+  const src = THUMB[CARDS[i].img], [sx, sy] = slot(i), [x, y, w, h] = contain(src.width, src.height, CW - 24, TH - 24);
+  return [sx + 12 + x, sy + 12 + y, w, h];
+}
+let THUMB = {};
+function drawCard(g, i, chrome = 1) {
+  const [x, y] = slot(i), c = CARDS[i];
+  if (chrome > 0) {
+    g.save(); g.globalAlpha *= chrome;
+    g.fillStyle = '#1e293b'; g.beginPath(); g.roundRect(x, y, CW, CH, 12); g.fill();
+    g.save(); g.clip(); g.fillStyle = NAVY; g.fillRect(x, y, CW, TH); g.restore();
+    g.strokeStyle = 'rgba(255,255,255,0.1)'; g.lineWidth = 1; g.beginPath(); g.roundRect(x + 0.5, y + 0.5, CW - 1, CH - 1, 12); g.stroke();
+    g.textBaseline = 'alphabetic'; g.letterSpacing = '0px';
+    g.fillStyle = '#f8fafc'; g.font = FONT(600, 13); g.fillText(c.name, x + 12, y + TH + 10 + 13);
+    g.fillStyle = '#94a3b8'; g.font = FONT(400, 12); g.fillText(c.meta, x + 12, y + TH + 10 + 13 + 2 + 14);
+    g.restore();
+  }
+}
+function drawThumb(g, i) { const [x, y, w, h] = thumbRect(i); g.drawImage(THUMB[CARDS[i].img], x, y, w, h); }
+// One camera for the grid: grid units -> screen, zooming in log space and ending at frame 1's own push rate.
+function gridView(t) {
+  const L0 = Math.log(G), [lx, ly, lw] = thumbRect(4), L1 = Math.log(W / lw), T = B.pushEnd - B.push;
+  const u = clamp01((t - B.push) / T), m1 = ZOOM_RATE * T;   // Hermite: flat start, ends at the logo's zoom rate
+  const L = t < B.push ? L0 : L0 + (L1 - L0) * (3 * u * u - 2 * u * u * u) + m1 * (u * u * u - u * u);
+  const k = sine(prog(t, B.push, B.pushEnd - 0.45));
+  const focus = [lerp(GRID_W / 2, lx + lw / 2, k), lerp(GRID_H / 2, ly + (lw * 9 / 16) / 2, k)];
+  return { s: Math.exp(L), focus, sy: lerp(GRID_Y, 540, k) };
+}
+function drawGrid(g, t) {
+  if (t < B.gridIn - 0.05) return;
+  const v = gridView(t);
+  g.save(); g.translate(960, v.sy); g.scale(v.s, v.s); g.translate(-v.focus[0], -v.focus[1]);
+  const arrive = (i) => outExpo(prog(t, B.gridIn + 0.25 + i * 0.09, B.gridIn + 1.05 + i * 0.09));
+  for (let i = 1; i < CARDS.length; i++) {
+    const k = arrive(i); if (k <= 0) continue;
+    const [x, y] = slot(i), cx = x + CW / 2 - GRID_W / 2, cy = y + CH / 2 - GRID_H / 2, n = Math.hypot(cx, cy) || 1;
+    g.save(); g.globalAlpha = clamp01(k * 1.4);
+    g.translate((cx / n) * 900 * (1 - k), (cy / n) * 600 * (1 - k));
+    const sc = lerp(1.25, 1, k); g.translate(x + CW / 2, y + CH / 2); g.scale(sc, sc); g.translate(-x - CW / 2, -y - CH / 2);
+    drawCard(g, i); drawThumb(g, i); g.restore();
+  }
+  // The edited capture: starts exactly on the editor's frame, settles into the first slot.
+  const hk = sine(prog(t, B.gridIn + 0.2, B.gridSettled));   // leaves once the editor is gone
+  const [hx, hy, hw, hh] = thumbRect(0), [fx, fy, fw, fh] = LAY.editor.frame.map((x) => x * 1.5);
+  const inv = (sx, sy) => [(sx - 960) / v.s + v.focus[0], (sy - v.sy) / v.s + v.focus[1]];
+  const [ex, ey] = inv(fx, fy), ew = fw / v.s, eh = fh / v.s;
+  const r = [lerp(ex, hx, hk), lerp(ey, hy, hk), lerp(ew, hw, hk), lerp(eh, hh, hk)];
+  const sc = r[2] / hw;
+  g.save(); g.translate(r[0], r[1]); g.scale(sc, sc); g.translate(-hx, -hy);
+  drawCard(g, 0, prog(t, B.gridIn + 0.45, B.gridSettled)); drawThumb(g, 0); g.restore();
+  g.restore();
+}
+
+// ─── Headlines: word by word, blurred to sharp with a small rise ────────────
+function headline(g, t, [text, payoff, tIn, tOut, y, size]) {
+  if (t < tIn - 0.1 || t > tOut + 1.2) return;
+  const words = text.split(' ');
+  g.save(); g.font = FONT(600, size); g.letterSpacing = `${-0.03 * size}px`; g.textBaseline = 'alphabetic';
+  const gap = size * 0.26, ws = words.map((w) => g.measureText(w).width), total = ws.reduce((a, b) => a + b, 0) + gap * (words.length - 1);
+  let x = 960 - total / 2;
+  words.forEach((w, i) => {
+    const a = outCubic(prog(t, tIn + i * 0.07, tIn + i * 0.07 + 0.55)), o = sine(prog(t, tOut + i * 0.05, tOut + i * 0.05 + 0.45));
+    const alpha = a * (1 - o);
+    if (alpha > 0.003) {
+      const blur = (1 - a) * 14 + o * 12, dy = (1 - a) * 18 - o * 10;
+      const grad = g.createLinearGradient(0, y - size * 0.75 + dy, 0, y + size * 0.1 + dy);
+      if (i >= payoff) { grad.addColorStop(0, '#93c5fd'); grad.addColorStop(1, '#3b82f6'); }
+      else { grad.addColorStop(0, '#f8fafc'); grad.addColorStop(0.5, '#f8fafc'); grad.addColorStop(1, '#a5b4c8'); }
+      g.save(); g.globalAlpha = alpha; if (blur > 0.05) g.filter = `blur(${blur * SCALE}px)`; g.fillStyle = grad; g.fillText(w, x, y + dy); g.restore();
+    }
+    x += ws[i] + gap;
+  });
+  g.restore();
+}
+
+// ─── One frame ──────────────────────────────────────────────────────────────
+function frame1State(t) {
+  const ants = t < 0.6 ? (6 * t * t) / 1.2 : 6 * (t - 0.3);
+  const words = [0, 1].map((i) => { const k = sine(prog(t, B.wordOut + i * 0.08, B.wordOut + i * 0.08 + 0.4)); return [1 - k, k * 10, -k * 12]; });
+  const pulse = 1 + 0.08 * Math.sin(Math.PI * prog(t, B.pulse, B.pulse + 0.6));
+  const squash = 1 - 0.08 * sine(prog(t, B.squash, B.fly)) * (1 - prog(t, B.fly, B.fly + 0.05));
+  const gone = sine(prog(t, B.fly, B.fly + 0.35));
+  return { zoom: Math.exp(ZOOM_RATE * t), ants, words, pulse, rectScale: squash * (1 + gone * 0.35), rect: 1 - gone, lens: 1 - gone, corners: t < B.fly ? 1 : 0 };
+}
+function draw(g, t) {
+  const cam = camera(t);
+  // Background: frame 1 itself at the start, the same navy and glow after.
+  if (t < B.pageInEnd + 0.2) frame1(g, frame1State(t)); else drawBg(g, Math.exp(ZOOM_RATE * (B.pageInEnd + 0.2)));
+  if (t > B.pageIn && t < B.editorIn + 0.5) {
+    const layer = S3.render(scene3d(t, cam), cam);
+    g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(layer, 0, 0); g.restore();
+  }
+  drawHighlight(g, t, cam); drawCursor(g, t, cam); drawFlyingCorners(g, t, cam);
+  drawOutputs(g, t); drawResults(g, t);
+  if (t > B.toEditor && t < B.gridIn + 0.6) drawEditor(g, t);
+  drawGrid(g, t);
+  // A soft navy fade at the top while the page fills the frame, so the headline never sits on white.
+  const scrim = prog(t, B.pageIn, B.pageInEnd) * (1 - prog(t, B.lift + 0.3, B.liftEnd + 0.3));
+  if (scrim > 0) {
+    const gr = g.createLinearGradient(0, 0, 0, 250);
+    gr.addColorStop(0, `rgba(15,23,42,${0.94 * scrim})`); gr.addColorStop(0.55, `rgba(15,23,42,${0.75 * scrim})`); gr.addColorStop(1, 'rgba(15,23,42,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, W, 250);
+  }
+  for (const h of HEAD) headline(g, t, h);
+}
+
+const SUB = parseInt(q.get('sub') || '12', 10), SHUTTER = 0.5 / 25;   // 12 sub-frames over a 180-degree shutter
+function render(t) {
+  const A = ACC.getContext('2d'); A.setTransform(1, 0, 0, 1, 0, 0); A.globalAlpha = 1; A.clearRect(0, 0, ACC.width, ACC.height);
+  for (let i = 0; i < SUB; i++) {
+    let ts = t + (SUB > 1 ? (i / (SUB - 1) - 0.5) * SHUTTER : 0);
+    ts = ((ts % END) + END) % END;   // the loop wraps, so blur crosses the seam the same way
+    const g = TMP.getContext('2d'); g.setTransform(SCALE, 0, 0, SCALE, 0, 0); g.globalAlpha = 1; g.filter = 'none';
+    draw(g, ts);
+    A.globalAlpha = 1 / (i + 1); A.drawImage(TMP, 0, 0);
+  }
+  MAIN.setTransform(1, 0, 0, 1, 0, 0); MAIN.globalAlpha = 1; MAIN.drawImage(ACC, 0, 0);
+}
+
+async function setup() {
+  await Promise.all([
+    loadImg('page', 'assets/page.png'), loadImg('top', 'assets/list-top.png'), loadImg('full', 'assets/list-full.png'),
+    loadImg('editor', 'assets/editor-clean.png'), loadImg('revenue', 'assets/thumb-revenue.png'), loadImg('stats', 'assets/thumb-stats.png'),
+    loadImg('home', 'assets/home.png'),
+    ...['blur', 'box', 'arrow'].map((tool) => loadImg(`bar-${tool}`, `assets/editor-bar-${tool}.png`)),
+    fetch('assets/prompt.txt').then((r) => r.text()).then((x) => { PROMPT = x.split('\n').slice(0, 17); }),
+    fetch('assets/layout.json').then((r) => r.json()).then((j) => Object.assign(LAY, j)),
+    document.fonts.load(FONT(600, 44)), document.fonts.load(FONT(500, 12)), document.fonts.load(FONT(400, 12)),
+  ]);
+  F = (LAY.editor.frame[2] * 1.5) / LAY.full[0];   // card px per list px: the editor's frame size
+  D = FY / F;
+  CARD_POS = add(pagePt(LAY.customers[0] + LAY.customers[2] / 2, LAY.customers[1] + LAY.customers[3] / 2), [0, 0, 240]);
+  PAGE_TEX = S3.texture(IMG.page);
+  CARD.c = mk(IMG.full.width, IMG.full.height);
+  PIX = mk(256, 64);
+  // Frame 1 at rest, for the logo tile.
+  FR1 = mk(); const g = FR1.getContext('2d'); g.setTransform(SCALE, 0, 0, SCALE, 0, 0); frame1(g, frame1State(0));
+  // The edited list, for its tile.
+  const fl = mk(IMG.full.width, IMG.full.height), fg = fl.getContext('2d'), k = IMG.full.width / LAY.full[0];
+  fg.drawImage(IMG.full, 0, 0); drawMarks(fg, (u, v) => [u * k, v * k], k, 99);
+  THUMB = { marked: fl, revenue: IMG.revenue, stats: IMG.stats, page: IMG.page, logo: FR1, home: IMG.home };
+  return true;
+}
+window.TOTAL = END;
+window.renderAt = (t) => render(t);
+window.ready = setup().then(() => { if (q.has('t')) render(parseFloat(q.get('t'))); else (function tick(n) { render(((n / 1000) % END)); requestAnimationFrame(tick); })(0); return true; });
+</script></body></html>
