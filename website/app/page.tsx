@@ -91,8 +91,8 @@ export default function Home() {
         <div className="container">
           <h2 className="section-title">See it in Action</h2>
           <p className="section-subtitle">
-            Watch how Element Snapper smoothly auto-scrolls and intelligently stitches elements
-            perfectly.
+            Pick any element, even the part that scrolls, then save it, copy it, copy it as a
+            prompt, or mark it up first.
           </p>
           <DemoVideo />
         </div>

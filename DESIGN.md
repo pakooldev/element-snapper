@@ -206,7 +206,7 @@ The same top bar with the title and a count, then a grid of cards (min 240px): t
 
 Next.js (App Router) site built as a static export — one route folder per page under `app/`, all sharing `app/globals.css`. Shares the extension's color tokens and logo SVG to present a unified brand.
 
-Every page is a Server Component; the only client islands are the ones that need an event handler: `components/navbar.tsx` (mobile menu), `hero-mockup.tsx` (parallax + playable panel), `real-panel.tsx`, `playground-widgets.tsx`, `demo-video.tsx` (loader fade), `floating-ad.tsx`, `glow-cursor.tsx`. Anything new that is purely presentational should stay a Server Component.
+Every page is a Server Component; the only client islands are the ones that need an event handler: `components/navbar.tsx` (mobile menu), `hero-mockup.tsx` (parallax + playable panel), `real-panel.tsx`, `playground-widgets.tsx`, `demo-video.tsx` (loads and plays the loop only while it is on screen), `floating-ad.tsx`, `glow-cursor.tsx`. Anything new that is purely presentational should stay a Server Component.
 
 **Design goals:** match the panel's identity, "show don't tell" (the real panel, playable, embedded in a browser mockup), dark glassmorphism, responsive down to a single-column mobile layout.
 
